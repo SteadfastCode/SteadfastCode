@@ -7,13 +7,17 @@
       href="https://fonts.googleapis.com/css2?family=Lora:wght@700&display=swap"
       rel="stylesheet"
     />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&display=swap"
+      rel="stylesheet"
+    />
     <title>Steadfast Code - Coming Soon</title>
     <style>
       body {
         margin: 0;
         padding: 0;
         font-family: Arial, sans-serif;
-        background: linear-gradient(to bottom, #000000, #1a202c);
+        background: linear-gradient(to top, #000000, #1a202c);
         color: #ffffff;
         min-height: 100vh;
         display: flex;
@@ -29,16 +33,18 @@
         border-radius: 10px;
         padding: 20px;
         margin: 20px 0;
+        border: 1px solid #4a90e2;
         box-shadow: 0 0 15px #4a90e2;
         max-width: 90%;
         margin-left: auto;
         margin-right: auto;
       }
       h1 {
-        color: #10dbff;
+        color: #00375f;
+        font-family: "Roboto Slab", serif;
         font-size: 2.5em;
-        margin-bottom: 10px;
-        font-family: "Lora", serif;
+        font-weight: 700;
+        text-shadow: 0 0 10px #00d5f1, 0 0 27px #ff9500;
       }
       h2 {
         color: #f97316;
@@ -60,12 +66,94 @@
         padding: 10px;
         color: #d1d5db;
       }
+      .tooltip {
+        position: relative;
+        display: inline-block;
+        border-bottom: 1px dashed #f97316;
+        cursor: help;
+      }
+
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 200px;
+        background-color: #1a202c;
+        color: #ffffff;
+        text-align: center;
+        border-radius: 5px;
+        padding: 15px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* Changed: Added visibility to transition */
+        border: 1px solid #4a90e2; /* Changed: Added border for contrast */
+        box-shadow: 0 0 10px #4a90e2; /* Changed: Added afterglow effect */
+      }
+
+      .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+      }
+      .pricing-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+
+      .pricing-table th,
+      .pricing-table td {
+        padding: 10px;
+      }
+
+      .pricing-table th {
+        background: #1a202c;
+        color: #ffffff;
+      }
+
+      .pricing-table td {
+        background: #2d3748;
+      }
+      .highlight-row {
+        position: relative; /* For pseudo-element positioning */
+      }
+      .highlight-row::after {
+        content: "";
+        position: absolute;
+        border-radius: 7px;
+        top: -1px; /* Account for border */
+        left: -1px;
+        right: -1px;
+        bottom: -1px;
+        background: transparent;
+      }
+      .highlight-row.unlimited-plus::after {
+        border: 2px solid #4a90e2;
+        box-shadow: 0 0 20px #4a90e2, inset 0 0 15px #4a90e2; /* Inner glow */
+      }
+      .highlight-row.unlimited::after {
+        border: 2px solid #f97316;
+        box-shadow: 0 0 20px #f97316, inset 0 0 15px #f97316; /* Inner glow */
+      }
+
+      .large-text {
+        font-size: 1.7em;
+        color: #f97316;
+      }
+
+      @media (max-width: 767px) {
+        .tooltip .tooltiptext {
+          width: 150px;
+          font-size: 0.9em;
+        }
+      }
       @media (min-width: 768px) {
         .afterglow-card {
-          max-width: 600px;
+          max-width: 700px;
         }
         h1 {
-          font-size: 3em;
+          font-size: 4em;
         }
         h2 {
           font-size: 2em;
@@ -75,31 +163,14 @@
   </head>
   <body>
     <div class="container">
-      <div
-        style="
-          background: rgba(255, 255, 255, 0.1);
-          padding: 10px 20px;
-          border-radius: 5px;
-        "
-      >
-        <h1
-          style="
-            color: #0f172a;
-            font-family: 'Roboto Slab', serif;
-            font-weight: 700;
-            margin: 0;
-          "
-        >
-          Steadfast Code
-        </h1>
-      </div>
+      <h1>Steadfast Code</h1>
       <div class="afterglow-card">
         <h2>Coming Soon!</h2>
         <p>
           We’re excited to bring you LeoAI, an AI-driven chatbot designed to
-          save small business owners in Lititz, PA, 5+ hours a week. Stay tuned
-          for a tool that learns your website, answers customer questions, and
-          grows with your business—all with a faith-driven approach.
+          save small business owners 5+ hours a week. Stay tuned for a tool that
+          learns your website, answers customer questions, and grows with your
+          business—all with a faith-driven approach.
         </p>
       </div>
       <div class="afterglow-card">
@@ -108,14 +179,22 @@
           Hi, I’m Daniel from Steadfast Code in Lititz, PA! I’m excited to
           introduce <strong>LeoAI</strong>, an AI-driven chatbot that saves
           small business owners like you 5+ hours a week—starting at just
-          $5/month. Built with faith-driven values, LeoAI empowers retail shops,
-          service providers, and churches with affordable, easy-to-use tech.
+          $5/month (or FREE for limited use). Built with faith-driven values,
+          LeoAI empowers retail shops, service providers, and churches with
+          affordable, easy-to-use tech.
         </p>
         <h3>Why LeoAI?</h3>
         <ul>
           <li>
             <strong>Save Time</strong>: Leo answers customer questions 24/7
-            (hours, services, FAQs) with smart NLP.
+            (hours, services, FAQs) with smart
+            <span class="tooltip"
+              >NLP<span class="tooltiptext"
+                ><strong>Natural Language Processing</strong>: Technology that
+                helps Leo understand and respond to human language
+                naturally.</span
+              ></span
+            >.
           </li>
           <li>
             <strong>Stay Current</strong>: Site learning pulls data from your
@@ -145,12 +224,94 @@
           </li>
         </ul>
         <h3>Pricing</h3>
+        <table class="pricing-table">
+          <tr>
+            <th>Message Range</th>
+            <th>Tier</th>
+            <th>Price per Message</th>
+            <th>Cost/Month</th>
+          </tr>
+          <tr>
+            <td>0-100</td>
+            <td>Free</td>
+            <td>Free</td>
+            <td>$0</td>
+          </tr>
+          <tr>
+            <td>101-499</td>
+            <td>Base</td>
+            <td>$0.0100</td>
+            <td>~$3.00</td>
+          </tr>
+          <tr>
+            <td>500-699</td>
+            <td>Extra</td>
+            <td>$0.0098</td>
+            <td>~$5.88</td>
+          </tr>
+          <tr>
+            <td>700-999</td>
+            <td>Plus</td>
+            <td>$0.0095</td>
+            <td>~$8.08</td>
+          </tr>
+          <tr>
+            <td>1,000-1,499</td>
+            <td>Premium</td>
+            <td>$0.0090</td>
+            <td>~$11.25</td>
+          </tr>
+          <tr>
+            <td>1,500-1,999</td>
+            <td>Pro</td>
+            <td>$0.0085</td>
+            <td>~$14.88</td>
+          </tr>
+          <tr>
+            <td>2,000-2,499</td>
+            <td>Enterprise</td>
+            <td>$0.0080</td>
+            <td>~$18.00</td>
+          </tr>
+          <tr class="highlight-row unlimited">
+            <td class="large-text">∞</td>
+            <td>Infinity Plan (Monthly)</td>
+            <td>-</td>
+            <td>$20</td>
+          </tr>
+          <tr>
+            <td class="large-text">∞</td>
+            <td>Infinity Plan (3 Months)</td>
+            <td>-</td>
+            <td>$18.33 ($55 total)</td>
+          </tr>
+          <tr>
+            <td class="large-text">∞</td>
+            <td>Infinity Plan (6 Months)</td>
+            <td>-</td>
+            <td>$17.50 ($105 total)</td>
+          </tr>
+          <tr>
+            <td class="large-text">∞</td>
+            <td>Infinity Plan (12 Months)</td>
+            <td>-</td>
+            <td>$16.67 ($200 total)</td>
+          </tr>
+          <tr class="highlight-row unlimited-plus">
+            <td class="large-text">∞</td>
+            <td>Infinity Plan (24 Months)</td>
+            <td>-</td>
+            <td>$15.83 ($380 total)</td>
+          </tr>
+        </table>
+        <p>
+          <em
+            >Note: Rates apply retroactively—hit a milestone, and all messages
+            for the month are charged at that rate. You also don't have to do anything. Rates discounts are 
+            automagically applied based on how many messages you used.</em
+          >
+        </p>
         <ul>
-          <li><strong>Free</strong>: 100 messages/month to try it out.</li>
-          <li>
-            <strong>Base Plan</strong>: $5/month for 600 messages—perfect for
-            most SBOs.
-          </li>
           <li>
             <strong>Add-Ons</strong>: $10/month Leo Refresh (daily updates),
             $5/month Messenger.
@@ -162,11 +323,13 @@
         </ul>
         <h3>Get Started</h3>
         <p>
-          Launching mid to late June 2025 at
+          Launching mid to late June 2025.
+          <!-- at
           <a href="https://steadfastcode.tech/leo-ai" style="color: #f97316"
             >steadfastcode.tech/leo-ai</a
-          >. Want to save time and grow your business with AI you can trust?
-          Let’s chat—I’d love to show you how LeoAI works!
+          >-->
+          Want to save time and grow your business with AI you can trust? Let’s
+          chat—I’d love to show you how LeoAI works!
         </p>
         <p>
           <strong>Contact</strong>:
@@ -175,8 +338,8 @@
           >
         </p>
         <p>
-          <strong>Steadfast Code</strong> – Empowering Lititz SBOs with AI, one
-          conversation at a time.
+          <strong>Steadfast Code</strong> – Empowering SBOs everywhere with easy
+          & affordable AI, one conversation at a time.
         </p>
         <p><em>Stay tuned for updates as we prepare to launch LeoAI!</em></p>
       </div>
