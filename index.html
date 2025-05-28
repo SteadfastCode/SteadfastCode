@@ -141,6 +141,37 @@
         font-size: 1.7em;
         color: #f97316;
       }
+      .lion-container {
+        position: fixed;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
+        pointer-events: none; /* Prevents interference with clicks */
+      }
+
+      .lion {
+        transition: transform 0.1s ease-out;
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .lion {
+          animation: none;
+        }
+      }
+
+      body {
+        height: 200vh; /* Ensure enough scrollable area for demo */
+      }
 
       @media (max-width: 767px) {
         .tooltip .tooltiptext {
@@ -160,8 +191,182 @@
         }
       }
     </style>
+    <script>
+      window.onscroll = function () {
+        let scrollPosition = window.scrollY;
+        let windowHeight = window.innerHeight;
+        let maxScroll = document.body.scrollHeight - windowHeight;
+        let moveDistance = (scrollPosition / maxScroll) * 80; // Move 80px max
+        let lion = document.querySelector(".lion");
+        lion.style.transform = `translate(${moveDistance}vw, -50%) rotate(${
+          scrollPosition / 10
+        }deg)`;
+        lion.style.animation = "bounce 1s infinite";
+      };
+    </script>
   </head>
   <body>
+    <div class="lion-container">
+      <svg class="lion" width="100" height="100" viewBox="0 0 100 100">
+        <!-- Mane: More triangles with color variations for texture -->
+        <!-- Outer layer (darker) -->
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(0 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(30 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(60 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(90 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(120 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(150 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(180 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(210 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(240 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(270 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(300 50 50)"
+        />
+        <polygon
+          points="50,5 40,25 60,25"
+          fill="#DAA520"
+          transform="rotate(330 50 50)"
+        />
+        <!-- Inner layer (lighter) -->
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(15 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(45 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(75 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(105 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(135 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(165 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(195 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(225 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(255 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(285 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(315 50 50)"
+        />
+        <polygon
+          points="50,15 45,30 55,30"
+          fill="#FFD700"
+          transform="rotate(345 50 50)"
+        />
+
+        <!-- Face: Polygon mesh with color variations -->
+        <!-- Base face -->
+        <polygon points="40,30 60,30 70,50 60,70 40,70 30,50" fill="#F4A460" />
+        <!-- Cheekbone highlights -->
+        <polygon points="40,30 50,40 30,50" fill="#F5DEB3" />
+        <polygon points="60,30 50,40 70,50" fill="#F5DEB3" />
+        <!-- Muzzle -->
+        <polygon points="50,40 60,70 40,70" fill="#DEB887" />
+        <!-- Shadow under eyes -->
+        <polygon points="40,30 60,30 50,40" fill="#CD853F" />
+
+        <!-- Ears: Triangles with inner shading -->
+        <polygon points="35,25 45,25 40,10" fill="#F4A460" />
+        <polygon points="55,25 65,25 60,10" fill="#F4A460" />
+        <polygon points="38,22 43,22 40,15" fill="#DEB887" />
+        <!-- Left inner ear -->
+        <polygon points="58,22 63,22 60,15" fill="#DEB887" />
+        <!-- Right inner ear -->
+
+        <!-- Eyes: Small triangles -->
+        <polygon points="40,35 45,35 42.5,40" fill="#000" />
+        <polygon points="55,35 60,35 57.5,40" fill="#000" />
+
+        <!-- Nose: Triangle -->
+        <polygon points="50,50 55,55 45,55" fill="#000" />
+
+        <!-- Mouth: Curved path -->
+        <path
+          d="M45,60 Q50,65 55,60"
+          stroke="#000"
+          stroke-width="2"
+          fill="none"
+        />
+      </svg>
+    </div>
     <div class="container">
       <h1>Steadfast Code</h1>
       <div class="afterglow-card">
