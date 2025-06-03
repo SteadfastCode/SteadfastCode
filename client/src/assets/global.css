@@ -1,0 +1,7 @@
+/* Global styles for the Afterglow theme */
+.afterglow-card {
+  background: #2d3748;
+  border-radius: 10px;
+  border: 1px solid #4a90e2;
+  box-shadow: 0 0 15px #4a90e2;
+}

@@ -38,3 +38,6 @@ app.get("/api/health", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+const chatRouter = require("./routes/chat");
+app.use("/api/chat", chatRouter);
