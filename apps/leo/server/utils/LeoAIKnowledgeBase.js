@@ -1,0 +1,15 @@
+const leoAIKnowledgeBaseCSV = `Question,Answer
+"What is LeoAI?","LeoAI is an AI-powered chatbot platform designed to automate customer support for small businesses. Built by Daniel from Steadfast Code in Lititz, PA, LeoAI saves business owners 5+ hours a week by handling routine customer inquiries 24/7 with smart natural language processing."
+"How much does LeoAI cost?","LeoAI offers 100 messages free every month. After that, pricing starts at $0.01/message with automatic discounts based on Message Milestones. The more you use, the lower your per-message cost gets, with tiers ranging from Base ($0.0100) to Enterprise ($0.0080)."
+"What types of businesses can use LeoAI?","LeoAI is perfect for small businesses like cafés, boutique retailers, bakers, service providers, ministries, and churches. It's designed for busy business owners who want excellent customer service but lack dedicated support staff."
+"How does LeoAI learn about my business?","LeoAI uses site learning to pull data directly from your website - hours, contact info, services, and even events with the Leo Refresh add-on. You can also manually input information during setup."
+"What kind of questions can LeoAI answer?","LeoAI handles 80% of common customer inquiries including business hours, services offered, location and directions, contact information, pricing, FAQs, and general business information."
+"Is LeoAI easy to set up?","LeoAI is designed for business owners who aren't tech-savvy. Setup involves adding a simple code snippet to your website, and Leo handles the rest with minimal technical expertise required."
+"Is LeoAI hard to use?","No, LeoAI is designed to be very easy to use. It's specifically built for business owners who aren't tech-savvy. Setup involves adding a simple code snippet to your website, and Leo handles the rest with minimal technical expertise required."
+"Do I need to be technical to use LeoAI?","No technical expertise is required. LeoAI is designed for business owners who aren't tech-savvy. Setup involves adding a simple code snippet to your website, and Leo handles the rest."
+"When is LeoAI launching?","LeoAI is launching mid to late June 2025. You can contact support@steadfastcode.tech to learn more or get early access information."
+"What makes LeoAI different from other chatbots?","LeoAI is built with faith-driven values, focusing on transparency, trust, and community. It's specifically designed for small businesses with affordable pricing, easy setup, and a personal touch that enhances rather than replaces human connections."
+"Can I get a refund if I don't like LeoAI?","Yes! LeoAI offers no-questions-asked prorated refunds for any unused months on Infinity Plans. Just contact Leo directly and he'll take care of it. (Note: Lifetime Deals are not refundable)"
+"How do I contact LeoAI support?","You can reach LeoAI support at support@steadfastcode.tech. Daniel and the Steadfast Code team are committed to helping small business owners succeed with AI."`;
+
+module.exports = { leoAIKnowledgeBase: leoAIKnowledgeBaseCSV };

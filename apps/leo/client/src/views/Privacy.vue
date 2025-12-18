@@ -8,8 +8,8 @@
             <p>
               At Steadfast Code, your trust is our priority. LeoAI collects only essential
               data (e.g., website URLs for site learning, contact form submissions) to provide
-              AI-driven services. You can delete your data anytime, anywhere, through your
-              dashboard or by contacting us. All data is secured with industry-standard encryption
+              AI-driven services. Business owners and customers can delete their data anytime, anywhere, through your
+              dashboard, by contacting us, or asking Leo. All data is secured with industry-standard encryption
               and never shared with third parties without your consent. For questions, reach out
               at privacy@steadfastcode.tech.
             </p>

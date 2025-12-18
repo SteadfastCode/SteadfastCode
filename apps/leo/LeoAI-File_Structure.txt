@@ -1,0 +1,45 @@
+steadfastcode/
+├── .gitignore
+├── index.html
+├── client/
+│   ├── .env
+│   ├── .gitignore
+│   ├── .prettierrc
+│   ├── package.json
+│   ├── vue.config.js
+│   ├── public/
+│   │   └── index.html
+│   └── src/
+│       ├── App.vue
+│       ├── main.js
+│       ├── router.js
+│       ├── plugins/
+│       │   └── vuetify.js
+│       ├── assets/
+│       │   └── global.css
+│       ├── components/
+│       │   ├── LeoChat.vue
+│       │   ├── LeoChatWindow.vue
+│       │   └── IntentManagement.vue
+│       └── views/
+│           ├── About.vue
+│           ├── Contact.vue
+│           ├── Home.vue
+│           ├── LeoAI.vue
+│           └── Privacy.vue
+└── server/
+    ├── .env
+    ├── package.json
+    ├── server.js
+    ├── models/
+    │   ├── Inquiry.js
+    │   ├── Interaction.js
+    │   └── SiteData.js
+    ├── routes/
+    │   ├── chat.js
+    │   ├── intents.js
+    ├── services/
+    │   └── ChatService.js
+    └── utils/
+        ├── ScraperUtil.js
+        └── dialogflow.js

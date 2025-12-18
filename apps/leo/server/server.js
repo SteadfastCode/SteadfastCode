@@ -5,15 +5,24 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://steadfastcode.tech", "http://localhost:8080"],
+  })
+);
 app.use(express.json());
 
+// Set MongoDB connection as app local for routes
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("MongoDB connected"));
+  .then(() => {
+    console.log("MongoDB connected");
+    app.locals.db = mongoose.connection.db;
+  })
+  .catch((error) => console.error("MongoDB connection error:", error));
 
 const inquirySchema = new mongoose.Schema({
   name: String,
@@ -36,8 +45,14 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
+// Mount routers
 const chatRouter = require("./routes/chat");
 app.use("/api/chat", chatRouter);
+
+const intentsRouter = require("./routes/intents");
+app.use("/api/intents", intentsRouter);
+
+app.use("/api/test", require("./routes/test-dialogflow"));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

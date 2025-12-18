@@ -6,12 +6,14 @@
         <v-card color="#2D3748" class="pa-4 mb-6 afterglow-card">
           <v-card-text>
             <p>
-              Hi, I’m Daniel from Steadfast Code in Lititz, PA! I’m excited to introduce
-              LeoAI, an AI-driven chatbot that saves small business owners like you 5+ hours
-              a week—get up to 100 messages free every month! After that, our unique pricing
-              engine starts at $0.01/message, autoscales based on usage, and applies automatic
-              discounts based on Message Milestones. Built with faith-driven values, LeoAI
-              empowers retail shops, service providers, and churches with affordable, easy-to-use tech.
+              Hi, I’m Daniel from Steadfast Code in Lititz, PA! I’m excited to
+              introduce LeoAI, an AI-driven chatbot that saves small business
+              owners 5+ hours a week—get up to 100 messages free every month!
+              After that, our unique pricing engine starts at $0.01/message,
+              autoscales based on usage, and applies automatic discounts based
+              on Message Milestones. Built with faith-driven values, LeoAI
+              empowers retail shops, service providers, ministries, and churches
+              with affordable, easy-to-use tech.
             </p>
           </v-card-text>
         </v-card>
@@ -24,7 +26,8 @@
                 <v-list-item-content>
                   <v-list-item-title>Save Time</v-list-item-title>
                   <v-list-item-subtitle>
-                    Leo answers customer questions 24/7 (hours, services, FAQs) with smart NLP.
+                    Leo answers customer questions 24/7 (hours, services, FAQs)
+                    with smart NLP.
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -32,7 +35,8 @@
                 <v-list-item-content>
                   <v-list-item-title>Stay Current</v-list-item-title>
                   <v-list-item-subtitle>
-                    Site learning pulls data from your website—hours, contact, even events (with Leo Refresh add-on).
+                    Site learning pulls data from your website—hours, contact,
+                    even events (with Leo Refresh add-on).
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -40,7 +44,8 @@
                 <v-list-item-content>
                   <v-list-item-title>Easy Setup</v-list-item-title>
                   <v-list-item-subtitle>
-                    Mobile-first, guided by Leo himself in minutes—minimal tech skills needed!
+                    Mobile-first, guided by Leo himself in minutes—minimal tech
+                    skills needed!
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -72,7 +77,8 @@
                 <v-list-item-content>
                   <v-list-item-title>Notifications</v-list-item-title>
                   <v-list-item-subtitle>
-                    Get web push alerts for unanswered queries (or via Messenger for $5/month).
+                    Get web push alerts for unanswered queries (or via Messenger
+                    for $5/month).
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -177,23 +183,26 @@
             </table>
             <p class="mt-4">
               <em>
-                Note: Rates apply retroactively—hit a milestone, and all messages for the
-                month are charged at that rate. Discounts are automatically applied based on
-                usage.
+                Note: Rates apply retroactively—hit a milestone, and all
+                messages for the month are charged at that rate. Discounts are
+                automatically applied based on usage.
               </em>
             </p>
           </v-card-text>
         </v-card>
 
         <v-card color="#2D3748" class="pa-4 mb-6 afterglow-card">
-          <v-card-title class="justify-center">Additional Plans & Add-Ons</v-card-title>
+          <v-card-title class="justify-center"
+            >Additional Plans & Add-Ons</v-card-title
+          >
           <v-card-text>
             <v-list color="transparent">
-              <v-list-item>
+              <!-- <v-list-item>
                 <v-list-item-content>
                   <v-list-item-title>Infinity Plans</v-list-item-title>
                   <v-list-item-subtitle>
-                    Unlimited messages for a flat fee, with discounts for longer commitments:
+                    Unlimited messages for a flat fee, with discounts for longer
+                    commitments:
                     <ul>
                       <li>Monthly: $20</li>
                       <li>3 Months: $18.33 ($55 total)</li>
@@ -204,13 +213,14 @@
                     Choose a plan on your dashboard or via Leo.
                   </v-list-item-subtitle>
                 </v-list-item-content>
-              </v-list-item>
+              </v-list-item> -->
               <v-list-item>
                 <v-list-item-content>
                   <v-list-item-title>Add-Ons</v-list-item-title>
                   <v-list-item-subtitle>
                     <ul>
                       <li>Leo Refresh: $10/month (daily updates)</li>
+                      <li>Leo Refresh Plus: $20/month (hourly updates)</li>
                       <li>Messenger: $5/month</li>
                     </ul>
                     Add-Ons discounted at the same rate as Infinity Plans.
@@ -221,7 +231,8 @@
                 <v-list-item-content>
                   <v-list-item-title>Lifetime Deal</v-list-item-title>
                   <v-list-item-subtitle>
-                    $777 one-time (limited to 10 slots, 60-day window)—all features, forever.
+                    $777 one-time (limited to 10 slots, 60-day window)—all
+                    features, forever.
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -229,7 +240,8 @@
                 <v-list-item-content>
                   <v-list-item-title>Early Bird Special</v-list-item-title>
                   <v-list-item-subtitle>
-                    Sign up before launch for 10% off any Infinity Plan (first 50 sign-ups, coming soon).
+                    Sign up before launch for 10% off any Infinity Plan (first
+                    50 sign-ups, coming soon).
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -237,8 +249,9 @@
                 <v-list-item-content>
                   <v-list-item-title>Refunds</v-list-item-title>
                   <v-list-item-subtitle>
-                    No-questions-asked prorated refunds for unused months on Infinity Plans
-                    (excluding Lifetime Deal). Contact Leo for assistance.
+                    No-questions-asked prorated refunds for unused months on
+                    Infinity Plans (excluding Lifetime Deal). Contact Leo for
+                    assistance.
                   </v-list-item-subtitle>
                 </v-list-item-content>
               </v-list-item>
@@ -264,9 +277,24 @@ export default {
         { range: '101-499', tier: 'Base', price: '$0.0100', cost: '~$3.00' },
         { range: '500-699', tier: 'Extra', price: '$0.0098', cost: '~$5.88' },
         { range: '700-999', tier: 'Plus', price: '$0.0095', cost: '~$8.08' },
-        { range: '1,000-1,499', tier: 'Premium', price: '$0.0090', cost: '~$11.25' },
-        { range: '1,500-1,999', tier: 'Pro', price: '$0.0085', cost: '~$14.88' },
-        { range: '2,000-2,499', tier: 'Enterprise', price: '$0.0080', cost: '~$18.00' },
+        {
+          range: '1,000-1,499',
+          tier: 'Premium',
+          price: '$0.0090',
+          cost: '~$11.25',
+        },
+        {
+          range: '1,500-1,999',
+          tier: 'Pro',
+          price: '$0.0085',
+          cost: '~$14.88',
+        },
+        {
+          range: '2,000-2,499',
+          tier: 'Enterprise',
+          price: '$0.0080',
+          cost: '~$18.00',
+        },
       ],
     };
   },
@@ -276,10 +304,11 @@ export default {
 <style scoped>
 h1 {
   font-family: 'Roboto', sans-serif;
-  color: #F97316;
+  color: #f97316;
   font-weight: 700;
 }
-p, ul {
+p,
+ul {
   color: #ffffff;
 }
 
@@ -296,42 +325,46 @@ p, ul {
   text-align: center;
 }
 .pricing-table th {
-  background: #1A202C;
+  background: #1a202c;
   color: #ffffff;
   font-weight: 700;
 }
 .pricing-table td {
-  background: #2D3748;
+  background: #2d3748;
 }
 .large-text {
   font-size: 1.7em;
-  color: #F97316;
+  color: #f97316;
 }
 .highlight-row {
   position: relative;
 }
 .highlight-row.unlimited::after {
-  content: "";
+  content: '';
   position: absolute;
   border-radius: 7px;
   top: -2px;
   left: -2px;
   right: -2px;
   bottom: -2px;
-  border: 2px solid #F97316;
-  box-shadow: 0 0 20px #F97316, inset 0 0 15px #F97316;
+  border: 2px solid #f97316;
+  box-shadow:
+    0 0 20px #f97316,
+    inset 0 0 15px #f97316;
   pointer-events: none;
 }
 .highlight-row.unlimited-plus::after {
-  content: "";
+  content: '';
   position: absolute;
   border-radius: 7px;
   top: -2px;
   left: -2px;
   right: -2px;
   bottom: -2px;
-  border: 2px solid #4A90E2;
-  box-shadow: 0 0 20px #4A90E2, inset 0 0 15px #4A90E2;
+  border: 2px solid #4a90e2;
+  box-shadow:
+    0 0 20px #4a90e2,
+    inset 0 0 15px #4a90e2;
   pointer-events: none;
 }
 @media (max-width: 767px) {
@@ -343,5 +376,24 @@ p, ul {
   .large-text {
     font-size: 1.2em;
   }
+}
+
+/* Fix for v-list-item-subtitle truncation */
+.v-list-item-subtitle {
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: unset !important;
+  display: block !important;
+  overflow: visible !important;
+  white-space: normal !important;
+}
+
+/* Ensure ul elements in subtitles display properly */
+.v-list-item-subtitle ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.v-list-item-subtitle li {
+  margin: 4px 0;
 }
 </style>

@@ -1,0 +1,4 @@
+# Dialogflow credentials
+*.json
+service-account-*.json
+dialogflow-key.json

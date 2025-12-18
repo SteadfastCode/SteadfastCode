@@ -1,0 +1,45 @@
+LeoAI Technical Overview
+
+LeoAI is an AI-powered chatbot platform for small businesses, automating customer support with a mobile-first chatbot, Leo, that handles 80% of inquiries (e.g., hours, services, FAQs) using NLP. It learns from business websites, supports notifications, and offers customization, running on steadfastcode.tech.
+
+Tech Stack and Technologies:
+
+- Frontend:
+  - Framework: Vue 3 (single-page application, SPA) for a responsive, mobile-first user interface.
+  - UI Library: Vuetify for pre-built components (e.g., navigation drawer, chat widget) with a dark theme (#2D3748 background, #F97316 accents, Roboto font).
+  - Package Manager: Yarn for dependency management and local testing (`yarn serve`).
+
+- Backend:
+  - Framework: Node.js with Express.js for RESTful APIs (e.g., /api/chat, /api/notify, /api/inquiry) handling chat, notifications, and contact form submissions.
+  - Database: MongoDB Atlas (free tier) for storing customer interactions, business settings, and scraped data (e.g., userId, businessId, query, response, timestamp).
+  - Hosting: Vercel (free tier) for frontend deployment; Render or Vercel for backend.
+
+- AI and NLP:
+  - NLP Platform: Dialogflow ES (Google Cloud, free tier up to 7.5M messages/month) for natural language processing, handling 80% of queries (e.g., hours, order tracking) with intent-based responses. Future consideration: Hugging Face for potential fine-tuning.
+  - Site Learning: Cheerio.js for web scraping to extract business details (hours, services, contact, FAQs), with manual input fallback.
+
+- Notifications:
+  - Web Push: OneSignal (free tier, up to 10,000 subscribers) for opt-in notifications alerting owners of unmatched queries.
+  - Messenger Integration: Facebook Messenger API for optional add-on notifications.
+
+- Payments:
+  - Payment Gateway: Stripe for secure payment processing, supporting standard tiers, add-ons (e.g., Leo Refresh, Messenger), and Lifetime Deal with retroactive rates and prorated refunds.
+
+- Reporting:
+  - Scheduler: node-cron for scheduling monthly time-savings reports emailed to users, calculating metrics from MongoDB interactions.
+
+- Development Tools:
+  - IDE: Visual Studio Code with GitHub Copilot for code suggestions and direct implementation.
+  - Version Control: Git with GitHub (eckerdj7/SteadfastCode) for source code management.
+  - Testing: Jest for unit testing chat responses; manual testing for setup flow.
+
+- Environment Management:
+  - Configuration: .env files (client/.env, server/.env) for storing secrets (e.g., MongoDB URI, Stripe keys, OneSignal app ID, Dialogflow credentials).
+
+- Deployment:
+  - Frontend URL: https://steadfastcode.tech
+  - Local Testing: http://localhost:8080 (frontend), http://localhost:3000 (backend).
+
+This tech stack ensures a scalable, cost-effective, and user-friendly platform, aligned with LeoAI’s goal of accessible AI support for small businesses.
+
+Note: The site is already started and most of the setup has already been done. Any time you are providing code samples, assume you can skip setup instructions and installation of anything listed in this file unless specifically asked.

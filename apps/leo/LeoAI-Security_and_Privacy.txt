@@ -1,0 +1,34 @@
+LeoAI Security and Privacy Overview
+
+Authentication:
+- Primary Method: Passkeys (WebAuthn) for secure, phishing-resistant login using device-bound credentials (e.g., biometrics, PINs). Simplifies login for mobile-first users and aligns with LeoAI’s trust and transparency goals.
+- Backup Method: Passwords with bcrypt hashing, strong policies, and optional 2FA (via OneSignal/email) for accessibility, especially for non-technical small business owners. Plan to phase out passwords in 2-3 years as passkey adoption grows.
+- Implementation: Use @simplewebauthn/server for passkeys, store public keys in MongoDB Atlas. Offer password option in setup with clear passkey benefits (e.g., tooltips, video). Monitor adoption via analytics.
+
+Data Protection:
+- Encryption: HTTPS for all API endpoints (/api/chat, /api/notify, /api/inquiry) via Vercel/Render SSL. Encrypt sensitive MongoDB fields (e.g., queries, settings) at rest.
+- Secrets: Store keys (Stripe, Dialogflow, OneSignal) in .env files, excluded from GitHub. Use Vercel/Render environment variables in production.
+
+API Security:
+- JWT for session management, validated on all routes. Rate-limit APIs (express-rate-limit) to prevent DDoS/brute-force. Sanitize inputs (express-validator) to block XSS/injection.
+- Web Scraping: Validate URLs for Cheerio.js to prevent SSRF. Throttle LeoRefresh scraping, audit data for sensitive info.
+
+Notifications and Integrations:
+- OneSignal: Secure push notifications with opt-in consent (GDPR/CCPA-compliant, 10,000 subscribers free). 
+- Messenger: Use OAuth for secure API integration, limit data sharing.
+- Stripe: PCI-DSS compliance via Stripe Elements, avoiding raw card data.
+
+User Access:
+- Roles (owner, admin) in MongoDB to restrict settings/reports access. Log actions (login, setup, escalations) with timestamps for auditing.
+
+Compliance and Transparency:
+- GDPR/CCPA: Clear privacy policy on steadfastcode.tech detailing data use (scraped data, queries). Offer data deletion via UI.
+- Ethical AI: Disclose Leo as a chatbot in all interactions. Monthly reports include data usage metrics for transparency.
+
+Testing and Monitoring:
+- Jest for security tests (e.g., invalid inputs). Manual penetration testing for login/payment. Monitor Vercel/Render logs and MongoDB metrics for anomalies, alert via OneSignal/email.
+
+User Experience:
+- Simplify passkey setup with Vuetify UI and guided instructions. Educate via reports/notifications (e.g., “Log in faster with Face ID!”). Publish security page on steadfastcode.tech detailing encryption and ethics.
+
+This approach ensures LeoAI is secure, accessible, and trustworthy, supporting small businesses with minimal technical expertise while aligning with faith-driven values of integrity and service.
