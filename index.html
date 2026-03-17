@@ -345,8 +345,11 @@
         <p><em>Stay tuned for updates as we prepare to launch LeoAI!</em></p>
       </div>
       <div class="copyright">
-        &copy; 2025 Steadfast Code. All rights reserved.
+        &copy; <span id="year"></span> Steadfast Code. All rights reserved.
       </div>
+      <script>
+        document.getElementById("year").textContent = new Date().getFullYear();
+      </script>
     </div>
   </body>
 </html>
