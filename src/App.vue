@@ -4,7 +4,14 @@
       <div class="site-container">
         <h1 class="site-title">Steadfast Code</h1>
         <ComingSoonCard />
-        <LeoAICard />
+        <div class="cards-row" :class="{ 'waitlist-active': showWaitlist }">
+          <div class="leoai-wrapper">
+            <LeoAICard :waitlist-open="showWaitlist" @show-waitlist="showWaitlist = true" />
+          </div>
+          <Transition name="waitlist">
+            <WaitlistCard v-if="showWaitlist" @close="showWaitlist = false" />
+          </Transition>
+        </div>
         <AppFooter />
       </div>
     </v-main>
@@ -12,9 +19,13 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import ComingSoonCard from './components/ComingSoonCard.vue'
 import LeoAICard from './components/LeoAICard.vue'
+import WaitlistCard from './components/WaitlistCard.vue'
 import AppFooter from './components/AppFooter.vue'
+
+const showWaitlist = ref(false)
 </script>
 
 <style>
@@ -53,9 +64,54 @@ body {
   text-shadow: 0 0 10px #00d5f1, 0 0 27px #ff9500;
 }
 
+/* Cards layout */
+.cards-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Mobile: swap LeoAI card out when waitlist opens */
+@media (max-width: 767px) {
+  .waitlist-active .leoai-wrapper {
+    display: none;
+  }
+}
+
+/* Desktop: side by side */
 @media (min-width: 768px) {
   .site-title {
     font-size: 4em;
+  }
+
+  .cards-row {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
+  }
+}
+
+/* Waitlist slide transition */
+.waitlist-enter-active,
+.waitlist-leave-active {
+  transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.45s ease;
+}
+
+/* Mobile: slide up from below */
+.waitlist-enter-from,
+.waitlist-leave-to {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+/* Desktop: slide out from behind the main card */
+@media (min-width: 768px) {
+  .waitlist-enter-from,
+  .waitlist-leave-to {
+    opacity: 0;
+    transform: translateX(-40px);
   }
 }
 </style>
