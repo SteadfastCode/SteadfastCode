@@ -1,6 +1,6 @@
-client/.env
 node_modules/
-/client/dist/
+dist/
+.claude/
 .env
 .env.local
 .env.*.local
