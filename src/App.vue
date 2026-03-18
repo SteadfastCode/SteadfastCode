@@ -89,21 +89,24 @@ body {
     flex-direction: row;
     justify-content: center;
     align-items: flex-start;
-    gap: 0;
+    gap: 24px;
   }
 }
 
 /* Waitlist slide transition */
-.waitlist-enter-active,
+.waitlist-enter-active {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
 .waitlist-leave-active {
-  transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.45s ease;
+  transition: transform 0.35s ease-in, opacity 0.3s ease;
 }
 
 /* Mobile: slide up from below */
 .waitlist-enter-from,
 .waitlist-leave-to {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(32px);
 }
 
 /* Desktop: slide out from behind the main card */
@@ -111,7 +114,7 @@ body {
   .waitlist-enter-from,
   .waitlist-leave-to {
     opacity: 0;
-    transform: translateX(-40px);
+    transform: translateX(-60px);
   }
 }
 </style>

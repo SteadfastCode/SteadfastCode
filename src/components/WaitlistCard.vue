@@ -2,10 +2,10 @@
   <div class="afterglow-card waitlist-card">
     <button class="back-btn" @click="$emit('close')">&#8592; Back</button>
     <iframe
-      data-tally-src="https://tally.so/embed/b5OKjo?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1"
+      data-tally-src="https://tally.so/embed/b5OKjo?alignLeft=1&hideTitle=1&transparentBackground=1"
       loading="lazy"
       width="100%"
-      height="200"
+      height="100%"
       frameborder="0"
       marginheight="0"
       marginwidth="0"
@@ -87,6 +87,15 @@ onMounted(() => {
   .afterglow-card {
     max-width: 420px;
     margin: 20px 0 20px 0;
+    height: 640px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  iframe {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 </style>
