@@ -4,16 +4,12 @@
       <div class="site-container">
         <h1 class="site-title">Steadfast Code</h1>
         <ComingSoonCard />
-        <div class="cards-row" :class="{ 'waitlist-active': showWaitlist }">
-          <div class="leoai-wrapper">
-            <LeoAICard :waitlist-open="showWaitlist" @show-waitlist="showWaitlist = true" />
-          </div>
-          <Transition name="waitlist">
-            <WaitlistCard v-if="showWaitlist" @close="showWaitlist = false" />
-          </Transition>
-        </div>
+        <LeoAICard @show-waitlist="openWaitlist" />
         <AppFooter />
       </div>
+      <Transition name="overlay">
+        <WaitlistCard v-if="showWaitlist" @close="showWaitlist = false" />
+      </Transition>
     </v-main>
   </v-app>
 </template>
@@ -26,6 +22,11 @@ import WaitlistCard from './components/WaitlistCard.vue'
 import AppFooter from './components/AppFooter.vue'
 
 const showWaitlist = ref(false)
+
+function openWaitlist() {
+  showWaitlist.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 </script>
 
 <style>
@@ -43,6 +44,7 @@ body {
 
 .v-main {
   background: transparent !important;
+  position: relative !important;
 }
 
 .site-container {
@@ -64,57 +66,20 @@ body {
   text-shadow: 0 0 10px #00d5f1, 0 0 27px #ff9500;
 }
 
-/* Cards layout */
-.cards-row {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-/* Mobile: swap LeoAI card out when waitlist opens */
-@media (max-width: 767px) {
-  .waitlist-active .leoai-wrapper {
-    display: none;
-  }
-}
-
-/* Desktop: side by side */
 @media (min-width: 768px) {
   .site-title {
     font-size: 4em;
   }
-
-  .cards-row {
-    flex-direction: row;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 24px;
-  }
 }
 
-/* Waitlist slide transition */
-.waitlist-enter-active {
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+/* Overlay fade transition */
+.overlay-enter-active,
+.overlay-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-.waitlist-leave-active {
-  transition: transform 0.35s ease-in, opacity 0.3s ease;
-}
-
-/* Mobile: slide up from below */
-.waitlist-enter-from,
-.waitlist-leave-to {
+.overlay-enter-from,
+.overlay-leave-to {
   opacity: 0;
-  transform: translateY(32px);
-}
-
-/* Desktop: slide out from behind the main card */
-@media (min-width: 768px) {
-  .waitlist-enter-from,
-  .waitlist-leave-to {
-    opacity: 0;
-    transform: translateX(-60px);
-  }
 }
 </style>

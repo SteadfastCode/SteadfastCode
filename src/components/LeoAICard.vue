@@ -1,5 +1,5 @@
 <template>
-  <div class="afterglow-card" :class="{ 'waitlist-open': waitlistOpen }">
+  <div class="afterglow-card">
     <h2>LeoAI: Your Trustworthy AI Partner for Small Businesses</h2>
     <p>
       Hi, I'm Daniel from Steadfast Code in Lititz, PA! I'm excited to
@@ -48,7 +48,7 @@
     <h3>Pricing</h3>
     <p class="large-text">Start free. Pay as you grow. Never more than you need.</p>
     <p>Free to start &bull; Simple pay-as-you-go &bull; Unlimited plans available</p>
-    <p v-if="!waitlistOpen">
+    <p>
       <v-btn color="#f97316" size="large" @click="$emit('show-waitlist')">
         Join the Waitlist &rarr;
       </v-btn>
@@ -249,6 +249,5 @@ ul {
 </style>
 
 <script setup>
-defineProps({ waitlistOpen: Boolean })
 defineEmits(['show-waitlist'])
 </script>

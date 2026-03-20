@@ -1,16 +1,19 @@
 <template>
-  <div class="afterglow-card waitlist-card">
-    <button class="back-btn" @click="$emit('close')">&#8592; Back</button>
-    <iframe
-      data-tally-src="https://tally.so/embed/b5OKjo?alignLeft=1&hideTitle=1&transparentBackground=1"
-      loading="lazy"
-      width="100%"
-      height="100%"
-      frameborder="0"
-      marginheight="0"
-      marginwidth="0"
-      title="Leo AI Waitlist"
-    ></iframe>
+  <div class="overlay" @click.self="$emit('close')">
+    <div class="afterglow-card">
+      <button class="close-btn" @click="$emit('close')">&times;</button>
+      <div class="iframe-wrapper">
+        <iframe
+          data-tally-src="https://tally.so/r/b5OKjo"
+          width="100%"
+          height="100%"
+          frameborder="0"
+          marginheight="0"
+          marginwidth="0"
+          title="Leo AI Waitlist"
+        ></iframe>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -19,83 +22,84 @@ import { onMounted } from 'vue'
 
 defineEmits(['close'])
 
-onMounted(() => {
-  const src = 'https://tally.so/widgets/embed.js'
-  const load = () => {
-    if (typeof Tally !== 'undefined') {
-      Tally.loadEmbeds()
-    } else {
-      document.querySelectorAll('iframe[data-tally-src]:not([src])').forEach(e => {
-        e.src = e.dataset.tallySrc
-      })
-    }
-  }
-  if (typeof Tally !== 'undefined') {
-    load()
-  } else if (!document.querySelector(`script[src="${src}"]`)) {
-    const s = document.createElement('script')
-    s.src = src
-    s.onload = load
-    s.onerror = load
-    document.body.appendChild(s)
-  } else {
-    load()
-  }
-})
+onMounted(() => Tally.loadEmbeds())
 </script>
 
 <style scoped>
-.afterglow-card {
-  background: #2d3748;
-  border-radius: 10px;
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
-  margin: 20px auto;
-  border: 1px solid #4a90e2;
-  box-shadow: 0 0 15px #4a90e2;
-  max-width: 90%;
-  text-align: left;
-  color: #ffffff;
   box-sizing: border-box;
 }
 
-.back-btn {
-  display: none;
+.afterglow-card {
+  position: relative;
+  background: #2d3748;
+  border-radius: 10px;
+  border: 1px solid #4a90e2;
+  box-shadow: 0 0 15px #4a90e2;
+  width: 100%;
+  max-width: 700px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 20px 20px;
+  box-sizing: border-box;
+}
+
+.iframe-wrapper {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+iframe {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 14px;
   background: none;
   border: none;
   color: #f97316;
-  font-size: 0.95em;
+  font-size: 1.6em;
   cursor: pointer;
-  padding: 0 0 12px 0;
-  font-family: Arial, sans-serif;
+  line-height: 1;
+  padding: 0;
 }
 
-.back-btn:hover {
-  text-decoration: underline;
+.close-btn:hover {
+  color: #ffffff;
 }
 
 @media (max-width: 767px) {
+  .overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: 100%;
+    align-items: flex-start;
+  }
+
   .afterglow-card {
-    max-width: 90%;
-  }
-
-  .back-btn {
-    display: block;
-  }
-}
-
-@media (min-width: 768px) {
-  .afterglow-card {
-    max-width: 420px;
-    margin: 20px 0 20px 0;
-    height: 640px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  iframe {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    height: 1360px;
+    max-width: 100%;
   }
 }
 </style>
