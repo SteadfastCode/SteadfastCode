@@ -84,17 +84,21 @@ test('the voice is Daniel’s: American spelling, no hype words, nothing left fr
   const british = /\b(colour|optimis(e|ed|ation)|licen[cs]e fee|prioritis|organis(e|ation)|favourite|centre|behaviour|catalogue)\b/i;
   const hype = /\b(world-class|cutting-edge|unleash|supercharge|revolutionary|game-changing|synergy|leverage our)\b/i;
   const leftovers = /coming soon!|stay tuned|launch date tbd|join the waitlist →|save small business owners 5\+ hours/i;
+  // AI tools write most of the code and Daniel reviews it; calling that hand-coded is disingenuous (his word).
+  const dishonest = /\b(hand[- ]?coded|hand[- ]?written|hand[- ]?crafted|artisanal?)\b/i;
   for (const p of pages) {
     const html = read(p).replace(/<script[\s\S]*?<\/script>/g, '');
     assert.doesNotMatch(html, british, `${rel(p)} has British spelling`);
     assert.doesNotMatch(html, hype, `${rel(p)} has a hype word`);
     assert.doesNotMatch(html, leftovers, `${rel(p)} has coming-soon leftovers`);
+    assert.doesNotMatch(html, dishonest, `${rel(p)} claims hand-coded; say AI tools write it and Daniel reviews it`);
   }
 });
 
 test('llms.txt and robots.txt are in the build and agree with the pages', () => {
   const llms = read(path.join(dist, 'llms.txt'));
   assert.match(llms, new RegExp(`^# ${business.name}\\n\\n> `), 'llms.txt shape');
+  assert.doesNotMatch(llms, /hand[- ]?coded|hand[- ]?written/i, 'llms.txt claims hand-coded');
   for (const t of websiteTiers) assert.ok(llms.includes(money(t.price)), `llms.txt lacks ${t.name} price`);
   for (const p of seoPlans) assert.ok(llms.includes(money(p.price)), `llms.txt lacks ${p.name} price`);
   for (const p of expected.filter((f) => f !== '404.html')) {

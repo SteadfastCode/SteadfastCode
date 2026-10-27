@@ -10,7 +10,7 @@ const hosted = carePlans[0];
 const local = seoPlans.find((p) => p.id === 'local')!;
 const liveWork = work.filter((w) => w.live);
 ---
-<Base title="Steadfast Code — Fast, custom websites for Lancaster County businesses" description={`Hand-coded, custom websites for small businesses, churches and nonprofits in Lititz, Lancaster County and beyond. Fixed prices posted, most sites live in two to three weeks, and every page loads in well under a second. Local SEO, GEO and care plans too.`}>
+<Base title="Steadfast Code — Fast, custom websites for Lancaster County businesses" description={`Custom websites for small businesses, churches and nonprofits in Lititz, Lancaster County and beyond, built with AI coding tools and reviewed by a real developer. Fixed prices posted, most sites live in two to three weeks, and every page loads in well under a second. Local SEO, GEO and care plans too.`}>
   <section class="hero">
     <div class="wrap">
       <p class="eyebrow">Websites · Local SEO &amp; GEO · Software — {business.city}, {business.state}</p>
@@ -18,11 +18,11 @@ const liveWork = work.filter((w) => w.live);
       <!-- Answer first: the question this page gets asked is "who builds websites near me, what does
            it cost and how long does it take", so the first paragraph is all three. -->
       <p class="answer">
-        I'm Daniel, and I build hand-coded websites for small businesses, churches and nonprofits around {business.region}.
+        I'm Daniel, and I build custom websites for small businesses, churches and nonprofits around {business.region}.
         A one-page site starts at {money(starter.price)}, most business sites are live in two to three weeks, and the prices are all posted right here.
       </p>
       <p class="lede">
-        No templates, no page builders, no plugin sprawl. You get a site that is yours outright, built to score 100 on Google's speed checks, and made by the same person you talked to on the phone.
+        No templates, no page builders, no plugin sprawl. I build with AI coding tools and I'm upfront about it: they write most of the code, and I do the design, the checking on real phones, and the talking with you. You get plain code that is yours outright, built to score 100 on Google's speed checks.
       </p>
       <div class="cta-row">
         <a class="btn big" href="/contact">Start a project</a>
@@ -51,7 +51,7 @@ const liveWork = work.filter((w) => w.live);
         <a class="card" href="/websites" data-reveal style="--i:0">
           <h3>Websites</h3>
           <span class="price">from {money(starter.price)}</span>
-          <p>Custom, hand-coded, mobile-first, fast. One page to full business sites and online stores, each with a fixed price and a date.</p>
+          <p>Custom code, mobile-first, fast, built with AI tools and checked by me. One page to full business sites and online stores, each with a fixed price and a date.</p>
           <span class="more">See the tiers →</span>
         </a>
         <a class="card" href="/seo" data-reveal style="--i:1">

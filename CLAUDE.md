@@ -60,6 +60,10 @@ under `docs/research/` and `docs/hosting.md`.
 - **Voice.** First person, contractions, American spelling, full easy sentences with the reason given,
   "pretty"/"honestly"/"usually" where true, no hype. The tests fail on British spellings and on a short
   list of hype words. The show-off is in the performance and the motion, not the adjectives.
+- **Say how the sites are built.** AI coding tools write most of the code; Daniel designs, directs,
+  reviews and tests it. Never "hand-coded", "hand-written", "handcrafted" or "artisan" — Daniel called
+  that disingenuous (2026-10-27). "Custom code, not a template" is the honest contrast, and the voice
+  test fails on the banned words.
 - **Honest claims only.** "Built to score 100," not "scores 100," until a Lighthouse run is on record.
   No ranking guarantees anywhere. `llms.txt` is shipped, never sold.
 - **Motion is optional.** Reveals, the hero stagger, the drifting glows and view transitions all stop
@@ -93,6 +97,9 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   works on either host.
 - **2026-10-27 — `format: 'file'`.** GitHub Pages 301s `/websites` → `/websites/` for directory output,
   which would make every canonical point at a redirect. File output serves clean URLs on both hosts.
+- **2026-10-27 — No "hand-coded".** The first draft said hand-coded in nine places while also saying AI
+  tools make it fast. Daniel: "That is disingenuous." Every page now says AI tools write most of the
+  code and he reviews it, and `test/site.test.js` bans the words.
 - **2026-10-27 — Live speed proof on the home page.** The numbers are the visitor's own
   (Navigation/Resource Timing), the comparison is the HTTP Archive 2024 median mobile page (2,311 KB),
   and the no-JS fallback text is the figure the perf test enforces. A cached visit says "cached" rather

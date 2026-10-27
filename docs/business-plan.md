@@ -7,7 +7,7 @@ and `llms.txt` follow.
 
 ## 0. The short version
 
-**What we're selling.** Hand-coded, very fast, custom websites at fixed, posted prices, launched in
+**What we're selling.** Very fast custom websites, built with AI coding tools and reviewed by Daniel, at fixed, posted prices, launched in
 weeks; monthly care plans; honest local SEO with GEO (AI-answer visibility) bundled in; custom software
 where it fits. Sold first to small businesses, churches and nonprofits in Lancaster County, remotely to
 anyone.
@@ -32,7 +32,9 @@ and fictitious name.
 ## 1. Positioning
 
 - **One developer, in Lititz.** You talk to the person who builds it, and the same person afterward.
-- **Hand-coded and fast.** No templates, page builders or plugin sprawl. Built to score 100 on Google's
+- **Custom code, built with AI in the open, and fast.** No templates, page builders or plugin sprawl. The
+  site says plainly that AI tools write most of the code and Daniel designs, reviews and tests it;
+  "hand-coded" is off the table as disingenuous (Daniel, 2026-10-27). Built to score 100 on Google's
   checks; the home page measures itself live against the 2.3 MB median website.
 - **Prices posted.** Same stance as Mr Dandyman: "I hate that it's hard to find rates online." Locally,
   only the small shops and the subscription sellers post prices, so precision matters: exact numbers,
@@ -155,7 +157,7 @@ exported. Below six clients the DIY stack is cheaper and cleaner.
 **DIY stack.** Lean (5–8 clients) ≈ **$130–175/mo**: Search Console, GA4, Bing Webmaster Tools, GBP and
 Looker Studio (free); SE Ranking Core on annual ($103, includes 100 GEO prompts a day); Local Falcon
 Starter ($25) for geo-grid rank reports; Ahrefs Free/Starter ($0–29); Screaming Frog free tier (our
-sites are under 500 URLs); hand-written JSON-LD. Comfortable (10–20 clients) ≈ $600–900/mo adds
+sites are under 500 URLs); JSON-LD written into the templates. Comfortable (10–20 clients) ≈ $600–900/mo adds
 BrightLocal Track, Ahrefs Lite, an AI-visibility tool (Otterly or Peec) and AgencyAnalytics or DashThis
 for client dashboards.
 
