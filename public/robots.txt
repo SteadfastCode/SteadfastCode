@@ -1,0 +1,5 @@
+# Everyone is welcome, including the answer engines: being quoted correctly is the point.
+User-agent: *
+Allow: /
+
+Sitemap: https://steadfastcode.tech/sitemap-index.xml

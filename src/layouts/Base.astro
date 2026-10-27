@@ -1,0 +1,120 @@
+---
+import slabUrl from '@fontsource-variable/roboto-slab/files/roboto-slab-latin-wght-normal.woff2?url';
+import Logo from '../components/Logo.astro';
+import { business, nav } from '../data/site';
+import { breadcrumb, graph, organization, person, webSite } from '../lib/schema';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Label for this page in the `BreadcrumbList`. Set on every page but the home page. */
+  crumb?: string;
+  /** Extra JSON-LD nodes for this page (a `FAQPage`), built in `src/lib/schema.ts`. */
+  schema?: Record<string, unknown>[];
+  /** Social image path; the default is the site card. */
+  image?: string;
+}
+const { title, description, crumb, schema = [], image = '/og.png' } = Astro.props;
+const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
+const canonical = path === '/' ? `${business.url}/` : `${business.url}${path}`;
+const jsonLd = graph([organization(), person(), webSite(), ...(crumb && path !== '/' ? [breadcrumb(path, crumb)] : []), ...schema]);
+// The one web font, self-hosted and preloaded: the headline face. Body text is the system font, which
+// costs nothing to load. The @font-face is written here, not imported from the package, so the page
+// references exactly one file (latin) rather than seven subsets it would never use.
+const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:normal;font-display:swap;font-weight:100 900;src:url(${slabUrl}) format('woff2-variations');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="max-snippet:-1, max-image-preview:large" />
+    <meta name="theme-color" content="#0b0f17" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="preload" href={slabUrl} as="font" type="font/woff2" crossorigin />
+    <style set:html={fontFace}></style>
+    <meta property="og:site_name" content={business.name} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={`${business.url}${image}`} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={jsonLd} is:inline />
+  </head>
+  <body>
+    <!-- First-party, inline, a few lines: marks the page as scripted so [data-reveal] elements can
+         start hidden, then shows each one as it scrolls into view. Not a tracker and not a library;
+         without it the page is the same page with everything visible. -->
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      addEventListener('DOMContentLoaded', () => {
+        const els = document.querySelectorAll('[data-reveal]');
+        if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          els.forEach((el) => el.classList.add('in'));
+          return;
+        }
+        const io = new IntersectionObserver((entries) => {
+          for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        }, { rootMargin: '0px 0px -6% 0px' });
+        els.forEach((el) => el.observe ? null : io.observe(el));
+      });
+    </script>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="/" aria-label={`${business.name} home`}><Logo size={40} /><span>{business.name}</span></a>
+        <nav class="main" aria-label="Main">
+          <ul>
+            {nav.map((n) => <li><a href={n.href} aria-current={path === n.href ? 'page' : undefined}>{n.label}</a></li>)}
+            <li><a class="btn" href="/contact">Start a project</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site">
+      <div class="wrap">
+        <div class="cols">
+          <div>
+            <h3>{business.name}</h3>
+            <ul>
+              <li><a href={`mailto:${business.email}`}>{business.email}</a></li>
+              <li>{business.city}, {business.state} {business.zip}</li>
+              <li>Serving {business.region} and the US, remotely</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Services</h3>
+            <ul>
+              <li><a href="/websites">Websites</a></li>
+              <li><a href="/websites#care">Hosting and care plans</a></li>
+              <li><a href="/seo">Local SEO and GEO</a></li>
+              <li><a href="/software">Custom software</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>More</h3>
+            <ul>
+              <li><a href="/work">Work</a></li>
+              <li><a href="/about">About Daniel</a></li>
+              <li><a href="/contact">Contact</a></li>
+              <li><a href="/privacy">Privacy</a></li>
+              <li><a href={business.github} rel="me noopener">GitHub</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="legal">
+          <span>© {new Date().getFullYear()} {business.legalName}. {business.city}, {business.state}.</span>
+          <span class="verse">Whatever you do, work at it with all your heart. — Colossians 3:23</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

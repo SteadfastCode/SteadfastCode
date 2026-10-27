@@ -1,0 +1,23 @@
+---
+import Base from '../layouts/Base.astro';
+import { business } from '../data/site';
+---
+<Base title="Privacy — Steadfast Code" description="What the Steadfast Code website collects (only what you type into the contact form), what it is used for (replying to you), and what it does not do (no tracking cookies, no analytics, no third-party scripts)." crumb="Privacy">
+  <section class="block">
+    <div class="wrap prose">
+      <h1>Privacy</h1>
+      <p class="answer">Short version: this site collects nothing about you unless you fill in the contact form, and then it uses what you typed to reply to you. That is it.</p>
+      <h2>What is collected</h2>
+      <p>If you use the contact form, the name, email, phone number, business name, website address and message you type are sent to me so I can answer. Nothing else on this site collects anything. There is no analytics script, no advertising pixel and no tracking cookie, and the site loads nothing from third parties: no fonts, no scripts, no embeds.</p>
+      <h2>How it is used</h2>
+      <p>To reply to you and, if we work together, to do the work. Your details are not added to a mailing list, sold, or shared with anyone, other than the services that deliver the message to my inbox, which handle it only for that purpose.</p>
+      <h2>Where it goes</h2>
+      <p>The form is delivered by email to {business.email}. The site itself is static files served from a content delivery network, which keeps ordinary server logs (IP address, pages requested, browser) for security and operations the way any web server does.</p>
+      <h2>Your choices</h2>
+      <p>You can email me instead of using the form, and you can ask me to delete anything you sent at any time by writing to <a href={`mailto:${business.email}`}>{business.email}</a>.</p>
+      <h2>Client sites</h2>
+      <p>Websites I build for clients have their own privacy policies, written for what those sites actually do. By default I build them the same way as this one: no tracking unless the owner decides they need it, and a plain-English notice when they do.</p>
+      <p class="muted">Last updated October 2026.</p>
+    </div>
+  </section>
+</Base>

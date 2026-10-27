@@ -1,7 +1,18 @@
 node_modules/
+# Yarn 4 keeps its install state and cache out of the tree; patches and
+# plugins, if this project ever has any, are committed.
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+.pnp.*
 dist/
-.claude/
+.astro/
+.wrangler/
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.log
+.DS_Store
+.claude/
+.tmp-*/

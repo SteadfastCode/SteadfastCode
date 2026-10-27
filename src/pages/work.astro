@@ -1,0 +1,57 @@
+---
+import Base from '../layouts/Base.astro';
+import Cta from '../components/Cta.astro';
+import { software, work } from '../data/site';
+---
+<Base title="Work — websites and software by Steadfast Code" description="Real sites and software built by Steadfast Code in Lititz, PA: a hand-coded contractor site with public rates and job photos pulled from the contractor's own project system, plus the products and tools Steadfast Code builds and runs." crumb="Work">
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Work</p>
+      <h1>Real sites, <em>real numbers.</em></h1>
+      <p class="answer">
+        This is a new line of work for Steadfast Code, so the list is short and honest. Every site here is one I built and can show you the measurements on. It will grow as clients are happy to be shown.
+      </p>
+    </div>
+  </section>
+
+  {work.map((w, i) => (
+    <section class="block">
+      <div class="wrap case">
+        <figure data-reveal style="--i:0">
+          <img src={w.image} alt={w.imageAlt} width="1200" height="760" loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />
+          <figcaption>{w.name} — {w.kind}</figcaption>
+        </figure>
+        <div data-reveal style="--i:1">
+          <span class="status">{w.status}</span>
+          <h2>{w.name}</h2>
+          <p>{w.summary}</p>
+          <ul class="checks">
+            {w.details.map((d) => <li>{d}</li>)}
+          </ul>
+          {w.live && <p style="margin-top:1rem"><a class="btn ghost" href={w.url} rel="noopener">Visit {w.url.replace('https://', '')}</a></p>}
+          {w.disclosure && <p class="disclosure" style="margin-top:1.2rem">{w.disclosure}</p>}
+        </div>
+      </div>
+    </section>
+  ))}
+
+  <section class="block soft">
+    <div class="wrap">
+      <p class="eyebrow">Software</p>
+      <h2>Products and tools I build and run.</h2>
+      <p>{software.intro}</p>
+      <div class="products">
+        {software.products.map((p, i) => (
+          <div class="card" data-reveal style={`--i:${i}`}>
+            <span class="status">{p.status}</span>
+            <h3>{p.name}</h3>
+            <p>{p.what}</p>
+            {'href' in p && p.href && <p style="margin-top:.9rem"><a class="btn ghost" href={p.href} rel="noopener">{p.cta}</a></p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <Cta heading="Want to be the next one here?" />
+</Base>

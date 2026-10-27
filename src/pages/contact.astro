@@ -1,0 +1,87 @@
+---
+import Base from '../layouts/Base.astro';
+import { business, carePlans, seoPlans, websiteTiers } from '../data/site';
+const sent = Astro.url.searchParams.get('sent');
+// The `plan` query parameter preselects the dropdown when someone arrives from a price card.
+const options = [
+  { value: 'website', label: 'A website' },
+  ...websiteTiers.map((t) => ({ value: t.id, label: `Website — ${t.name}` })),
+  { value: 'seo', label: 'Local SEO / GEO' },
+  ...seoPlans.map((p) => ({ value: p.id, label: `SEO — ${p.name}` })),
+  ...carePlans.map((p) => ({ value: p.id, label: `Care plan — ${p.name}` })),
+  { value: 'software', label: 'Custom software' },
+  { value: 'unsure', label: 'Not sure yet' },
+];
+---
+<Base title="Contact Steadfast Code — start a project" description={`Tell Daniel what you do and what you need. Email ${business.email} or use the form; you'll get a fixed price and a date back, usually the same day. Lititz, PA.`} crumb="Contact">
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Contact</p>
+      <h1>Tell me what <em>you need.</em></h1>
+      <p class="answer">
+        The fastest way is the form below or an email to <a href={`mailto:${business.email}`}>{business.email}</a>. Either way it lands with me, not a sales team, and you will usually hear back the same day with a price and a date, or a couple of questions.
+      </p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      {sent === '1' && <p class="notice ok" role="status">Got it, thanks. I'll read it today and get back to you, usually within a few hours.</p>}
+      {sent === '0' && <p class="notice" role="alert">The form could not send just now. Please email <a href={`mailto:${business.email}`}>{business.email}</a> instead; I'd rather not lose your message.</p>}
+
+      <form class="contact" method="post" action="/api/contact" data-contact data-email={business.email}>
+        <div class="row">
+          <label>Name <input name="name" required autocomplete="name" /></label>
+          <label>Email <input name="email" type="email" required autocomplete="email" /></label>
+        </div>
+        <div class="row">
+          <label>Phone <span class="opt">(optional)</span> <input name="phone" type="tel" autocomplete="tel" inputmode="tel" /></label>
+          <label>Business or organization <span class="opt">(optional)</span> <input name="business" autocomplete="organization" /></label>
+        </div>
+        <div class="row">
+          <label>What are you after?
+            <select name="plan" data-plan>
+              {options.map((o) => <option value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          <label>Current website <span class="opt">(if you have one)</span> <input name="site" type="url" inputmode="url" placeholder="https://" /></label>
+        </div>
+        <label>Tell me about it <textarea name="message" required placeholder="What you do, who you want to reach, what you have already (logo, photos, words), and anything you're worried about. Rough timing helps too."></textarea></label>
+        <!-- Honeypot: bots fill every field; people never see this one. -->
+        <label class="hp" aria-hidden="true">Company <input name="company" tabindex="-1" autocomplete="off" /></label>
+        <p class="muted" style="font-size:.9rem;max-width:40rem">What you type here is used only to reply to you. No newsletter, no list, no sharing. See the <a href="/privacy">privacy page</a>.</p>
+        <div><button class="btn big" type="submit">Send it</button></div>
+      </form>
+
+      <!-- Two jobs, both tiny: preselect the dropdown from ?plan=, and if the form endpoint is not
+           there (the site is on a host without the function), fall back to opening the visitor's
+           mail app with the message filled in, so a submission is never swallowed. -->
+      <script is:inline>
+        (() => {
+          const form = document.querySelector('[data-contact]');
+          const plan = new URLSearchParams(location.search).get('plan');
+          const select = form.querySelector('[data-plan]');
+          if (plan && [...select.options].some((o) => o.value === plan)) select.value = plan;
+          form.addEventListener('submit', async (ev) => {
+            if (form.dataset.native) return;
+            ev.preventDefault();
+            const btn = form.querySelector('button[type=submit]');
+            btn.disabled = true; btn.textContent = 'Sending…';
+            try {
+              const r = await fetch(form.action, { method: 'POST', body: new FormData(form), redirect: 'follow' });
+              if (r.ok || r.redirected) { location.assign('/contact?sent=1'); return; }
+              if (r.status !== 404 && r.status !== 405) { location.assign('/contact?sent=0'); return; }
+            } catch (e) { /* no network: fall through to mail */ }
+            const f = new FormData(form);
+            const body = ['Name: ' + f.get('name'), 'Email: ' + f.get('email'), 'Phone: ' + (f.get('phone') || '-'), 'Business: ' + (f.get('business') || '-'), 'After: ' + f.get('plan'), 'Site: ' + (f.get('site') || '-'), '', f.get('message')].join('\n');
+            location.href = 'mailto:' + form.dataset.email + '?subject=' + encodeURIComponent('Website project — ' + f.get('name')) + '&body=' + encodeURIComponent(body);
+            btn.disabled = false; btn.textContent = 'Send it';
+            const n = document.createElement('p'); n.className = 'notice'; n.setAttribute('role', 'status');
+            n.textContent = 'Your mail app should have opened with the message filled in. If it did not, email ' + form.dataset.email + ' directly.';
+            form.before(n);
+          });
+        })();
+      </script>
+    </div>
+  </section>
+</Base>
