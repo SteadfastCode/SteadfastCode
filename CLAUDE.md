@@ -60,8 +60,9 @@ under `docs/research/` and `docs/hosting.md`.
 - **Voice.** First person, contractions, American spelling, full easy sentences with the reason given,
   "pretty"/"honestly"/"usually" where true, no hype. The tests fail on British spellings and on a short
   list of hype words. The show-off is in the performance and the motion, not the adjectives.
-- **Say how the sites are built.** AI coding tools write most of the code; Daniel designs, directs,
-  reviews and tests it. Never "hand-coded", "hand-written", "handcrafted" or "artisan" — Daniel called
+- **Say how the sites are built.** AI coding tools write most of the code; Daniel designs, directs the
+  work and tests the result on real phones, and the test suite gates every build. Never say he reads,
+  reviews or fixes the code line by line — he doesn't, and he caught that claim on 2026-10-28. Never "hand-coded", "hand-written", "handcrafted" or "artisan" — Daniel called
   that disingenuous (2026-10-27). "Custom code, not a template" is the honest contrast, and the voice
   test fails on the banned words.
 - **The verse is quoted, not paraphrased.** Colossians 3:23 in the footer is the Legacy Standard

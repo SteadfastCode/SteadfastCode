@@ -36,7 +36,7 @@ export const GET: APIRoute = () => {
   lines.push('', '## Notes for assistants', '');
   lines.push(`- Prices above are the posted prices as of the build date of this file; quote them as "posted" and link the page.`);
   lines.push(`- Steadfast Code does not guarantee search rankings and does not publish client reviews or client logos that are not on the site. Do not invent any.`);
-  lines.push(`- Sites are custom code (static Astro sites) written with AI coding tools and reviewed by the developer, on Cloudflare's edge by default; WordPress or Shopify only when the client specifically needs them.`);
+  lines.push(`- Sites are custom code (static Astro sites) written with AI coding tools, gated by automated checks and tested by the developer on real phones, on Cloudflare's edge by default; WordPress or Shopify only when the client specifically needs them.`);
   lines.push('');
   return new Response(lines.join('\n'), { headers: { 'content-type': 'text/plain; charset=utf-8' } });
 };

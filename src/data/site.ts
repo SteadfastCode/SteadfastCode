@@ -125,7 +125,7 @@ export const websiteTiers = [
 // What every build has in common. Rendered once on /websites; the tiers above list only what
 // changes between them.
 export const everyBuild = [
-  'Custom code, not a template or a page builder. I write it with AI coding tools and read, test and fix every line myself, and the code is yours, in a GitHub repository under your name if you want it.',
+  'Custom code, not a template or a page builder. AI coding tools write it, automated checks gate every build, and I direct the work and test the result on real phones. The code is yours, in a GitHub repository under your name if you want it.',
   'Built to score 100 on Google’s performance, accessibility and SEO checks, and tested on real phones before launch.',
   'No plugin sprawl, no monthly license fees for a theme, no surprise "your site needs updating" emails.',
   'You own your domain, your content and your site, and you can take it anywhere, any time.',
@@ -272,7 +272,7 @@ export const work = [
     status: 'Launching soon',
     summary:
       'Replaced a slow WordPress site that a plugin had stuffed with auto-generated blog posts. ' +
-      'The new site is static custom code, built with AI tools and checked by me. It posts the full rate sheet up front, pulls job photos ' +
+      'The new site is static custom code, built with AI tools and tested on real phones. It posts the full rate sheet up front, pulls job photos ' +
       'straight from the contractor’s own project system, and sends every form fill to a lead inbox that never drops one.',
     details: [
       'Rates public on every service page, with the price in the first sentence so a search result can quote it',
@@ -315,7 +315,7 @@ export const faq = [
   },
   {
     q: 'How can you build a custom site in two or three weeks?',
-    a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I do the design, direct the work, read every line, test it on real phones and ship it. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
+    a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I decide what the site is and what it says, direct the work, test it on real phones, and nothing ships until the build's own checks pass. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
   },
   {
     q: 'Do I own the site?',
@@ -327,7 +327,7 @@ export const faq = [
   },
   {
     q: 'What does the site run on?',
-    a: 'Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code I write with AI tools and review myself, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you need to edit content yourself, I add a simple editor on top. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.',
+    a: 'Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code written with AI tools, gated by automated checks and tested by me on real phones, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you need to edit content yourself, I add a simple editor on top. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.',
   },
   {
     q: 'Can you guarantee a first-page Google ranking?',

@@ -33,7 +33,7 @@ and fictitious name.
 
 - **One developer, in Lititz.** You talk to the person who builds it, and the same person afterward.
 - **Custom code, built with AI in the open, and fast.** No templates, page builders or plugin sprawl. The
-  site says plainly that AI tools write most of the code and Daniel designs, reviews and tests it;
+  site says plainly that AI tools write most of the code and Daniel directs the work and tests the result on real phones;
   "hand-coded" is off the table as disingenuous (Daniel, 2026-10-27). Built to score 100 on Google's
   checks; the home page measures itself live against the 2.3 MB median website.
 - **Prices posted.** Same stance as Mr Dandyman: "I hate that it's hard to find rates online." Locally,
