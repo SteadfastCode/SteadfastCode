@@ -240,7 +240,7 @@ export const software = {
   products: [
     {
       name: 'LeoAI',
-      status: 'In private alpha',
+      status: 'In development',
       what: 'A friendly assistant for a small business or church website that learns your site and answers visitors’ questions, 24/7, in your voice.',
       href: 'https://tally.so/r/b5OKjo',
       cta: 'Join the waitlist',
@@ -252,7 +252,7 @@ export const software = {
     },
     {
       name: 'Plumb',
-      status: 'In daily use',
+      status: 'In daily use & constant improvement',
       what: 'Offline-first project management for a solo contractor: estimates, job costing, photos and invoices, built for my own handyman business.',
     },
   ],
