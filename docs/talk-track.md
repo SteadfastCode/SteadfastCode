@@ -84,6 +84,11 @@ the normal price because they are priced on hours.
   once I have your content. That's usually the slow part, and I'll help with it.
 - **"What happens if you get hit by a bus?"** The site keeps running; it needs no one. Everything is
   in a GitHub repository under your name, and any developer can pick it up.
+- **"Will I be able to see who's visiting?"** You'll see how many people visit, which pages they
+  read, where they came from, and how many called, texted, emailed or sent the form, on a private
+  dashboard that comes with every hosted plan. It counts without cookies and without Google, and
+  nobody else sees your numbers. It won't tell you who a visitor was; it keeps nothing that
+  identifies a person, on purpose.
 - **"What about sales tax?"** If Pennsylvania requires it for your project, it's added on top and it's
   on the quote, never a surprise on the invoice. (Confirm the rule with the CPA; see the plan.)
 
@@ -91,7 +96,8 @@ the normal price because they are priced on hours.
 
 Hand-coded, handcrafted, artisan (not true). "I review every line" or anything that implies reading the code yourself (also not true: you direct the work and test the result). Guaranteed, world-class, cutting-edge (hype). "Cheap"
 (say "fairly priced" or just say the price). Any claim about rankings. Any number you haven't
-checked.
+checked. "GDPR-compliant" or "no consent needed" about the analytics: say what it does, not what the
+law says about it.
 
 ## Part 2 — the practice
 

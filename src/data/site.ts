@@ -144,6 +144,7 @@ export const carePlans = [
       'Edge hosting on Cloudflare: fast everywhere, essentially unlimited traffic',
       'SSL, daily backups, uptime monitoring, DNS and domain renewal reminders',
       'Form delivery and spam filtering',
+      'Visitor numbers on a private dashboard: pages, sources, calls and form sends, counted without cookies or Google',
       'Security and dependency updates',
       'Small fixes (a typo, a phone number) handled by email, usually same day',
     ],

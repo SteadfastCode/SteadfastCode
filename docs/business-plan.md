@@ -83,7 +83,7 @@ the client's name. Anything past the tier's scope is quoted before it is built.
 
 | Plan | Price | What it is | Your time |
 |---|---|---|---|
-| Hosted | **$59** | Cloudflare edge hosting, SSL, backups, uptime monitoring, DNS and renewal reminders, form delivery, security updates, small fixes by email | ~15 min/mo |
+| Hosted | **$59** | Cloudflare edge hosting, SSL, backups, uptime monitoring, DNS and renewal reminders, form delivery, Steadfast Analytics dashboard, security updates, small fixes by email | ~15 min/mo |
 | Cared for | **$149** | + up to 1 hour of changes, monthly report, GBP kept current with one post, two-business-day turnaround | ~1.25 h/mo |
 | Growing | **$299** | + up to 3 hours including new pages, one content piece a month, quarterly review call, local SEO upkeep | ~3.5 h/mo |
 
