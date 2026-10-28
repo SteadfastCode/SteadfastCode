@@ -165,8 +165,8 @@ dl.faq dd { margin: 0; padding: 0 0 1.1rem; color: var(--muted); }
 /* Comparison strip: the median website against this one. */
 .compare { display: grid; gap: .6rem; margin-top: 1.2rem; }
 .bar { display: grid; grid-template-columns: 9rem 1fr auto; gap: .8rem; align-items: center; font-size: .95rem; }
-.bar .track { height: .8rem; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
-.bar .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--cyan)); box-shadow: 0 0 12px rgba(0, 213, 241, 0.45); width: var(--w, 0%); transition: width 1.4s cubic-bezier(.2, .7, .2, 1); }
+.bar .track { display: block; height: .8rem; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.bar .fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--cyan)); box-shadow: 0 0 12px rgba(0, 213, 241, 0.45); width: var(--w, 0%); transition: width 1.4s cubic-bezier(.2, .7, .2, 1); }
 /* The progress bar starts empty on a scripted page and runs to its value when the block scrolls into view. */
 html.js .compare:not(.in) .bar.us .fill { width: 0; }
 .bar.them .fill { background: linear-gradient(90deg, #6b7280, #9ca3af); box-shadow: none; }
