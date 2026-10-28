@@ -44,6 +44,9 @@ test('every page has a title, a description, a canonical that matches its URL, a
 test('every page has the nav from site.ts, the email, and the skip link', () => {
   for (const p of pages) {
     const html = read(p);
+    // Daniel's rule: the verse is the LSB text word for word, never paraphrased.
+    assert.ok(html.includes(`${business.verse} — ${business.verseRef}`), `${rel(p)} lacks the exact LSB verse`);
+    assert.doesNotMatch(html, /work at it with all your heart/i, `${rel(p)} has the paraphrased verse`);
     for (const n of nav) assert.ok(html.includes(`href="${n.href}"`), `${rel(p)} nav lacks ${n.href}`);
     assert.ok(html.includes(business.email), `${rel(p)} lacks the email`);
     assert.match(html, /class="skip" href="#main"/, `${rel(p)} lacks the skip link`);

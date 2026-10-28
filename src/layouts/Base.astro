@@ -112,8 +112,9 @@ const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:norma
         </div>
         <div class="legal">
           <span>© {new Date().getFullYear()} {business.legalName}. {business.city}, {business.state}.</span>
-          <span class="verse">Whatever you do, work at it with all your heart. — Colossians 3:23</span>
+          <span class="verse">{business.verse} — {business.verseRef}</span>
         </div>
+        <p class="copyright-line">{business.verseCopyright}</p>
       </div>
     </footer>
   </body>

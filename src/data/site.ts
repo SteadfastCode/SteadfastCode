@@ -24,6 +24,11 @@ export const business = {
   // Profiles. Only the ones that exist are emitted into the JSON-LD `sameAs` list; an empty string
   // means the listing is not claimed yet. Never guess a URL to fill a field.
   github: 'https://github.com/SteadfastCode',
+  // Colossians 3:23, Legacy Standard Bible, word for word (Daniel's rule: never paraphrased). The
+  // trailing comma is the verse's own. test/site.test.js checks every page carries it exactly.
+  verse: 'Whatever you do, do your work heartily, as for the Lord rather than for men,',
+  verseRef: 'Colossians 3:23 (LSB)',
+  verseCopyright: 'Scripture quotation taken from the Legacy Standard Bible, Copyright \u00a9 2021 by The Lockman Foundation. All rights reserved.',
   googleBusinessProfile: '',
   linkedin: '',
   facebook: '',

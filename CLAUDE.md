@@ -64,6 +64,9 @@ under `docs/research/` and `docs/hosting.md`.
   reviews and tests it. Never "hand-coded", "hand-written", "handcrafted" or "artisan" — Daniel called
   that disingenuous (2026-10-27). "Custom code, not a template" is the honest contrast, and the voice
   test fails on the banned words.
+- **The verse is quoted, not paraphrased.** Colossians 3:23 in the footer is the Legacy Standard
+  Bible text word for word, from `site.ts`, with the "(LSB)" tag and the Lockman copyright line.
+  Daniel's rule (2026-10-27); the test checks every page for the exact string.
 - **Honest claims only.** "Built to score 100," not "scores 100," until a Lighthouse run is on record.
   No ranking guarantees anywhere. `llms.txt` is shipped, never sold.
 - **Motion is optional.** Reveals, the hero stagger, the drifting glows and view transitions all stop

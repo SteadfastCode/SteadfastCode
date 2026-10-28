@@ -202,6 +202,7 @@ footer.site a { color: var(--ink); text-decoration: none; }
 footer.site a:hover { color: var(--cyan); }
 footer.site .legal { margin-top: 1.6rem; padding-top: 1rem; border-top: 1px solid var(--line-soft); display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-content: space-between; }
 footer.site .verse { font-style: italic; }
+footer.site .copyright-line { margin: .6rem 0 0; font-size: .78rem; color: var(--muted); opacity: .8; max-width: none; }
 
 .prose { max-width: 46rem; }
 .prose h2 { margin-top: 1.8em; }
