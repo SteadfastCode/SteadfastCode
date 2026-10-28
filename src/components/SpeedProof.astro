@@ -21,9 +21,12 @@ const medianMb = (median / 1024).toFixed(1);
     <span class="l">the median website, per the <a href={benchmarks.sourceUrl} rel="noopener">{benchmarks.source}</a>. Most of it JavaScript and oversized images.</span>
   </div>
 </div>
-<div class="compare" aria-hidden="true">
+<div class="compare" data-reveal>
   <div class="bar them"><span>Median website</span><span class="track"><span class="fill" style="--w:100%"></span></span><span class="v">{median.toLocaleString('en-US')} KB</span></div>
-  <div class="bar us"><span>This page</span><span class="track"><span class="fill" data-bar-us style={`--w:${Math.max(1.5, (benchmarks.budgetKb / median) * 100).toFixed(1)}%`}></span></span><span class="v" data-kb-small>&lt;{benchmarks.budgetKb} KB</span></div>
+  <!-- A progress bar: it fills to the share of the median this page does without. Starts empty once
+       the page is scripted and runs to its value when it scrolls into view; the no-JS text is the
+       floor the perf test guarantees. -->
+  <div class="bar us"><span>This page</span><span class="track" role="progressbar" aria-label="How much smaller this page is than the median website" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.floor((1 - benchmarks.budgetKb / median) * 100)} data-bar-us><span class="fill" style={`--w:${Math.floor((1 - benchmarks.budgetKb / median) * 100)}%`}></span></span><span class="v"><span data-smaller>{Math.floor((1 - benchmarks.budgetKb / median) * 100)}%+</span> smaller · <span data-kb-small>&lt;{benchmarks.budgetKb} KB</span></span></div>
 </div>
 <p class="proof-note">That gap is most of what I am selling. A page that loads before someone's thumb leaves the screen gets read; a page that makes them wait gets closed. Google ranks on it, too.</p>
 <script is:inline>
@@ -45,7 +48,11 @@ const medianMb = (median / 1024).toFixed(1);
         $('[data-kb]').textContent = kb + ' KB';
         $('[data-kb-small]').textContent = kb + ' KB';
         const median = Number($('[data-median]').textContent) * 1024 || 2311;
-        $('[data-bar-us]').style.setProperty('--w', Math.max(1.5, (kb / median) * 100).toFixed(1) + '%');
+        const smaller = Math.max(0, Math.min(100, Math.round((1 - kb / median) * 100)));
+        $('[data-smaller]').textContent = smaller + '%';
+        const bar = $('[data-bar-us]');
+        bar.setAttribute('aria-valuenow', String(smaller));
+        bar.firstElementChild.style.setProperty('--w', smaller + '%');
       } else if (nav.transferSize === 0) {
         $('[data-kb]').textContent = 'cached';
         $('[data-ms-label]').textContent = 'to load this page from your browser’s cache. Measured just now.';

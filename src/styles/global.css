@@ -166,9 +166,12 @@ dl.faq dd { margin: 0; padding: 0 0 1.1rem; color: var(--muted); }
 .compare { display: grid; gap: .6rem; margin-top: 1.2rem; }
 .bar { display: grid; grid-template-columns: 9rem 1fr auto; gap: .8rem; align-items: center; font-size: .95rem; }
 .bar .track { height: .8rem; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
-.bar .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--cyan)); box-shadow: 0 0 12px rgba(0, 213, 241, 0.45); width: var(--w, 0%); transition: width 1.2s cubic-bezier(.2, .7, .2, 1); }
+.bar .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--cyan)); box-shadow: 0 0 12px rgba(0, 213, 241, 0.45); width: var(--w, 0%); transition: width 1.4s cubic-bezier(.2, .7, .2, 1); }
+/* The progress bar starts empty on a scripted page and runs to its value when the block scrolls into view. */
+html.js .compare:not(.in) .bar.us .fill { width: 0; }
 .bar.them .fill { background: linear-gradient(90deg, #6b7280, #9ca3af); box-shadow: none; }
 .bar .v { font-variant-numeric: tabular-nums; color: #fff; font-weight: 600; white-space: nowrap; }
+.bar.us .v [data-smaller] { color: var(--cyan); font-family: var(--display); font-size: 1.15em; }
 
 /* CTA band. */
 .cta-band { text-align: center; padding: clamp(3rem, 7vw, 5rem) 0; position: relative; overflow: hidden; }
@@ -239,6 +242,7 @@ a.card:hover, .tier:hover { transform: translateY(-3px); }
   .hero-art { animation: none !important; transform: translateY(-50%); }
   html.js [data-reveal] { opacity: 1; transform: none; transition: none; }
   .card, .tier, .btn, .stat, .bar .fill { transition: none; }
+  html.js .compare:not(.in) .bar.us .fill { width: var(--w, 0%); }
   a.card:hover, .tier:hover, .btn:hover { transform: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 }

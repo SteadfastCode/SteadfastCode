@@ -133,9 +133,10 @@ GitHub org; Astro 7 static; the same test gate as this site (prices from one dat
 requests, a page-weight budget, JSON-LD checked at the source); Cloudflare Pages (or a Worker with
 static assets) per client on the client's own domain; a Pages Function for forms that forwards to
 Front Desk when hosted, else emails through Resend, else fails loudly; Sveltia CMS for clients who edit
-their own copy, TinaCMS when they need click-to-edit; Rocket.net for the rare client who truly needs
-WordPress; never the basement box. Hosting cost at 30 sites is between $0 and about $400 a month,
-nearly all of it optional.
+their own copy, TinaCMS when they need click-to-edit; xCloud (the host you liked at Burk: a control
+panel plus managed servers, free for one server and ten sites, $12–$24/mo for a managed server running
+unlimited sites) for the rare client who truly needs WordPress; never the basement box. Hosting cost
+at 30 sites is between $0 and about $220 a month, nearly all of it optional.
 
 ## 4. SEO and GEO: the decision
 
@@ -319,8 +320,7 @@ watch: at 20 care plans averaging $120 that's $2,400 a month before any new buil
 3. **Email and phone**: the site uses support@steadfastcode.tech from the old page. Is that mailbox
    real and checked? Do you want a phone number on the site (the Mr Dandyman line, a Twilio number via
    Front Desk, or none)?
-4. **Hosting provider you liked at Burk**: name it and I'll fold it into `docs/hosting.md`; the
-   recommendation stands either way because your stack is static, not WordPress.
+4. **xCloud** is now in `docs/hosting.md` as the WordPress-client host; static sites stay on Cloudflare.
 5. **Church/nonprofit discount**: a number.
 6. **Cloudflare cutover for this site** (your login): create a Pages project from the repo, set the
    Resend binding, add the custom domain, switch the Porkbun records, delete the GitHub Pages workflow.
