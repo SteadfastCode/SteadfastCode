@@ -50,8 +50,11 @@ under `docs/research/` and `docs/hosting.md`.
 
 - **Every price comes from `site.ts`.** `test/site.test.js` fails on any `$` figure in a page that is
   not one of its numbers, and checks `/websites`, `/seo` and `llms.txt` show every tier.
-- **No third-party requests on any page.** No analytics, no fonts from Google, no embeds, no script
-  bundles. `test/perf.test.js` enforces it, along with a **200 KB over-the-wire budget per page**
+- **No third-party requests on any page.** No third-party analytics, no fonts from Google, no embeds, no
+  script bundles. The one counter is Steadfast Analytics: an inline beacon posting to this site's own
+  `/api/hit` (`functions/api/hit.js`), which hands it to the shared Worker over a service binding.
+  Source of truth for the beacon and the function is `~/repos/steadfast-analytics/snippet/`; copy
+  changes from there. If what it collects changes, `/privacy` changes in the same commit. `test/perf.test.js` enforces it, along with a **200 KB over-the-wire budget per page**
   (HTML + CSS + font + eager images, gzip-measured) and a 6 KB cap on inline script. The home page
   tells visitors this; keep it true. The LeoAI waitlist is a link to Tally, not an embed.
 - **Nothing invented.** No made-up clients, reviews, logos, metrics or "founded in" dates. A case study
@@ -108,3 +111,14 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   (Navigation/Resource Timing), the comparison is the HTTP Archive 2024 median mobile page (2,311 KB),
   and the no-JS fallback text is the figure the perf test enforces. A cached visit says "cached" rather
   than claiming a 2 KB website.
+- **2026-10-28 — Steadfast Analytics, our own cookieless counter, not GA4 or a hosted tool.** Daniel
+  wanted traffic numbers without Google and asked whether a custom, trustworthy counter was worth
+  building as a selling point. It is a Cloudflare Worker + D1 in its own repo
+  (`~/repos/steadfast-analytics`): page, linking site's hostname, UTM tags, device size, country,
+  and three events (form sent, phone tapped, email tapped). One visitor per day via a hash of a daily
+  salt + site + IP + browser; the salt is deleted after the day, IPs and browser strings are never
+  stored, 13-month retention. Dashboard at analytics.steadfastcode.tech behind Cloudflare Access.
+  Do Not Track / GPC not honored on purpose: they ask not to be tracked across sites or have data
+  sold, and this does neither; honoring them would only undercount. Only counts once the site is on
+  Cloudflare Pages with the `ANALYTICS` service binding and `ANALYTICS_KEY` set; until then
+  `/api/hit` doesn't exist and the beacon's posts go nowhere.

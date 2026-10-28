@@ -117,5 +117,9 @@ const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:norma
         <p class="copyright-line">{business.verseCopyright}</p>
       </div>
     </footer>
+    <!-- Steadfast Analytics: counts this visit without cookies. Sends the page, the linking site's
+         name, campaign tags and phone/tablet/desktop to this site's own /api/hit; taps on phone and
+         email links and form sends are counted the same way. Nothing goes to anyone else. -->
+    <script is:inline>(()=>{if(navigator.webdriver||!navigator.sendBeacon)return;const q=new URLSearchParams(location.search),w=innerWidth;let r='';try{r=document.referrer&&new URL(document.referrer).hostname}catch{}const s=(k,n)=>{try{navigator.sendBeacon('/api/hit',JSON.stringify({k,n,p:location.pathname,r,s:q.get('utm_source'),m:q.get('utm_medium'),c:q.get('utm_campaign'),d:w<768?'m':w<1024?'t':'d'}))}catch{}};s('view');addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="tel:"],a[href^="mailto:"]');a&&s('event',a.protocol=='tel:'?'phone':'email')},true);addEventListener('submit',()=>s('event','form'),true)})()</script>
   </body>
 </html>

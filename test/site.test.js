@@ -114,3 +114,17 @@ test('llms.txt and robots.txt are in the build and agree with the pages', () => 
   assert.ok(fs.existsSync(path.join(dist, 'sitemap-index.xml')), 'sitemap missing');
   assert.ok(fs.existsSync(path.join(dist, 'CNAME')), 'CNAME missing (GitHub Pages custom domain)');
 });
+
+test('every page counts visits only through its own /api/hit, and the privacy page says what is counted', () => {
+  for (const p of pages) {
+    const html = read(p);
+    assert.match(html, /navigator\.sendBeacon\('\/api\/hit'/, `${rel(p)} lacks the Steadfast Analytics beacon`);
+    assert.doesNotMatch(html, /document\.cookie|localStorage|sessionStorage/, `${rel(p)} touches browser storage`);
+  }
+  const privacy = read(path.join(dist, 'privacy.html'));
+  assert.match(privacy, /Steadfast Analytics/);
+  assert.match(privacy, /No cookie is set/);
+  assert.match(privacy, /not stored/);
+  assert.doesNotMatch(privacy, /no analytics/i, 'the privacy page must not say there are no analytics');
+  assert.ok(fs.existsSync('functions/api/hit.js'), 'the /api/hit function is missing');
+});

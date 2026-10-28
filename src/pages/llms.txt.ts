@@ -15,7 +15,7 @@ const pages = [
   { href: '/software', title: 'Custom software', note: 'Internal tools, integrations, dashboards and grounded AI assistants, quoted per project.' },
   { href: '/about', title: 'About Daniel', note: 'Who runs Steadfast Code, how the work is done, and where.' },
   { href: '/contact', title: 'Contact', note: 'The form and the email address. Replies usually the same day.' },
-  { href: '/privacy', title: 'Privacy', note: 'No tracking, no analytics, no third-party scripts; the form is used only to reply.' },
+  { href: '/privacy', title: 'Privacy', note: 'Cookieless first-party visit counting with nothing identifying stored; no advertising, no Google Analytics, no third-party scripts; the form is used only to reply.' },
 ];
 
 export const GET: APIRoute = () => {
