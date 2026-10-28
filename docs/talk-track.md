@@ -18,8 +18,8 @@ That is the whole pitch. Everything below is what you say when someone asks a fo
 
 "Most small-business websites are a slow template on a hosting plan the owner doesn't understand,
 with a monthly fee to keep something they thought they owned. I do it differently. I write custom
-code, I use AI tools to do it fast and I'm upfront about that, and I design, check and test every
-page myself. The site loads in well under a second, which Google rewards and visitors notice. You
+code, I use AI tools to do it fast and I'm upfront about that, and I design it and test every page on a real phone myself, and the build runs its own checks
+before anything ships. The site loads in well under a second, which Google rewards and visitors notice. You
 own it outright: your domain, your code, no lock-in. And my prices are on the website, because I
 hate it when I can't find a price. A one-page site is $1,500, a full business site is $3,900, and
 I can tell you which one you need after a 30-minute call."

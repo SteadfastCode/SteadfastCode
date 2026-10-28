@@ -315,7 +315,7 @@ export const faq = [
   },
   {
     q: 'How can you build a custom site in two or three weeks?',
-    a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I decide what the site is and what it says, direct the work, test it on real phones, and nothing ships until the build's own checks pass. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
+    a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I decide what the site is and what it says, direct the work, test it on real phones, and nothing ships until the build\u2019s own checks pass. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
   },
   {
     q: 'Do I own the site?',
