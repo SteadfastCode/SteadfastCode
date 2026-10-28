@@ -43,8 +43,11 @@ under `docs/research/` and `docs/hosting.md`.
   with full GitHub access, or after `gh auth refresh -h github.com -s workflow` on the box). `public/CNAME` carries the custom domain. DNS for
   `steadfastcode.tech` is at Porkbun (A records to GitHub, `www` CNAME to `steadfastcode.github.io`).
 - **Next: Cloudflare Pages** (Daniel's login): connect the repo, build `yarn build`, output `dist`,
-  set the Resend binding, add the custom domain, move the Porkbun records, delete the workflow. Then
-  the form posts for real and `/api/contact` exists.
+  set the Resend binding, add the custom domain, delete the workflow. The apex domain needs the
+  zone on Cloudflare: add steadfastcode.tech as a Cloudflare zone, check the imported records
+  (MX and SPF/DKIM for support@ especially), then change the nameservers at Porkbun, which stays the
+  registrar. Then the form posts for real, `/api/contact` and `/api/hit` exist, and the Steadfast
+  Analytics binding (`ANALYTICS` service, `ANALYTICS_KEY`) can be added.
 
 ## Rules that override taste
 

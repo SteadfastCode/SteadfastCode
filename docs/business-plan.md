@@ -326,7 +326,10 @@ watch: at 20 care plans averaging $120 that's $2,400 a month before any new buil
 4. **xCloud** is now in `docs/hosting.md` as the WordPress-client host; static sites stay on Cloudflare.
 5. **Church/nonprofit discount**: 40% on builds, decided 2026-10-28.
 6. **Cloudflare cutover for this site** (your login): create a Pages project from the repo, set the
-   Resend binding, add the custom domain, switch the Porkbun records, delete the GitHub Pages workflow.
+   Resend binding, add the custom domain, delete the GitHub Pages workflow. The apex domain needs
+   Cloudflare DNS: add steadfastcode.tech as a zone, check the imported records (keep the email ones),
+   then switch the nameservers at Porkbun, which stays the registrar. Then add the Steadfast
+   Analytics binding (see `~/repos/steadfast-analytics/README.md`).
    The form falls back to opening the visitor's mail app until then.
 7. **Insurance and entity**: bind tech E&O the week the first paying client signs, not before; add
    general liability only if a client's contract requires it or on-site visits become routine. Decide
