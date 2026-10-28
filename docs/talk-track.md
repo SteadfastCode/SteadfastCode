@@ -39,7 +39,7 @@ I can tell you which one you need after a 30-minute call."
    decline them and still have a working site. Forms go to email through a small function; nothing
    runs on a server I have to patch.
 4. **How I build fast, honestly.** AI coding tools write most of the code. I decide what the site
-   is, what it says, how it looks, and I read, test on real phones and ship every page. The thing
+   is, what it says, how it looks, and I test every page on real phones and ship it; the build's own checks catch what I'd miss. The thing
    that actually sets the schedule is getting the words and photos from the client, so I help with
    those from day one.
 5. **What SEO and GEO are, in English.** SEO: making sure people searching for what you do find
@@ -89,7 +89,7 @@ the normal price because they are priced on hours.
 
 ### Words to avoid
 
-Hand-coded, handcrafted, artisan (not true). Guaranteed, world-class, cutting-edge (hype). "Cheap"
+Hand-coded, handcrafted, artisan (not true). "I review every line" or anything that implies reading the code yourself (also not true: you direct the work and test the result). Guaranteed, world-class, cutting-edge (hype). "Cheap"
 (say "fairly priced" or just say the price). Any claim about rankings. Any number you haven't
 checked.
 

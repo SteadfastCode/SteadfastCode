@@ -88,7 +88,7 @@ test('the voice is Daniel’s: American spelling, no hype words, nothing left fr
   const hype = /\b(world-class|cutting-edge|unleash|supercharge|revolutionary|game-changing|synergy|leverage our)\b/i;
   const leftovers = /coming soon!|stay tuned|launch date tbd|join the waitlist →|save small business owners 5\+ hours/i;
   // AI tools write most of the code and Daniel reviews it; calling that hand-coded is disingenuous (his word).
-  const dishonest = /\b(hand[- ]?coded|hand[- ]?written|hand[- ]?crafted|artisanal?)\b/i;
+  const dishonest = /\b(hand[- ]?coded|hand[- ]?written|hand[- ]?crafted|artisanal?)\b|\b(read|review(?:s|ed|ing)?|fix(?:es|ed)?) (every|each) line\b|line by line|checked by me|reviewed by (me|a real developer|the developer)/i;
   for (const p of pages) {
     const html = read(p).replace(/<script[\s\S]*?<\/script>/g, '');
     assert.doesNotMatch(html, british, `${rel(p)} has British spelling`);

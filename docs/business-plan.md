@@ -7,7 +7,7 @@ and `llms.txt` follow.
 
 ## 0. The short version
 
-**What we're selling.** Very fast custom websites, built with AI coding tools and reviewed by Daniel, at fixed, posted prices, launched in
+**What we're selling.** Very fast custom websites, built with AI coding tools and tested on real phones by Daniel, at fixed, posted prices, launched in
 weeks; monthly care plans; honest local SEO with GEO (AI-answer visibility) bundled in; custom software
 where it fits. Sold first to small businesses, churches and nonprofits in Lancaster County, remotely to
 anyone.
