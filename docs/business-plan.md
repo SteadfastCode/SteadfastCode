@@ -114,8 +114,10 @@ labels.
 
 ### Discounts and options for you to decide
 
-- **Churches and nonprofits:** the about page says "usually a discount; just ask." Suggest 20% off
-  builds, no discount on care plans (they're priced on time). Your call on the number.
+- **Churches and nonprofits:** 40% off builds (Daniel's decision, 2026-10-28), no discount on care or
+  SEO plans because those are priced on hours. Two guardrails: cap it (say, two discounted builds a
+  quarter) so ministry work doesn't crowd out the full-price work that funds it, and quote the
+  discounted figure as the price, not as a negotiation that can go lower.
 - **Pay-monthly option (not on the site yet).** Three local competitors sell websites as
   subscriptions, and cash flow is the most common reason a small business doesn't start this quarter.
   If you want it: Business as **$329/mo for 12 months** with the Hosted plan included, ownership
@@ -128,7 +130,7 @@ labels.
 
 ## 3. Delivery stack
 
-Full detail in `docs/hosting.md`. In one paragraph: one private repo per client in the SteadfastCode
+Full detail in `docs/hosting.md`. Cloudflare Pages confirmed as the host (Daniel, 2026-10-28). In one paragraph: one private repo per client in the SteadfastCode
 GitHub org; Astro 7 static; the same test gate as this site (prices from one data file, no third-party
 requests, a page-weight budget, JSON-LD checked at the source); Cloudflare Pages (or a Worker with
 static assets) per client on the client's own domain; a Pages Function for forms that forwards to
@@ -268,8 +270,10 @@ else's are. Case studies with measurements and the owner's own words.
   2026-10-18: texts covered, 9 a.m.–7 p.m., never Sunday, $1,000 per violation). Phone follow-ups in
   business hours only.
 - **Insurance.** General liability about $38/mo and tech E&O about $94/mo at the medians for web
-  designers; budget $1,300–$1,600 a year. E&O matters the day a client's store goes down on a
-  Saturday.
+  designers; budget $1,300–$1,600 a year once both are on. Timing (2026-10-28, money tight): nothing
+  until the first paying client signs; then E&O, because it covers the work itself. General liability
+  waits for a client who requires it or for regular on-site work. Insurers quote in a day, so there is
+  no need to carry it while there is nothing to insure.
 - **Entity.** Decide whether Steadfast Code operates under an existing LLC (fictitious name filing,
   $70, no newspaper ad when the registrant is an LLC) or its own. Check the operating agreement's
   purpose clause.
@@ -317,13 +321,14 @@ watch: at 20 care plans averaging $120 that's $2,400 a month before any new buil
 1. **Sales tax**: CPA opinion first. It changes whether quotes say "+6% PA sales tax."
 2. **Pay-monthly option**: offer it or not (§2). My recommendation: offer it quietly on Business only,
    after the first five one-time clients, if cash-flow objections actually come up.
-3. **Email and phone**: the site uses support@steadfastcode.tech from the old page. Is that mailbox
-   real and checked? Do you want a phone number on the site (the Mr Dandyman line, a Twilio number via
-   Front Desk, or none)?
+3. **Email and phone**: support@steadfastcode.tech is live (confirmed 2026-10-28). Phone on the site:
+   still open (the Mr Dandyman line, a Twilio number via Front Desk, or none).
 4. **xCloud** is now in `docs/hosting.md` as the WordPress-client host; static sites stay on Cloudflare.
-5. **Church/nonprofit discount**: a number.
+5. **Church/nonprofit discount**: 40% on builds, decided 2026-10-28.
 6. **Cloudflare cutover for this site** (your login): create a Pages project from the repo, set the
    Resend binding, add the custom domain, switch the Porkbun records, delete the GitHub Pages workflow.
    The form falls back to opening the visitor's mail app until then.
-7. **Insurance and entity**: bind GL + E&O; decide which LLC this runs under.
+7. **Insurance and entity**: bind tech E&O the week the first paying client signs, not before; add
+   general liability only if a client's contract requires it or on-site visits become routine. Decide
+   which LLC this runs under before the first invoice.
 8. **Case studies**: which church or nonprofit gets the first discounted build.
