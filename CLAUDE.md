@@ -35,19 +35,22 @@ under `docs/research/` and `docs/hosting.md`.
 
 ## Hosting and deploy
 
-- **Today: GitHub Pages**, from the `gh-pages` branch, pushed by `.github/workflows/deploy.yml` on
-  every push to `main`. **The committed workflow is still the old Yarn 1 one and will fail on this
-  repo**; the replacement (Corepack, Yarn 4, `yarn gate` before publishing) is parked at
-  `docs/deploy-workflow.yml` because the box's GitHub token lacks the `workflow` scope needed to push
-  workflow-file changes. Copy it into place when merging `site-rebuild` into `main` (from a machine
-  with full GitHub access, or after `gh auth refresh -h github.com -s workflow` on the box). `public/CNAME` carries the custom domain. DNS for
-  `steadfastcode.tech` is at Porkbun (A records to GitHub, `www` CNAME to `steadfastcode.github.io`).
-- **Next: Cloudflare Pages** (Daniel's login): connect the repo, build `yarn build`, output `dist`,
-  set the Resend binding, add the custom domain, delete the workflow. The apex domain needs the
-  zone on Cloudflare: add steadfastcode.tech as a Cloudflare zone, check the imported records
-  (MX and SPF/DKIM for support@ especially), then change the nameservers at Porkbun, which stays the
-  registrar. Then the form posts for real, `/api/contact` and `/api/hit` exist, and the Steadfast
-  Analytics binding (`ANALYTICS` service, `ANALYTICS_KEY`) can be added.
+- **Cloudflare Pages, project `steadfastcode`** (live since 2026-10-29), production branch `main`,
+  build `yarn build`, output `dist`, `NODE_VERSION=22`. Custom domains: the apex and `www`. The zone
+  is on Cloudflare (nameservers betty/ivan; Porkbun stays the registrar); DNS changes from the box go
+  through `cf-dns` (see steadfast-ai's ai-bom). Production has the `ANALYTICS` service binding and
+  the `ANALYTICS_KEY` secret, so `/api/hit` counts visits. `public/_headers` caches `/_astro/*` for a
+  year. Zone settings changed from Cloudflare's defaults: **email obfuscation off** (it injected a
+  script and rewrote `mailto:` links), always-HTTPS on, minimum TLS 1.2.
+- **Pushes to `main` don't trigger a build yet** (2026-10-30): the Cloudflare GitHub app is installed
+  on the org for selected repos only, and this repo appears not to be one of them (mrdandyman-site's
+  pushes do build). Until Daniel adds it, deploy by hand from the box:
+  `POST /accounts/<id>/pages/projects/steadfastcode/deployments` with `branch=main`.
+- **Left over from GitHub Pages:** `.github/workflows/deploy.yml` (the box's token can't delete
+  workflow files; delete it on github.com) and the Pages setting on the repo (turn it off in
+  Settings → Pages).
+- **Contact form:** `functions/api/contact.js` needs `RESEND_API_KEY` (and Resend's DNS records)
+  before it sends; until then it redirects with `?sent=0` and the page asks the visitor to email.
 
 ## Rules that override taste
 
@@ -102,7 +105,7 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
 - **2026-10-27 — Prices posted, from the pricing research.** Starter $1,500, Business $3,900, Growth
   $6,900, Store from $8,500; care $59/$149/$299; audit $500, Local SEO $750, +GEO $1,050. Rationale and
   the local competitor ladder in `docs/business-plan.md` §2 and `docs/research/pricing-benchmarks.md`.
-- **2026-10-27 — GitHub Pages stays until the Cloudflare cutover.** Pushing to `main` keeps the site
+- **2026-10-27 — GitHub Pages stays until the Cloudflare cutover** (done 2026-10-29). Pushing to `main` keeps the site
   live without a credential only Daniel holds; the Function and the mail-app fallback mean the form
   works on either host.
 - **2026-10-27 — `format: 'file'`.** GitHub Pages 301s `/websites` → `/websites/` for directory output,
@@ -125,3 +128,7 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   sold, and this does neither; honoring them would only undercount. Only counts once the site is on
   Cloudflare Pages with the `ANALYTICS` service binding and `ANALYTICS_KEY` set; until then
   `/api/hit` doesn't exist and the beacon's posts go nowhere.
+- **2026-10-30 — 100 across the board on mobile.** First live Lighthouse: performance 98 (Speed Index
+  4.1 s). The hero glows and the desktop logo animated forever, so the screen never settled; they
+  are still now, the hero rise is 0.4 s, CSS is inlined, and Cloudflare's email obfuscation is off.
+  PageSpeed then showed 100 / 100 / 100 / 100. Endless animations above the fold are out.
