@@ -1,0 +1,48 @@
+---
+import Base from '../layouts/Base.astro';
+import Cta from '../components/Cta.astro';
+import { software } from '../data/site';
+---
+<Base title="Custom software and AI for small businesses — Steadfast Code" description="Custom software from Steadfast Code in Lititz, PA: internal tools, integrations between systems that refuse to talk, dashboards, and AI assistants grounded in your own business data. Quoted per project after a scoping call." crumb="Software">
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Custom software</p>
+      <h1>The spreadsheet that got <em>out of hand.</em></h1>
+      <p class="answer">{software.intro}</p>
+      <p class="lede">It is quoted by the project after a scoping call, usually as a fixed price with a stated scope, the same way the websites are. Small tools start in the low thousands; I will tell you quickly if what you want is bigger than that.</p>
+      <div class="cta-row">
+        <a class="btn big" href="/contact?plan=software">Describe the problem</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2>The kinds of thing I build</h2>
+      <div class="grid">
+        <div class="card" data-reveal style="--i:0"><h3>Internal tools</h3><p>Job tracking, scheduling, inventory, approvals: the thing your team does in a spreadsheet and a group chat, turned into a small app that fits how you actually work.</p></div>
+        <div class="card" data-reveal style="--i:1"><h3>Integrations</h3><p>Your booking system talking to your accounting, your forms landing in your CRM, your invoices going out without retyping. Glue, done carefully.</p></div>
+        <div class="card" data-reveal style="--i:2"><h3>Dashboards and reports</h3><p>The numbers you want to see every Monday, pulled automatically and shown plainly.</p></div>
+        <div class="card" data-reveal style="--i:3"><h3>AI assistants that stay on script</h3><p>Chat and text assistants grounded only in your own information, that capture leads and answer questions without making things up. I run these for my own businesses.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap">
+      <h2>Products of my own</h2>
+      <div class="products">
+        {software.products.map((p, i) => (
+          <div class="card" data-reveal style={`--i:${i}`}>
+            <span class="status">{p.status}</span>
+            <h3>{p.name}</h3>
+            <p>{p.what}</p>
+            {'href' in p && p.href && <p style="margin-top:.9rem"><a class="btn ghost" href={p.href} rel="noopener">{p.cta}</a></p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <Cta heading="Got a problem that software should solve?" text="Describe it in a paragraph. I'll tell you whether it is a week, a month, or a thing you should buy off the shelf instead." />
+</Base>

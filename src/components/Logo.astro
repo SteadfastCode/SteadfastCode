@@ -1,0 +1,15 @@
+---
+// The Steadfast Code mark: Daniel's logo (docs/brand/original.jpg), redrawn as a vector by
+// docs/brand/redraw.py. public/logo.svg is the one source; this inlines it so it costs no request,
+// with the gradient ids prefixed per use so two logos on one page don't share (and fight over) ids.
+import raw from '../../public/logo.svg?raw';
+interface Props { size?: number; title?: string; id?: string }
+const { size = 40, title, id = 'logo' } = Astro.props;
+const width = Math.round((size * 724) / 428);
+const label = title ? `role="img" aria-label="${title.replace(/"/g, '&quot;')}"` : 'aria-hidden="true"';
+const svg = raw
+  .replace(/id="([\w-]+)"/g, `id="${id}-$1"`)
+  .replace(/url\(#([\w-]+)\)/g, `url(#${id}-$1)`)
+  .replace(/<svg [^>]*>/, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="118 278 724 428" width="${width}" height="${size}" ${label} focusable="false">`);
+---
+<Fragment set:html={svg} />

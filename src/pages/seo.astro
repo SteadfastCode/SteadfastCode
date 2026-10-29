@@ -1,0 +1,85 @@
+---
+import Base from '../layouts/Base.astro';
+import PriceCard from '../components/PriceCard.astro';
+import Cta from '../components/Cta.astro';
+import { faq, money, seoPlans } from '../data/site';
+import { faqPage } from '../lib/schema';
+
+const seoFaq = faq.filter((f) => /rank|GEO|payments/i.test(f.q));
+const audit = seoPlans[0];
+const local = seoPlans.find((p) => p.id === 'local')!;
+const title = 'Local SEO and GEO for Lancaster County businesses — Steadfast Code';
+const description = `Local SEO from ${money(local.price, 'mo')} and a one-time site and search audit for ${money(audit.price)}. Google Business Profile, citations, real content about real work, and GEO: showing up correctly in ChatGPT, Google AI Overviews and Perplexity. No ranking guarantees, just the work and a monthly report in plain English.`;
+---
+<Base title={title} description={description} crumb="SEO & GEO" schema={[faqPage('/seo', seoFaq)]}>
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Local SEO &amp; GEO</p>
+      <h1>Be the answer, on the map <em>and in the chat.</em></h1>
+      <p class="answer">
+        When someone near you searches for what you do, or asks an AI assistant, I want yours to be the business that comes back, with the right phone number and the right facts. That is local SEO and GEO, and it is mostly patient, honest work: a tidy Google Business Profile, consistent facts everywhere, and content about real jobs that is specific enough to be worth quoting.
+      </p>
+      <p class="lede">
+        What it is not: auto-generated blog posts, bought links, or a dashboard full of green arrows that do not turn into calls. I have seen those tools up close and I don't use them.
+      </p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="tiers">
+        {seoPlans.map((p, i) => (
+          <PriceCard
+            id={p.id}
+            name={p.name}
+            price={money(p.price)}
+            priceNote={'once' in p && p.once ? 'one time' : 'per month'}
+            who={p.who}
+            includes={p.includes}
+            featured={'featured' in p && p.featured}
+            tag="Best starting point"
+            cta={'once' in p && p.once ? 'Book an audit' : 'Start with this'}
+            index={i}
+          />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap">
+      <h2>What GEO actually means</h2>
+      <div class="grid">
+        <div class="card" data-reveal style="--i:0"><h3>Same facts everywhere</h3><p>Your name, address, phone, hours, services and prices, identical on your site, your Google profile, the directories and the places assistants read from. Assistants trust what agrees with itself.</p></div>
+        <div class="card" data-reveal style="--i:1"><h3>Pages that answer</h3><p>Each page opens with the answer to the question it exists for, in a sentence a search result or an AI can quote whole, backed by structured data saying the same thing in a form machines read.</p></div>
+        <div class="card" data-reveal style="--i:2"><h3>Content worth citing</h3><p>Specific, factual writing about real jobs, real prices and real questions. Assistants cite sources that say something concrete; they skip the generic stuff.</p></div>
+        <div class="card" data-reveal style="--i:3"><h3>Mentions that count</h3><p>Local press, associations, suppliers, partners, the Chamber, review sites. The places an assistant finds you when it goes looking for who to recommend.</p></div>
+        <div class="card" data-reveal style="--i:4"><h3>Measured by asking</h3><p>Every month I ask the assistants the questions your customers ask, record what they say about you and your competitors, and show you the change. No vanity scores.</p></div>
+        <div class="card" data-reveal style="--i:5"><h3>Readable by the robots</h3><p>Correct HTML and structured data, not tricks injected by a script that AI crawlers never run. A robots policy that lets the search and answer engines in, and a site fast enough that they read all of it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap narrow">
+      <h2>What a month looks like</h2>
+      <ul class="checks">
+        <li data-reveal style="--i:0"><strong>Week 1:</strong> Google Business Profile updated with new photos, a post, and answers to any questions. Review replies written in your voice.</li>
+        <li data-reveal style="--i:1"><strong>Week 2:</strong> One page or article, written with you, about a real job, a real price question, or a thing customers keep asking. Published on your site with the right structure.</li>
+        <li data-reveal style="--i:2"><strong>Week 3:</strong> Citations and mentions: fix the directories that have you wrong, pursue one or two new places worth being listed.</li>
+        <li data-reveal style="--i:3"><strong>Week 4:</strong> Technical check of the site, the AI-visibility check, and the report: calls, direction requests, form fills, rankings, and what the assistants said, in English, with what I plan to do next.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap narrow">
+      <h2>Questions people ask</h2>
+      <dl class="faq">
+        {seoFaq.map((item, i) => <details data-reveal style={`--i:${i}`} open={i === 0}><summary><dt>{item.q}</dt></summary><dd>{item.a}</dd></details>)}
+      </dl>
+    </div>
+  </section>
+
+  <Cta heading="Start with the audit." text={`For ${money(audit.price)} you get a clear picture of where you stand and what would actually help, credited back if you start a plan within 60 days. No pitch deck, no pressure.`} />
+</Base>

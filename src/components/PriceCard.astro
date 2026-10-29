@@ -1,0 +1,28 @@
+---
+// One tier on a pricing grid. The price arrives already formatted by `money()` in site.ts, so this
+// component never decides how a number is written.
+interface Props {
+  id: string;
+  name: string;
+  price: string;
+  priceNote?: string;
+  meta?: string;
+  who: string;
+  includes: readonly string[];
+  featured?: boolean;
+  tag?: string;
+  cta?: string;
+  href?: string;
+  index?: number;
+}
+const { id, name, price, priceNote, meta, who, includes, featured = false, tag, cta = 'Start with this', href = '/contact', index = 0 } = Astro.props;
+---
+<article class:list={['tier', { featured }]} id={id} data-reveal style={`--i:${index}`}>
+  {featured && tag && <span class="tag">{tag}</span>}
+  <h3>{name}</h3>
+  <p class="price">{price}{priceNote && <small> {priceNote}</small>}</p>
+  {meta && <p class="meta">{meta}</p>}
+  <p class="who">{who}</p>
+  <ul>{includes.map((line) => <li>{line}</li>)}</ul>
+  <a class="btn" href={`${href}?plan=${id}`}>{cta}</a>
+</article>

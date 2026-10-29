@@ -1,0 +1,15 @@
+---
+// The FAQ as the visitor sees it. The page that renders this also passes the same list to
+// `faqPage()` for the JSON-LD, so the markup never claims an answer the page does not show.
+interface Props { items: readonly { readonly q: string; readonly a: string }[]; heading?: string }
+const { items, heading = 'Questions people ask' } = Astro.props;
+---
+<h2>{heading}</h2>
+<dl class="faq">
+  {items.map((item, i) => (
+    <details data-reveal style={`--i:${Math.min(i, 6)}`} open={i === 0}>
+      <summary><dt>{item.q}</dt></summary>
+      <dd>{item.a}</dd>
+    </details>
+  ))}
+</dl>

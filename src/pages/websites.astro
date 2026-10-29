@@ -1,0 +1,90 @@
+---
+import Base from '../layouts/Base.astro';
+import PriceCard from '../components/PriceCard.astro';
+import Faq from '../components/Faq.astro';
+import Cta from '../components/Cta.astro';
+import { addOns, carePlans, everyBuild, faq, money, websiteTiers } from '../data/site';
+import { faqPage } from '../lib/schema';
+
+const title = 'Website design and pricing — Steadfast Code, Lititz PA';
+const description = `Custom websites, built with AI coding tools, tested on real phones by a real developer, at fixed prices: one page from ${money(websiteTiers[0].price)}, a full business site for ${money(websiteTiers[1].price)}, larger sites and stores quoted from a posted tier. Hosting and care plans from ${money(carePlans[0].price, 'mo')}. Lititz, Lancaster County, PA.`;
+---
+<Base title={title} description={description} crumb="Websites" schema={[faqPage('/websites', faq)]}>
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Websites</p>
+      <h1>Fixed prices, posted. <em>Pick a tier, get a date.</em></h1>
+      <p class="answer">
+        Every site is custom code, not a template: AI coding tools write it, automated checks run on every version before it can go live, and I test the result on real phones before you see it. The tiers below are the scopes I have found most businesses actually need, each with a fixed price and a usual timeline. If yours does not fit one, I will tell you a number before I start.
+      </p>
+      <p class="lede">Half to start, half at launch. The site is yours outright when it is paid for, and the 30 days of fixes or tweaks after launch are included.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="tiers">
+        {websiteTiers.map((t, i) => (
+          <PriceCard
+            id={t.id}
+            name={t.name}
+            price={`${'from' in t && t.from ? 'from ' : ''}${money(t.price)}`}
+            priceNote="one time"
+            meta={`${t.pages === 1 ? 'One page' : `Up to ${t.pages} pages`} · ${t.days} to launch`}
+            who={t.who}
+            includes={t.includes}
+            featured={'featured' in t && t.featured}
+            tag="Best for most small businesses"
+            index={i}
+          />
+        ))}
+      </div>
+      {addOns.map((a) => (
+        <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
+      ))}
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap">
+      <h2>Every site, whatever the tier</h2>
+      <ul class="checks">
+        {everyBuild.map((line, i) => <li data-reveal style={`--i:${i}`}>{line}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="block" id="care">
+    <div class="wrap">
+      <p class="eyebrow">After launch</p>
+      <h2>Hosting and care plans</h2>
+      <p>
+        Optional, month to month, cancel any time. A static site like the ones I build will happily sit on free hosting if you would rather look after it yourself, and I will set that up for you at launch. These plans are for people who would prefer to never think about it.
+      </p>
+      <div class="tiers">
+        {carePlans.map((p, i) => (
+          <PriceCard
+            id={p.id}
+            name={p.name}
+            price={money(p.price)}
+            priceNote="per month"
+            who={p.who}
+            includes={p.includes}
+            featured={'featured' in p && p.featured}
+            tag="Best for most businesses"
+            cta="Add this plan"
+            index={i}
+          />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap narrow">
+      <Faq items={faq} />
+    </div>
+  </section>
+
+  <Cta heading="Not sure which tier?" text="Send me a link to your current site, or just tell me what you do. I'll say which tier fits and why, with no pressure to go bigger." />
+</Base>

@@ -1,0 +1,44 @@
+---
+import Base from '../layouts/Base.astro';
+import Cta from '../components/Cta.astro';
+import { business, values } from '../data/site';
+---
+<Base title="About Daniel — Steadfast Code, Lititz PA" description="Steadfast Code is Daniel Ecker, a software developer in Lititz, PA who builds fast, custom websites, local SEO and software for small businesses, churches and nonprofits in Lancaster County." crumb="About">
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">About</p>
+      <h1>One developer, <em>in Lititz.</em></h1>
+      <p class="answer">
+        Hi, I'm Daniel. Steadfast Code is me: a software developer who has been writing code for well over a decade, and now I'm building websites and software for the businesses around me in {business.region}.
+      </p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap prose">
+      <p>
+        I write software for a living and have for a long time. On the side I also run a small handyman and contracting business here in Lititz, which turns out to be pretty good training for this work. Both jobs come down to the same things: show up, say what it will cost, do it right, and be a life-long learner.
+      </p>
+      <p>
+        The website side of Steadfast Code started out of necessity: my handyman business needed a website. It began the usual way, as a WordPress site with a page builder and a pile of plugins, which is where a lot of small businesses end up. They pay real money for a site, get a slow template on a hosting plan they don't understand, and then get charged monthly to keep a thing they thought they owned. When I rebuilt my own handyman site, I did it the way I'd want it done: plain custom code, fast, prices on the page, nothing to update and nothing holding me hostage.
+      </p>
+      <p>
+        The other half of the story is AI. I've always been passionate about websites that are fast, good and easy to use, but there were never enough hours to write all the things I wanted to write. AI coding tools changed that. They write most of the code now, the way good power tools do most of the cutting for a good carpenter, and that's given me the time to finally build what I've wanted to build and to work out a better way to make custom websites. It's why I can turn a custom site around in weeks instead of months and charge what I charge.
+      </p>
+      <p>
+        I'm upfront about how it works. I decide what the site is and what it says, direct the work, and test the result on real phones. Automated checks run on every version and stop anything that slips before it goes live, and the words on your site come from conversations with you, not from a prompt. What I've figured out along the way, I want to pass along to whoever I can help with it.
+      </p>
+      <p>
+        I'm a husband and a dad, and my faith shapes how I run this. <em>{business.verse}</em> is on the bottom of every page because I mean it. Everyone gets a straight answer about what they need and churches and non-profits get a discount; just ask.
+      </p>
+      <h2>What I care about</h2>
+      <div class="grid">
+        {values.map((v, i) => <div class="card" data-reveal style={`--i:${i}`}><h3>{v.title}</h3><p>{v.text}</p></div>)}
+      </div>
+      <h2>Where I work</h2>
+      <p>{business.serviceArea} For local clients I am happy to meet in person; for everyone else, a video call works fine and the sites turn out the same.</p>
+    </div>
+  </section>
+
+  <Cta />
+</Base>

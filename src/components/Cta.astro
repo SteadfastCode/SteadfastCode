@@ -1,0 +1,15 @@
+---
+// The closing band on every page but the contact page.
+interface Props { heading?: string; text?: string }
+const { heading = 'Want a site like this one?', text = 'Tell me what you do and what you need. You will get a fixed price and a launch date back, usually the same day.' } = Astro.props;
+---
+<section class="block cta-band">
+  <div class="wrap">
+    <h2 data-reveal>{heading}</h2>
+    <p class="lede" data-reveal style="--i:1">{text}</p>
+    <div class="cta-row" data-reveal style="--i:2">
+      <a class="btn big" href="/contact">Start a project</a>
+      <a class="btn ghost big" href="/websites">See prices first</a>
+    </div>
+  </div>
+</section>

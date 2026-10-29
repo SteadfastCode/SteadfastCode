@@ -1,0 +1,113 @@
+---
+import Base from '../layouts/Base.astro';
+import SpeedProof from '../components/SpeedProof.astro';
+import Cta from '../components/Cta.astro';
+import Logo from '../components/Logo.astro';
+import { business, carePlans, money, process, seoPlans, values, websiteTiers, work } from '../data/site';
+
+const starter = websiteTiers[0];
+const hosted = carePlans[0];
+const local = seoPlans.find((p) => p.id === 'local')!;
+const liveWork = work.filter((w) => w.live);
+---
+<Base title="Steadfast Code — Fast, custom websites for Lancaster County businesses" description={`Custom websites for small businesses, churches and nonprofits in Lititz, Lancaster County and beyond, built with AI coding tools, tested on real phones by a real developer. Fixed prices posted, most sites live in two to three weeks, and every page loads in well under a second. Local SEO, GEO and care plans too.`}>
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Websites · Local SEO &amp; GEO · Software — {business.city}, {business.state}</p>
+      <h1>A custom website, built fast, that loads <em>even faster.</em></h1>
+      <!-- Answer first: the question this page gets asked is "who builds websites near me, what does
+           it cost and how long does it take", so the first paragraph is all three. -->
+      <p class="answer">
+        I'm Daniel, and I build custom websites for small businesses, churches and nonprofits around {business.region}.
+        A one-page site starts at {money(starter.price)}, most business sites are live in two to three weeks, and the prices are all posted right here.
+      </p>
+      <p class="lede">
+        No templates, no page builders, no plugin sprawl. I build with AI coding tools and I'm upfront about it: they write most of the code, and I do the design, the refinement, the checking on real phones, and the talking with you. You get plain code that is yours outright, built to score 100 on Google's speed checks.
+      </p>
+      <div class="cta-row">
+        <a class="btn big" href="/contact">Start a project</a>
+        <a class="btn ghost big" href="/websites">See prices</a>
+      </div>
+      <p class="sub">Based in {business.city}, serving {business.serviceTowns.slice(0, 4).join(', ')} and the rest of {business.region}, and anywhere else by video call.</p>
+      <div class="hero-art" aria-hidden="true"><Logo size={260} id="hero-logo" /></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <p class="eyebrow">Proof, not promises</p>
+      <h2>This page is the demo.</h2>
+      <p>Every number below is measured live on your device, right now. A site I build for you loads the same way.</p>
+      <SpeedProof />
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap">
+      <p class="eyebrow">What I do</p>
+      <h2>Four things, done properly.</h2>
+      <p>Pick one or all four. They are priced separately so you only pay for what you actually need.</p>
+      <div class="grid">
+        <a class="card" href="/websites" data-reveal style="--i:0">
+          <h3>Websites</h3>
+          <span class="price">from {money(starter.price)}</span>
+          <p>Custom code, mobile-first, fast, built with AI tools and tested on real phones. One page to full business sites and online stores, each with a fixed price and a date.</p>
+          <span class="more">See the tiers →</span>
+        </a>
+        <a class="card" href="/seo" data-reveal style="--i:1">
+          <h3>Local SEO &amp; GEO</h3>
+          <span class="price">from {money(local.price, 'mo')}</span>
+          <p>Show up on the map, in "near me" searches, and in the answers AI assistants give. Real content about real work, with a plain-English report every month.</p>
+          <span class="more">How it works →</span>
+        </a>
+        <a class="card" href="/websites#care" data-reveal style="--i:2">
+          <h3>Hosting &amp; care</h3>
+          <span class="price">from {money(hosted.price, 'mo')}</span>
+          <p>Your site kept online, backed up, updated and edited for you, with someone to text when something needs changing. Cancel any month.</p>
+          <span class="more">The plans →</span>
+        </a>
+        <a class="card" href="/software" data-reveal style="--i:3">
+          <h3>Custom software</h3>
+          <span class="price">quoted</span>
+          <p>Internal tools, integrations, dashboards, and AI assistants grounded in your own business. Where Steadfast Code started.</p>
+          <span class="more">What I've built →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <p class="eyebrow">How it goes</p>
+      <h2>From first call to launch, usually in two or three weeks.</h2>
+      <p>The thing that actually sets the schedule is the words and photos, so I help with those from day one.</p>
+      <ol class="steps">
+        {process.map((s, i) => <li data-reveal style={`--i:${i}`}><h3>{s.step}</h3><p>{s.text}</p></li>)}
+      </ol>
+    </div>
+  </section>
+
+  <section class="block soft">
+    <div class="wrap">
+      <p class="eyebrow">Why people hire me</p>
+      <h2>Honest, fast, yours, done.</h2>
+      <div class="grid">
+        {values.map((v, i) => <div class="card" data-reveal style={`--i:${i}`}><h3>{v.title}</h3><p>{v.text}</p></div>)}
+      </div>
+    </div>
+  </section>
+
+  {liveWork.length > 0 && (
+    <section class="block">
+      <div class="wrap">
+        <p class="eyebrow">Recent work</p>
+        <h2>Sites I've shipped.</h2>
+        <div class="grid two">
+          {liveWork.map((w, i) => <a class="card" href="/work" data-reveal style={`--i:${i}`}><h3>{w.name}</h3><p>{w.kind}</p><span class="more">Read the case study →</span></a>)}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <Cta />
+</Base>
