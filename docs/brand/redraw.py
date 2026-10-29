@@ -41,19 +41,19 @@ body = path([
     [(358, 526), (349, 510), (343, 494), (339, 478), (337, 462), (335, 449)],  # inner edge up to the tip
     [(335, 449), (324, 462), (310, 478), (300, 494), (294, 510), (290, 526), (288, 538)],  # outer edge down to the outer barb
     [(312, 543), (313, 552), (316, 566), (321, 582), (329, 598), (341, 614), (356, 630), (369, 646), (379, 662), (386, 678), (392, 696)],  # left arm outer, to the crown tip
-    [(392, 696), (409, 686), (439, 678), (490, 673), (527, 670), (543, 662), (555, 654), (566, 646)],  # right arm, underside
-    [(574, 671)],                                                        # right fluke lower barb
-    [(580, 662), (588, 654), (594, 646), (598, 638), (602, 630), (605, 622), (607, 614), (609, 606), (610, 598), (611, 590), (607, 577)],  # outer edge up to the tip
-    [(607, 577), (589, 590), (573, 598), (547, 606), (531, 615)],         # inner edge down to the inner barb
-    [(542, 622), (547, 630), (524, 638), (510, 644)],                    # neck and valley
-    [(510, 644), (496, 639), (479, 630), (472, 622), (468, 614), (466, 606), shank_br],  # fillet up into the shank
-    [shank_br, shank_tr],
+    [(392, 696), (420, 684), (453, 680), (487, 675), (520, 667), (547, 657), (568, 643)],  # right arm underside, one smooth sweep
+    [(572, 669)],                                                        # the spike under the fluke
+    [(582, 645), (596, 635), (607, 618), (612, 597), (610, 575)],         # fluke outer edge up to the tip
+    [(610, 575), (593, 588), (560, 600), (528, 610)],                    # fluke inner edge down to the barb point
+    [(552, 628)],                                                        # barb back corner
+    [(552, 628), (530, 636), (503, 639), (486, 631), (474, 614), (468, 592)],  # arm's top edge and the U into the shank
+    [(468, 592), shank_tr],
 ])
 
 # facets, clipped to the body
 center_top, crown = L(0, -10), (392, 700)
 left_half = f'M{f(L(-300,-60))} L{f(center_top)} L{f(crown)} L{f((392,760))} L{f((200,760))} Z'
-dark_shank = f'M{f(center_top)} L{f(L(40,-10))} L{f(shank_br)} L{f((470,618))} L{f((446,664))} L{f(crown)} Z'
+dark_shank = f'M{f(center_top)} L{f(L(40,-10))} L{f((468,592))} L{f((474,614))} L{f((452,660))} L{f(crown)} Z'
 left_fluke_dark = f'M{f((335,449))} L{f((323,498))} L{f((326,545))} L{f((337,544))} L{f((364,535))} L{f((349,505))} Z'
 right_arm_low = f'M{f((392,700))} L{f((420,664))} L{f((520,652))} L{f((566,646))} L{f((576,675))} L{f((390,710))} Z'
 
