@@ -2,7 +2,7 @@
 // it is a price on the site.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { business, carePlans, faq, seoPlans, websiteTiers } from '../src/data/site.ts';
+import { addOns, business, carePlans, faq, seoPlans, websiteTiers } from '../src/data/site.ts';
 import { breadcrumb, faqPage, graph, organization, person, webSite } from '../src/lib/schema.ts';
 
 test('the business node has the facts and no invented ones', () => {
@@ -24,7 +24,8 @@ test('the offer catalog carries every priced thing on the site, with the same nu
   for (const t of websiteTiers) assert.ok(prices.includes(t.price), `${t.name} missing from the catalog`);
   for (const p of carePlans) assert.ok(prices.includes(p.price), `${p.name} missing from the catalog`);
   for (const p of seoPlans) assert.ok(prices.includes(p.price), `${p.name} missing from the catalog`);
-  assert.equal(offers.length, websiteTiers.length + carePlans.length + seoPlans.length);
+  for (const a of addOns) assert.ok(prices.includes(a.price), `${a.name} missing from the catalog`);
+  assert.equal(offers.length, websiteTiers.length + addOns.length + carePlans.length + seoPlans.length);
   for (const o of offers) assert.ok(o.url.startsWith(business.url), `${o.name} offer url should be on the site`);
 });
 

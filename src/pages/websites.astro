@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import PriceCard from '../components/PriceCard.astro';
 import Faq from '../components/Faq.astro';
 import Cta from '../components/Cta.astro';
-import { carePlans, everyBuild, faq, money, websiteTiers } from '../data/site';
+import { addOns, carePlans, everyBuild, faq, money, websiteTiers } from '../data/site';
 import { faqPage } from '../lib/schema';
 
 const title = 'Website design and pricing — Steadfast Code, Lititz PA';
@@ -39,6 +39,9 @@ const description = `Custom websites, built with AI coding tools, tested on real
           />
         ))}
       </div>
+      {addOns.map((a) => (
+        <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
+      ))}
     </div>
   </section>
 

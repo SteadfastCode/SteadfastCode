@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { business, carePlans, money, nav, seoPlans, websiteTiers } from '../src/data/site.ts';
+import { addOns, business, carePlans, money, nav, seoPlans, websiteTiers } from '../src/data/site.ts';
 
 const dist = path.resolve('dist');
 const pages = fs.existsSync(dist)
@@ -56,6 +56,7 @@ test('every page has the nav from site.ts, the email, and the skip link', () => 
 test('every price shown on a page is a price from site.ts', () => {
   const known = new Set();
   for (const t of websiteTiers) known.add(money(t.price));
+  for (const a of addOns) known.add(money(a.price));
   for (const p of carePlans) { known.add(money(p.price)); known.add(money(p.price, 'mo')); }
   for (const p of seoPlans) { known.add(money(p.price)); known.add(money(p.price, 'mo')); }
   for (const p of pages) {
@@ -70,6 +71,7 @@ test('the websites page shows every tier and every care plan; the SEO page shows
   const w = read(path.join(dist, 'websites.html'));
   for (const t of websiteTiers) { assert.ok(w.includes(`id="${t.id}"`), `/websites lacks #${t.id}`); assert.ok(w.includes(money(t.price)), `/websites lacks ${money(t.price)}`); }
   for (const p of carePlans) { assert.ok(w.includes(`id="${p.id}"`), `/websites lacks #${p.id}`); assert.ok(w.includes(money(p.price)), `/websites lacks ${money(p.price)}`); }
+  for (const a of addOns) { assert.ok(w.includes(`id="${a.id}"`), `/websites lacks #${a.id}`); assert.ok(w.includes(money(a.price)), `/websites lacks ${money(a.price)}`); }
   const s = read(path.join(dist, 'seo.html'));
   for (const p of seoPlans) { assert.ok(s.includes(`id="${p.id}"`), `/seo lacks #${p.id}`); assert.ok(s.includes(money(p.price)), `/seo lacks ${money(p.price)}`); }
 });

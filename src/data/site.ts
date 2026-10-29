@@ -122,6 +122,18 @@ export const websiteTiers = [
   },
 ] as const;
 
+// One-time extras on a website build. Growth includes the editor; Starter and Business can add it.
+// Decided by Daniel 2026-10-29 ($500).
+export const addOns = [
+  {
+    id: 'editor',
+    name: 'Content editor',
+    price: 500,
+    who: 'For Starter and Business sites. Growth includes it.',
+    what: 'A simple editor so you can change your own text and photos from a phone or a computer, without touching code. Every save is kept, so nothing is ever lost.',
+  },
+] as const;
+
 // What every build has in common. Rendered once on /websites; the tiers above list only what
 // changes between them.
 export const everyBuild = [
@@ -240,6 +252,16 @@ export const software = {
     'or two systems that refuse to talk to each other, that is work I do.',
   products: [
     {
+      name: 'Plumb',
+      status: 'In daily use & constant improvement',
+      what: 'Offline-first project management for a solo contractor: estimates, job costing, photos and invoices, built for my own handyman business.',
+    },
+    {
+      name: 'Tethered',
+      status: 'In daily use & constant improvement',
+      what: 'Private location sharing for families: an Android app and a live map, self-hosted so your family’s locations stay on a server you control. Built for my own family first.',
+    },
+    {
       name: 'LeoAI',
       status: 'In development',
       what: 'A friendly assistant for a small business or church website that learns your site and answers visitors’ questions, 24/7, in your voice.',
@@ -252,9 +274,9 @@ export const software = {
       what: 'An AI front desk for trades shops: missed-call text-back, a grounded text assistant, and lead capture that never loses a job.',
     },
     {
-      name: 'Plumb',
-      status: 'In daily use & constant improvement',
-      what: 'Offline-first project management for a solo contractor: estimates, job costing, photos and invoices, built for my own handyman business.',
+      name: 'Expiry Tracker',
+      status: 'In development',
+      what: 'Shows who is current, expiring or lapsed on documents that renew: volunteer clearances for Pennsylvania churches, and subcontractors’ insurance certificates for general contractors.',
     },
   ],
 } as const;
@@ -328,7 +350,7 @@ export const faq = [
   },
   {
     q: 'What does the site run on?',
-    a: 'Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code written with AI tools, checked automatically on every version and tested by me on real phones, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you need to edit content yourself, I add a simple editor on top. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.',
+    a: `Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code written with AI tools, checked automatically on every version and tested by me on real phones, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you want to change text and photos yourself, there is a simple editor for that: included in Growth, and a ${money(addOns[0].price)} add-on for Starter and Business. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.`,
   },
   {
     q: 'Can you guarantee a first-page Google ranking?',

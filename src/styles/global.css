@@ -113,6 +113,7 @@ a.card:hover { box-shadow: var(--glow-blue-strong); background: var(--surface-2)
 
 /* Price cards: the tier grid on /websites and /seo. The featured one glows orange. */
 .tiers { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); align-items: stretch; }
+.addon { margin: 1.25rem 0 0; padding: 1rem 1.15rem; border: 1px dashed var(--line); border-radius: var(--radius); background: rgba(74, 144, 226, 0.06); }
 .tier { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); padding: 1.5rem 1.4rem 1.4rem; box-shadow: var(--glow-blue); }
 .tier.featured { box-shadow: var(--glow-orange); background: linear-gradient(180deg, rgba(249, 115, 22, 0.08), var(--surface) 40%); }
 .tier .tag { position: absolute; top: -.7rem; left: 1.2rem; background: var(--orange); color: #111; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: .2rem .6rem; border-radius: 999px; }

@@ -67,6 +67,10 @@ for "marketing plans" through the Community Foundation, though not for religious
 | Growth | **$6,900** | up to 15 pages, client-editable CMS, blog with a 3-month content plan, integrations, WCAG 2.1 AA pass, enforced performance budget | 3–5 weeks | WebTek "many projects" $3,500–$12,000; DesignRush 5–15 pages with CMS $10,000–$15,000 |
 | Online store | **from $8,500** | Growth plus Shopify or a headless store, products, checkout, shipping and tax, training | 4–6 weeks | Burk $5,500 + $165/mo; RedX from $6,000 + $125/mo; national $6,000–$15,000 |
 
+Add-on: **content editor, $500** on Starter or Business (Growth includes it), decided 2026-10-29.
+Sveltia CMS costs nothing to run; the $500 is about half a day moving the content into editable
+files and wiring the login. It suits owners who skip a care plan but want to make their own edits.
+
 Why these numbers: the research puts the band a Lancaster County owner reads as "a real business, not
 a side hustle, not a Harrisburg agency" at $3,500–$6,500 for a five-page site. Business at $3,900
 lands in it, above the $1,500 Keystone lane and well under the agencies. Effective rates, assuming

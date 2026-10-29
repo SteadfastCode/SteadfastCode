@@ -6,7 +6,7 @@
 // Nothing is invented to fill a field: a profile URL that is not set is not emitted, and there is
 // no rating, review or client logo here until a real one exists.
 
-import { business, carePlans, faq, money, seoPlans, websiteTiers } from '../data/site.ts';
+import { addOns, business, carePlans, faq, money, seoPlans, websiteTiers } from '../data/site.ts';
 
 export const SITE_URL = business.url;
 export const BUSINESS_ID = `${SITE_URL}/#business`;
@@ -58,6 +58,7 @@ function offerCatalog(): Node {
       ...websiteTiers.map((t) =>
         offer(`${t.name} website`, t.who, t.price, { from: 'from' in t && Boolean(t.from), url: absolute('/websites') + `#${t.id}` }),
       ),
+      ...addOns.map((a) => offer(`${a.name} (website add-on)`, a.what, a.price, { url: absolute('/websites') + `#${a.id}` })),
       ...carePlans.map((p) => offer(`${p.name} care plan`, p.who, p.price, { per: 'mo', url: absolute('/websites') + `#${p.id}` })),
       ...seoPlans.map((p) =>
         offer(p.name, p.who, p.price, { per: 'per' in p ? p.per : undefined, url: absolute('/seo') + `#${p.id}` }),

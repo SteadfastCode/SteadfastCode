@@ -4,7 +4,7 @@
 // show. Shape is llmstxt.org's: an H1, a blockquote summary, the facts a reader needs without
 // following a link, then H2 sections of links. Nothing is written here that is not on the site.
 import type { APIRoute } from 'astro';
-import { business, carePlans, money, seoPlans, websiteTiers, faq } from '../data/site.ts';
+import { addOns, business, carePlans, money, seoPlans, websiteTiers, faq } from '../data/site.ts';
 import { absolute } from '../lib/schema.ts';
 
 const pages = [
@@ -25,6 +25,7 @@ export const GET: APIRoute = () => {
   lines.push(`Contact: ${business.email}. Location: ${business.city}, ${business.state} ${business.zip} (service-area business; no walk-in office). Service area: ${business.serviceArea}`, '');
   lines.push('## Website prices (one time)', '');
   for (const t of websiteTiers) lines.push(`- ${t.name}: ${'from' in t && t.from ? 'from ' : ''}${money(t.price)} — ${t.pages === 1 ? 'one page' : `up to ${t.pages} pages`}, ${t.days} to launch. ${t.who}`);
+  for (const a of addOns) lines.push(`- Add-on, ${a.name.toLowerCase()}: ${money(a.price)} — ${a.what} ${a.who}`);
   lines.push('', '## Hosting and care plans (monthly, cancel any time)', '');
   for (const p of carePlans) lines.push(`- ${p.name}: ${money(p.price, 'mo')} — ${p.who}`);
   lines.push('', '## SEO and GEO', '');
