@@ -1,0 +1,5 @@
+# Cloudflare Pages response headers. Files under /_astro/ carry a content hash in their name, so a
+# changed file is a new URL: they can be cached for a year. Everything else keeps Pages' default
+# (revalidate every time), so a new deploy shows up immediately.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -57,6 +57,11 @@ test('no page loads anything from a third party', () => {
     for (const m of html.matchAll(/<iframe[^>]+src="([^"]+)"/g)) assert.fail(`${name} embeds an iframe from ${m[1]}`);
     assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com|googletagmanager|google-analytics|tally\.so\/widgets/, `${name} references a third-party loader`);
   }
+  for (const p of pages) {
+    for (const m of read(p).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+      for (const u of m[1].matchAll(/url\(([^)]+)\)/g)) assert.doesNotMatch(u[1], /^['"]?https?:/, `${rel(p)} inline style loads ${u[1]} from a third party`);
+    }
+  }
   for (const css of fs.readdirSync(path.join(dist, '_astro')).filter((f) => f.endsWith('.css'))) {
     const text = read(path.join(dist, '_astro', css));
     for (const m of text.matchAll(/url\(([^)]+)\)/g)) assert.doesNotMatch(m[1], /^['"]?https?:/, `${css} loads ${m[1]} from a third party`);
