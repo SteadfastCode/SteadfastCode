@@ -29,7 +29,7 @@ const liveWork = work.filter((w) => w.live);
         <a class="btn ghost big" href="/websites">See prices</a>
       </div>
       <p class="sub">Based in {business.city}, serving {business.serviceTowns.slice(0, 4).join(', ')} and the rest of {business.region}, and anywhere else by video call.</p>
-      <div class="hero-art" aria-hidden="true"><Logo size={360} /></div>
+      <div class="hero-art" aria-hidden="true"><Logo size={260} id="hero-logo" /></div>
     </div>
   </section>
 
@@ -45,8 +45,8 @@ const liveWork = work.filter((w) => w.live);
   <section class="block soft">
     <div class="wrap">
       <p class="eyebrow">What I do</p>
-      <h2>Three things, done properly.</h2>
-      <p>Pick one or all three. They are priced separately so you only pay for what you actually need.</p>
+      <h2>Four things, done properly.</h2>
+      <p>Pick one or all four. They are priced separately so you only pay for what you actually need.</p>
       <div class="grid">
         <a class="card" href="/websites" data-reveal style="--i:0">
           <h3>Websites</h3>
@@ -90,7 +90,7 @@ const liveWork = work.filter((w) => w.live);
   <section class="block soft">
     <div class="wrap">
       <p class="eyebrow">Why people hire me</p>
-      <h2>Honest, fast, and yours.</h2>
+      <h2>Honest, fast, yours, done.</h2>
       <div class="grid">
         {values.map((v, i) => <div class="card" data-reveal style={`--i:${i}`}><h3>{v.title}</h3><p>{v.text}</p></div>)}
       </div>

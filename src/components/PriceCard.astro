@@ -18,7 +18,7 @@ interface Props {
 const { id, name, price, priceNote, meta, who, includes, featured = false, tag, cta = 'Start with this', href = '/contact', index = 0 } = Astro.props;
 ---
 <article class:list={['tier', { featured }]} id={id} data-reveal style={`--i:${index}`}>
-  {featured && <span class="tag">{tag ?? 'Most people pick this'}</span>}
+  {featured && tag && <span class="tag">{tag}</span>}
   <h3>{name}</h3>
   <p class="price">{price}{priceNote && <small> {priceNote}</small>}</p>
   {meta && <p class="meta">{meta}</p>}

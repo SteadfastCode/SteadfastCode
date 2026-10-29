@@ -15,7 +15,7 @@ interface Props {
   /** Social image path; the default is the site card. */
   image?: string;
 }
-const { title, description, crumb, schema = [], image = '/og.png' } = Astro.props;
+const { title, description, crumb, schema = [], image = '/og.jpg' } = Astro.props;
 const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 const canonical = path === '/' ? `${business.url}/` : `${business.url}${path}`;
 const jsonLd = graph([organization(), person(), webSite(), ...(crumb && path !== '/' ? [breadcrumb(path, crumb)] : []), ...schema]);
@@ -69,7 +69,7 @@ const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:norma
     <a class="skip" href="#main">Skip to content</a>
     <header class="site">
       <div class="wrap">
-        <a class="brand" href="/" aria-label={`${business.name} home`}><Logo size={40} /><span>{business.name}</span></a>
+        <a class="brand" href="/" aria-label={`${business.name} home`}><Logo size={36} id="brand-logo" /><span>{business.name}</span></a>
         <nav class="main" aria-label="Main">
           <ul>
             {nav.map((n) => <li><a href={n.href} aria-current={path === n.href ? 'page' : undefined}>{n.label}</a></li>)}

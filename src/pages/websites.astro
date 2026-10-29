@@ -15,9 +15,9 @@ const description = `Custom websites, built with AI coding tools, tested on real
       <p class="eyebrow">Websites</p>
       <h1>Fixed prices, posted. <em>Pick a tier, get a date.</em></h1>
       <p class="answer">
-        Every site is custom code, not a template: AI coding tools write it, the build's own checks gate every version, and I test the result on real phones before you see it. The tiers below are the scopes I have found most businesses actually need, each with a fixed price and a usual timeline. If yours does not fit one, I will tell you a number before I start.
+        Every site is custom code, not a template: AI coding tools write it, automated checks run on every version before it can go live, and I test the result on real phones before you see it. The tiers below are the scopes I have found most businesses actually need, each with a fixed price and a usual timeline. If yours does not fit one, I will tell you a number before I start.
       </p>
-      <p class="lede">Half to start, half at launch. The site is yours outright when it is paid for, and the 30 days of fixes after launch are included.</p>
+      <p class="lede">Half to start, half at launch. The site is yours outright when it is paid for, and the 30 days of fixes or tweaks after launch are included.</p>
     </div>
   </section>
 
@@ -34,6 +34,7 @@ const description = `Custom websites, built with AI coding tools, tested on real
             who={t.who}
             includes={t.includes}
             featured={'featured' in t && t.featured}
+            tag="Best for most small businesses"
             index={i}
           />
         ))}
@@ -67,7 +68,7 @@ const description = `Custom websites, built with AI coding tools, tested on real
             who={p.who}
             includes={p.includes}
             featured={'featured' in p && p.featured}
-            tag="Most common"
+            tag="Best for most businesses"
             cta="Add this plan"
             index={i}
           />

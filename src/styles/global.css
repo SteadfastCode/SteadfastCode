@@ -58,7 +58,7 @@ img { max-width: 100%; height: auto; }
 header.site { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: rgba(11, 15, 23, 0.72); border-bottom: 1px solid var(--line-soft); }
 header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .55rem 0; }
 .brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; color: #fff; font-family: var(--display); font-weight: 700; font-size: 1.15rem; white-space: nowrap; }
-.brand svg { width: 40px; height: 40px; flex: none; filter: drop-shadow(0 0 6px rgba(0, 213, 241, 0.45)); }
+.brand svg { width: auto; height: 36px; flex: none; filter: drop-shadow(0 0 6px rgba(74, 144, 226, 0.4)); }
 nav.main { min-width: 0; }
 nav.main ul { list-style: none; display: flex; gap: 1.15rem; margin: 0; padding: 0; align-items: center; }
 nav.main a { text-decoration: none; color: var(--ink); font-weight: 500; position: relative; white-space: nowrap; }
@@ -89,8 +89,9 @@ nav.main a.btn { color: #111; }
 /* The mark, large and faint, on the right of the home hero. Decoration only: aria-hidden, no
    pointer events, gone on phones, and a slow float that stops under prefers-reduced-motion. */
 .hero .wrap { position: relative; }
-.hero-art { position: absolute; right: -1rem; top: 50%; width: min(30vw, 24rem); height: auto; opacity: .16; pointer-events: none; filter: drop-shadow(0 0 36px rgba(0, 213, 241, 0.55)); animation: float 9s ease-in-out infinite alternate !important; transform: translateY(-50%); }
+.hero-art { position: absolute; right: -1rem; top: 50%; width: min(34vw, 28rem); height: auto; opacity: .16; pointer-events: none; filter: drop-shadow(0 0 36px rgba(0, 213, 241, 0.55)); animation: float 9s ease-in-out infinite alternate !important; transform: translateY(-50%); }
 @keyframes float { from { transform: translateY(-54%) rotate(-2deg); } to { transform: translateY(-46%) rotate(2deg); } }
+.hero-art svg { display: block; width: 100%; height: auto; }
 @media (max-width: 900px) { .hero-art { display: none; } }
 
 /* ------------------------------------------------------------------ sections + cards */

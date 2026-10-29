@@ -75,7 +75,7 @@ export function organization(): Node {
     description: business.tagline,
     url: SITE_URL,
     email: business.email,
-    image: absolute('/og.png'),
+    image: absolute('/og.jpg'),
     logo: absolute('/logo.svg'),
     founder: { '@id': PERSON_ID },
     address: {

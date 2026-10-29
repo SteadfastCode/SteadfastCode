@@ -67,7 +67,7 @@ export const websiteTiers = [
       'Contact form or booking link, click-to-call, map',
       'Google Business Profile set up or cleaned up',
       'Search basics done right: titles, descriptions, structured data, sitemap',
-      'Launch on your domain with SSL, plus 30 days of fixes after launch',
+      'Launch on your domain with SSL, plus 30 days of fixes or tweaks after launch',
     ],
   },
   {
@@ -303,7 +303,7 @@ export const process = [
   },
   {
     step: 'Launch',
-    text: 'On your domain, with your Google Business Profile, search setup and forms all tested. Then 30 days of fixes on me, and a care plan if you want someone keeping an eye on it.',
+    text: 'On your domain, with your Google Business Profile, search setup and forms all tested. Then 30 days of fixes or tweaks on me, and a care plan if you want someone keeping an eye on it.',
   },
 ] as const;
 
@@ -312,11 +312,11 @@ export const process = [
 export const faq = [
   {
     q: 'Why are your prices posted when most web designers make you call?',
-    a: 'Because I hate it when I cannot find a price. A fixed price for a stated scope is fairer to both of us: you know what you are getting into, and I am not tempted to pad hours. If your project does not fit a tier, I will tell you a number before I start.',
+    a: 'Because I hate it when I cannot find a price. A fixed price for a stated scope is fairer to both of us: you know what you are getting into, and I know exactly what I\u2019m getting for it. If your project does not fit a tier, I will tell you a number before I start.',
   },
   {
     q: 'How can you build a custom site in two or three weeks?',
-    a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I decide what the site is and what it says, direct the work, test it on real phones, and nothing ships until the build\u2019s own checks pass. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
+    a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I decide what the site is and what it says, direct the work, test it on real phones, and nothing goes live until the automated checks pass. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
   },
   {
     q: 'Do I own the site?',
@@ -328,7 +328,7 @@ export const faq = [
   },
   {
     q: 'What does the site run on?',
-    a: 'Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code written with AI tools, gated by automated checks and tested by me on real phones, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you need to edit content yourself, I add a simple editor on top. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.',
+    a: 'Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code written with AI tools, checked automatically on every version and tested by me on real phones, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you need to edit content yourself, I add a simple editor on top. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.',
   },
   {
     q: 'Can you guarantee a first-page Google ranking?',
@@ -372,7 +372,7 @@ export const values = [
     text: 'Your domain, your content, your code. No lock-in, no hostage situations, no monthly fee to keep what you paid for.',
   },
   {
-    title: 'Done right',
-    text: 'Done right, done to standard, and often better. That is how I run my handyman jobs and it is how I write code.',
+    title: 'Done',
+    text: 'Done right. Done to industry standards and best practices. Done for you.',
   },
 ] as const;

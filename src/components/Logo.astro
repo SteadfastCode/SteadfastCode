@@ -1,16 +1,15 @@
 ---
-// The mark the first site used, redrawn as an SVG so it stays crisp at any size: an anchor between
-// angle brackets. Steadfast, in code. Inline so it costs no request.
-interface Props { size?: number; title?: string }
-const { size = 40, title } = Astro.props;
+// The Steadfast Code mark: Daniel's logo (docs/brand/original.jpg), redrawn as a vector by
+// docs/brand/redraw.py. public/logo.svg is the one source; this inlines it so it costs no request,
+// with the gradient ids prefixed per use so two logos on one page don't share (and fight over) ids.
+import raw from '../../public/logo.svg?raw';
+interface Props { size?: number; title?: string; id?: string }
+const { size = 40, title, id = 'logo' } = Astro.props;
+const width = Math.round((size * 724) / 428);
+const label = title ? `role="img" aria-label="${title.replace(/"/g, '&quot;')}"` : 'aria-hidden="true"';
+const svg = raw
+  .replace(/id="([\w-]+)"/g, `id="${id}-$1"`)
+  .replace(/url\(#([\w-]+)\)/g, `url(#${id}-$1)`)
+  .replace(/<svg [^>]*>/, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="118 278 724 428" width="${width}" height="${size}" ${label} focusable="false">`);
 ---
-<svg viewBox="0 0 64 64" width={size} height={size} style="max-width:100%;height:auto" aria-hidden={title ? undefined : 'true'} role={title ? 'img' : undefined} focusable="false">
-  {title && <title>{title}</title>}
-  <path d="M18 18 L7 32 L18 46" fill="none" stroke="#00d5f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M46 18 L57 32 L46 46" fill="none" stroke="#00d5f1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
-  <circle cx="32" cy="14" r="4.5" fill="none" stroke="#4a90e2" stroke-width="3.5" />
-  <path d="M32 18.5 V52" stroke="#4a90e2" stroke-width="4" stroke-linecap="round" />
-  <path d="M24 26 H40" stroke="#f97316" stroke-width="4" stroke-linecap="round" />
-  <path d="M16 38 C18 48 26 53 32 53 C38 53 46 48 48 38" fill="none" stroke="#4a90e2" stroke-width="4" stroke-linecap="round" />
-  <path d="M16 38 L13 44 M16 38 L22 40 M48 38 L51 44 M48 38 L42 40" stroke="#4a90e2" stroke-width="3.5" stroke-linecap="round" />
-</svg>
+<Fragment set:html={svg} />

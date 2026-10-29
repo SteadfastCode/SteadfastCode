@@ -120,7 +120,7 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   (`~/repos/steadfast-analytics`): page, linking site's hostname, UTM tags, device size, country,
   and three events (form sent, phone tapped, email tapped). One visitor per day via a hash of a daily
   salt + site + IP + browser; the salt is deleted after the day, IPs and browser strings are never
-  stored, 13-month retention. Dashboard at analytics.steadfastcode.tech behind Cloudflare Access.
+  stored; counts kept while the site uses it (first set at 13 months; Daniel wanted years). Dashboard at analytics.steadfastcode.tech behind Cloudflare Access.
   Do Not Track / GPC not honored on purpose: they ask not to be tracked across sites or have data
   sold, and this does neither; honoring them would only undercount. Only counts once the site is on
   Cloudflare Pages with the `ANALYTICS` service binding and `ANALYTICS_KEY` set; until then
