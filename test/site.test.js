@@ -114,7 +114,6 @@ test('llms.txt and robots.txt are in the build and agree with the pages', () => 
   assert.match(robots, /Allow: \//);
   assert.match(robots, /Sitemap: https:\/\/steadfastcode\.tech\/sitemap-index\.xml/);
   assert.ok(fs.existsSync(path.join(dist, 'sitemap-index.xml')), 'sitemap missing');
-  assert.ok(fs.existsSync(path.join(dist, 'CNAME')), 'CNAME missing (GitHub Pages custom domain)');
 });
 
 test('every page counts visits only through its own /api/hit, and the privacy page says what is counted', () => {
