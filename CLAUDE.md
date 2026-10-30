@@ -49,8 +49,11 @@ under `docs/research/` and `docs/hosting.md`.
 - **Left over from GitHub Pages:** `.github/workflows/deploy.yml` (the box's token can't delete
   workflow files; delete it on github.com) and the Pages setting on the repo (turn it off in
   Settings → Pages).
-- **Contact form:** `functions/api/contact.js` needs `RESEND_API_KEY` (and Resend's DNS records)
-  before it sends; until then it redirects with `?sent=0` and the page asks the visitor to email.
+- **Contact form: live through Resend** (2026-10-30). Production has `RESEND_API_KEY` (secret, a
+  sending-only key for this domain), `CONTACT_TO` and `CONTACT_FROM`; Resend's records (`send`,
+  `rsend`, `resend._domainkey`) were added by its Cloudflare auto-configure and sit beside the
+  Proton ones. A labeled test from the box redirected to `?sent=1`. If Resend ever fails, the form
+  still redirects with `?sent=0` and the page asks the visitor to email.
 
 ## Rules that override taste
 
