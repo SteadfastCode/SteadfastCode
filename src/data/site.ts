@@ -294,7 +294,7 @@ export const work = [
     status: 'Launched - October 30, 2026',
     summary:
       'Replaced a slow WordPress site that a plugin had stuffed with auto-generated blog posts. ' +
-      'The new site is static custom code, built with AI tools and tested on real phones. It posts the full rate sheet up front, is built to pull job photos ' +
+      'The new site is static custom code, built with AI tools and tested on real phones. It posts the full rate sheet up front, pulls job photos ' +
       'straight from the contractor’s own project system, and its contact form never silently loses a lead: it either delivers the message or tells the visitor to call or text.',
     details: [
       'Rates public on every service page, with the price in the first sentence so a search result can quote it',
