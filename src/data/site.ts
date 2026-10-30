@@ -289,18 +289,17 @@ export const work = [
     name: 'Mr Dandyman',
     kind: 'Handyman and general contractor, Lititz PA',
     url: 'https://mrdandyman.biz',
-    // Flip to true when MDS-001 (the DNS cutover) is done; until then the card shows no link,
-    // because the URL still serves the old WordPress site.
-    live: false,
+    // Live on Cloudflare Pages since 2026-10-30 (MDS-001's DNS cutover).
+    live: true,
     status: 'Launched - October 30, 2026',
     summary:
       'Replaced a slow WordPress site that a plugin had stuffed with auto-generated blog posts. ' +
-      'The new site is static custom code, built with AI tools and tested on real phones. It posts the full rate sheet up front, pulls job photos ' +
-      'straight from the contractor’s own project system, and sends every form fill to a lead inbox that never drops one.',
+      'The new site is static custom code, built with AI tools and tested on real phones. It posts the full rate sheet up front, is built to pull job photos ' +
+      'straight from the contractor’s own project system, and its contact form never silently loses a lead: it either delivers the message or tells the visitor to call or text.',
     details: [
       'Rates public on every service page, with the price in the first sentence so a search result can quote it',
       'Structured data for every service and price, written into the HTML where search engines and AI crawlers can actually read it',
-      'Contact form with express SMS consent, wired to the lead system',
+      'Contact form with express SMS consent, built to hand each lead to the lead system',
       'The whole home page, styles included, is smaller than one typical stock photo',
     ],
     image: '/work/mrdandyman.webp',
