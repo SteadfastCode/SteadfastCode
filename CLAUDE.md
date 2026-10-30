@@ -42,13 +42,10 @@ under `docs/research/` and `docs/hosting.md`.
   the `ANALYTICS_KEY` secret, so `/api/hit` counts visits. `public/_headers` caches `/_astro/*` for a
   year. Zone settings changed from Cloudflare's defaults: **email obfuscation off** (it injected a
   script and rewrote `mailto:` links), always-HTTPS on, minimum TLS 1.2.
-- **Pushes to `main` don't trigger a build yet** (2026-10-30): the Cloudflare GitHub app is installed
-  on the org for selected repos only, and this repo appears not to be one of them (mrdandyman-site's
-  pushes do build). Until Daniel adds it, deploy by hand from the box:
-  `POST /accounts/<id>/pages/projects/steadfastcode/deployments` with `branch=main`.
-- **Left over from GitHub Pages:** `.github/workflows/deploy.yml` (the box's token can't delete
-  workflow files; delete it on github.com) and the Pages setting on the repo (turn it off in
-  Settings → Pages).
+- **Pushes to `main` deploy on their own** (since 2026-10-30, once Daniel added this repo to the
+  Cloudflare GitHub app). `www` 301s to the apex with path and query kept (a zone redirect rule).
+  GitHub Pages is off, its workflow and `gh-pages` branch are deleted. Search Console is verified
+  for the domain (Google's TXT records at the apex) with the sitemap submitted.
 - **Contact form: live through Resend** (2026-10-30). Production has `RESEND_API_KEY` (secret, a
   sending-only key for this domain), `CONTACT_TO` and `CONTACT_FROM`; Resend's records (`send`,
   `rsend`, `resend._domainkey`) were added by its Cloudflare auto-configure and sit beside the
