@@ -292,7 +292,7 @@ export const work = [
     // Flip to true when MDS-001 (the DNS cutover) is done; until then the card shows no link,
     // because the URL still serves the old WordPress site.
     live: false,
-    status: 'Launching soon',
+    status: 'Launched - October 30, 2026',
     summary:
       'Replaced a slow WordPress site that a plugin had stuffed with auto-generated blog posts. ' +
       'The new site is static custom code, built with AI tools and tested on real phones. It posts the full rate sheet up front, pulls job photos ' +
