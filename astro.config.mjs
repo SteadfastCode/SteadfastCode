@@ -17,5 +17,6 @@ export default defineConfig({
   // inlineStylesheets: one small stylesheet, inlined into every page, saves the render-blocking
   // request Lighthouse flagged on the first live run (2026-10-30, mobile performance 98).
   build: { format: 'file', inlineStylesheets: 'always' },
-  integrations: [sitemap()],
+  // /admin is Daniel's intake tool behind Cloudflare Access, not a page for search engines.
+  integrations: [sitemap({ filter: (page) => !/\/admin(\.html)?$/.test(page) })],
 });
