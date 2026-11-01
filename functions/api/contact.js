@@ -6,6 +6,11 @@
 //   2. RESEND_API_KEY — email the submission to CONTACT_TO (defaults to support@steadfastcode.tech)
 //      through Resend, from CONTACT_FROM on the verified domain.
 // Neither configured: redirect back with ?sent=0 so the page tells the visitor to email instead.
+//
+// Before either, the submission is saved to the INTAKE D1 database (migrations/0001_leads.sql) when
+// that binding exists, so the admin intake can start a project from it (2026-11-01). Saving is
+// best-effort: a failed insert never stops the message from going out, and a saved row alone does
+// not count as delivered — Daniel reads email, not the table.
 // A form that silently swallows a lead is the one failure this file must never have.
 //
 // Bindings are set in the Cloudflare Pages project (Settings → Variables and Secrets), never here.
@@ -30,6 +35,16 @@ export async function onRequestPost({ request, env }) {
     receivedAt: new Date().toISOString(),
     ...data,
   };
+
+  if (env.INTAKE) {
+    try {
+      await env.INTAKE.prepare(
+        'INSERT INTO leads (id, received_at, name, email, phone, business, plan, site, message, source_detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      ).bind(crypto.randomUUID(), submission.receivedAt, data.name, data.email, data.phone || null, data.business || null, data.plan || null, data.site || null, data.message, submission.sourceDetail).run();
+    } catch {
+      // the email below is the delivery; the table is a convenience
+    }
+  }
 
   try {
     if (env.CONTACT_FORWARD_URL) {

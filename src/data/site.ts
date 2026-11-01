@@ -53,6 +53,9 @@ export function money(n: number, per?: string): string {
 // A website is priced by what it has to do, not by the hour. Each tier is a fixed price with a
 // stated scope, and anything past that scope is quoted before it's built. `pages` is the ceiling
 // the price covers; `days` is the usual working-time to launch once the content is in hand.
+// `scope` is the same promise in a form the admin intake and a client build can check against
+// (2026-11-01): it restates only what each tier's `includes` says. Starter's revision rounds are
+// `null` because the tier doesn't promise a number yet — Daniel's call, not a default.
 export const websiteTiers = [
   {
     id: 'starter',
@@ -61,6 +64,7 @@ export const websiteTiers = [
     pages: 1,
     days: 'about a week',
     who: 'A new business, a side business, or a campaign that needs one great page.',
+    scope: { pages: 1, revisionRounds: null, editor: 'add-on', copyHelp: false, serviceAreaPages: false, handoffCall: false, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
       'One long-scroll page, written and designed around what you sell',
       'Mobile-first, plain custom code, loads in well under a second',
@@ -78,6 +82,7 @@ export const websiteTiers = [
     days: '2–3 weeks',
     who: 'Most local businesses: a home page, services, about, contact, and room for a couple more.',
     featured: true,
+    scope: { pages: 6, revisionRounds: 2, editor: 'add-on', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
       'Everything in Starter',
       'Up to 6 pages, each one written to answer the question people actually search',
@@ -95,6 +100,7 @@ export const websiteTiers = [
     pages: 15,
     days: '3–5 weeks',
     who: 'A business with a lot to say: many services, locations, a blog or resources, a team.',
+    scope: { pages: 15, revisionRounds: 2, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: false },
     includes: [
       'Everything in Business',
       'Up to 15 pages, plus a friendly editor so you can change text and photos yourself',
@@ -112,6 +118,7 @@ export const websiteTiers = [
     pages: 15,
     days: '4–6 weeks',
     who: 'Selling products online, from a dozen items to a few hundred.',
+    scope: { pages: 15, revisionRounds: 2, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: true },
     includes: [
       'Everything in Growth',
       'Shopify or a headless store on a fast front end, depending on what you need',
