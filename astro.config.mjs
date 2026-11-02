@@ -19,5 +19,5 @@ export default defineConfig({
   build: { format: 'file', inlineStylesheets: 'always' },
   // /admin (Daniel's intake, behind Cloudflare Access) and /client (a client's private project
   // page) are tools, not pages for search engines.
-  integrations: [sitemap({ filter: (page) => !/\/(admin|client)(\.html)?$/.test(page) })],
+  integrations: [sitemap({ filter: (page) => !/\/(admin|client)(\.html|\/.*)?$/.test(page) })],
 });

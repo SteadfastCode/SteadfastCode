@@ -5,7 +5,9 @@ import { json } from '../../_middleware.js';
 import { check, slugFor } from '../../../../../server/intake.js';
 import { agreementState } from '../../../../../server/agreement.js';
 
-export async function onRequestPost({ env, params }) {
+export async function onRequestPost({ request, env, params }) {
+  // { full: true } is Daniel's "Full rebuild": the whole site again from the brief, at full effort.
+  const full = (await request.json().catch(() => ({})))?.full === true;
   const p = await env.INTAKE.prepare('SELECT * FROM projects WHERE id = ?').bind(params.id).first();
   if (!p) return json({ error: 'No such project.' }, 404);
   const answers = JSON.parse(p.answers);
@@ -23,6 +25,6 @@ export async function onRequestPost({ env, params }) {
     for (let n = 2; await env.INTAKE.prepare('SELECT 1 FROM projects WHERE slug = ? AND id != ?').bind(slug, p.id).first(); n++) slug = `${base}-${n}`;
   }
   const now = new Date().toISOString();
-  await env.INTAKE.prepare("UPDATE projects SET status = 'build-requested', slug = ?, build_requested_at = ?, build_note = NULL, build_step = NULL, build_activity = NULL, build_started_at = NULL, updated_at = ? WHERE id = ?").bind(slug, now, now, p.id).run();
+  await env.INTAKE.prepare("UPDATE projects SET status = 'build-requested', slug = ?, build_requested_at = ?, build_note = NULL, build_step = NULL, build_activity = NULL, build_started_at = NULL, build_mode = ?, build_requested_by = 'daniel', updated_at = ? WHERE id = ?").bind(slug, now, full && p.preview_url ? 'full' : null, now, p.id).run();
   return json({ ok: true, slug, status: 'build-requested' });
 }

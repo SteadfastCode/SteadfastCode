@@ -61,6 +61,7 @@ async function home() {
   try { [{ leads }, { projects }] = await Promise.all([api('/leads'), api('/projects')]); } catch (e) { err = e.message; }
   app.innerHTML = `
     <h1>Client intake</h1>
+    <p><a href="/admin/usage">Build usage and cost →</a></p>
     ${err ? `<p class="error">${esc(err)}</p>` : ''}
     <section class="card"><h2>New project</h2><div class="tiers">
       ${C.tiers.map((t) => `<button data-new="${t.id}"><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}

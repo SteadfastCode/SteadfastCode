@@ -1,0 +1,147 @@
+---
+// /admin/usage (2026-11-02): what client builds cost Daniel. Behind the same Cloudflare Access app
+// as /admin. Every dollar here is his real plan cost, not API pricing:
+//
+//   a build's share of the week ≈ its compute × (weekly-limit % used per unit of compute)
+//   its cost                    ≈ that share × one week of the plan (monthly price × 12 ÷ 52)
+//
+// "Compute" is the session's API-equivalent figure, used only as a measuring stick of how much
+// work a build did. The ratio is calibrated from the plan's own meter, read before and after each
+// build: whole percents, and other sessions running at the same time count too, so one build's
+// reading is noisy, but the sum over many builds isn't. The page says how many builds it rests on.
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Build usage — Steadfast Code admin</title>
+<link rel="stylesheet" href="/intake/form.css">
+<style is:global>
+  :root { --chart: #2563eb; }
+  @media (prefers-color-scheme: dark) { :root { --chart: #4f8ef0; } }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .tile .n { display: block; font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tile .l { color: var(--muted); font-size: .85rem; }
+  table.data { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+  table.data th, table.data td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.data th { color: var(--muted); font-weight: 600; }
+  table.data td.num, table.data th.num { text-align: right; }
+  .scroll { overflow-x: auto; }
+  .chart { position: relative; height: 180px; display: flex; align-items: flex-end; gap: 2px; padding: 0 0 2px; border-bottom: 1px solid var(--line); }
+  .chart .bar { flex: 1 1 0; min-width: 4px; max-width: 64px; background: var(--chart); border-radius: 4px 4px 0 0; position: relative; }
+  .chart .hit { position: absolute; inset: -40px -1px 0; }
+  .chart .bar:hover, .chart .bar:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .tip { position: absolute; z-index: 5; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: .85rem; box-shadow: 0 6px 18px rgba(0,0,0,.18); pointer-events: none; white-space: nowrap; }
+  .tip b { font-weight: 700; }
+  .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  details.chg summary { cursor: pointer; color: var(--accent); }
+  details.chg pre { white-space: pre-wrap; font: inherit; font-size: .82rem; color: var(--muted); margin: 6px 0 0; }
+  .plan { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .plan input { width: 8rem; }
+</style>
+</head>
+<body>
+<main id="app">
+  <p><a href="/admin">← Client intake</a></p>
+  <h1>Build usage</h1>
+  <p class="muted">What client builds cost you: your share of the plan you pay for, not API pricing.</p>
+  <section class="card">
+    <div class="plan"><label for="plan" style="margin:0">Your plan, per month</label> $<input type="text" id="plan" inputmode="decimal" placeholder="200"> <button type="button" id="saveplan">Save</button> <span class="muted" id="plannote"></span></div>
+  </section>
+  <div id="body"><p class="muted">Loading…</p></div>
+</main>
+<script type="module" is:inline>
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const usd = (n) => n == null || !isFinite(n) ? '—' : n < 0.995 ? `${Math.round(n * 100)}¢` : `$${n.toFixed(2)}`;
+const pct = (n) => n == null || !isFinite(n) ? '—' : n < 0.1 ? '<0.1%' : `${n.toFixed(1)}%`;
+const mins = (s) => s == null ? '—' : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+const kindName = { first: 'First build', targeted: 'Update', full: 'Full rebuild' };
+const bucket = (n) => n == null ? 'Unknown' : n === 0 ? 'Nothing in the brief' : n <= 2 ? '1–2 changes' : n <= 5 ? '3–5 changes' : '6 or more';
+const api = async (path, init = {}) => { const r = await fetch('/api/admin' + path, { credentials: 'same-origin', headers: { 'content-type': 'application/json' }, ...init }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; };
+
+let data;
+async function load() {
+  try { data = await api('/usage'); } catch (e) { document.getElementById('body').innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+  document.getElementById('plan').value = data.planMonthlyUsd ?? '';
+  render();
+}
+
+function render() {
+  const plan = data.planMonthlyUsd;
+  const weekly = plan ? plan * 12 / 52 : null;
+  // Builds from before usage was recorded have no compute figure; they count for time only.
+  const b = data.builds.map((x) => ({ ...x, kindLabel: kindName[x.mode] || (x.kind === 'first' ? 'First build' : 'Update') }));
+  const measured = b.filter((x) => x.cost_usd != null && x.weekly_before != null && x.weekly_after != null);
+  const sumDelta = measured.reduce((s, x) => s + Math.max(0, x.weekly_after - x.weekly_before), 0);
+  const sumCompute = measured.reduce((s, x) => s + x.cost_usd, 0);
+  const ratio = sumCompute > 0 && sumDelta > 0 ? sumDelta / sumCompute : null; // weekly % per unit of compute
+  for (const x of b) { x.share = ratio && x.cost_usd != null ? x.cost_usd * ratio : null; x.dollars = x.share != null && weekly ? x.share / 100 * weekly : null; }
+
+  const weekAgo = Date.now() - 7 * 86400_000;
+  const sum = (xs, k) => xs.reduce((s, x) => s + (x[k] ?? 0), 0);
+  const withCost = (xs) => xs.filter((x) => x.dollars != null);
+  const thisWeek = b.filter((x) => Date.parse(x.started_at) > weekAgo);
+  const tiles = (label, xs) => `
+    <div class="tile"><span class="n">${xs.length}</span><span class="l">builds, ${esc(label)}</span></div>
+    <div class="tile"><span class="n">${usd(withCost(xs).length ? sum(withCost(xs), 'dollars') : null)}</span><span class="l">your cost, ${esc(label)}</span></div>
+    <div class="tile"><span class="n">${pct(withCost(xs).length ? sum(withCost(xs), 'share') : null)}</span><span class="l">of a week’s limit, ${esc(label)}</span></div>
+    <div class="tile"><span class="n">${mins(sum(xs, 'seconds'))}</span><span class="l">building, ${esc(label)}</span></div>`;
+
+  const group = (xs, keyOf, order) => {
+    const m = new Map();
+    for (const x of xs) { const k = keyOf(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
+    const keys = order ? order.filter((k) => m.has(k)) : [...m.keys()];
+    return `<div class="scroll"><table class="data"><thead><tr><th></th><th class="num">Builds</th><th class="num">Avg time</th><th class="num">Avg cost</th><th class="num">Avg share</th><th class="num">Total cost</th></tr></thead><tbody>${keys.map((k) => {
+      const g = m.get(k), c = withCost(g);
+      return `<tr><td>${esc(k)}</td><td class="num">${g.length}</td><td class="num">${mins(Math.round(sum(g, 'seconds') / g.length))}</td><td class="num">${c.length ? usd(sum(c, 'dollars') / c.length) : '—'}</td><td class="num">${c.length ? pct(sum(c, 'share') / c.length) : '—'}</td><td class="num">${c.length ? usd(sum(c, 'dollars')) : '—'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  };
+
+  // Cost per build, oldest to newest, last 40. One series, so no legend; the table below is its table view.
+  const recent = b.slice(0, 40).reverse();
+  const metric = (x) => (weekly ? x.dollars : x.share);
+  const max = Math.max(0, ...recent.map((x) => metric(x) ?? 0));
+  const chart = max > 0 ? `<div class="chart" id="chart" aria-label="Cost per build, last ${recent.length}">${recent.map((x, i) => {
+    const v = metric(x);
+    return `<span class="bar" tabindex="0" data-i="${i}" style="height:${v ? Math.max(2, (v / max) * 100) : 0}%"><span class="hit"></span></span>`;
+  }).join('')}</div><div class="axis"><span>${esc(new Date(recent[0].started_at).toLocaleDateString())}</span><span>${weekly ? `tallest ${usd(max)}` : `tallest ${pct(max)} of a week`}</span><span>${esc(new Date(recent.at(-1).started_at).toLocaleDateString())}</span></div>` : '<p class="muted">The chart fills in once builds have usage recorded and the plan price is set.</p>';
+
+  document.getElementById('body').innerHTML = `
+    <section class="card"><h2>This week</h2><div class="tiles">${tiles('last 7 days', thisWeek)}</div></section>
+    <section class="card"><h2>All time</h2><div class="tiles">${tiles('all time', b)}</div>
+      <p class="muted">${ratio ? `Calibrated on ${measured.length} build${measured.length === 1 ? '' : 's'} where your plan’s meter was read before and after: ${sumDelta}% of a week across them. The meter moves in whole percents and counts anything else running at the same time, so treat one build’s figure as rough; the totals settle as builds add up.` : 'Not enough measurements yet: costs appear once a few builds have run with usage recorded.'}${plan ? '' : ' Enter your plan price above to see dollars.'}</p></section>
+    <section class="card" style="position:relative"><h2>Cost per build</h2>${chart}<div class="tip" id="tip" hidden></div></section>
+    <section class="card"><h2>By kind of build</h2>${group(b, (x) => x.kindLabel, ['First build', 'Update', 'Full rebuild'])}</section>
+    <section class="card"><h2>Updates, by how much changed</h2>${group(b.filter((x) => x.mode === 'targeted'), (x) => bucket(x.change_count), ['Nothing in the brief', '1–2 changes', '3–5 changes', '6 or more', 'Unknown'])}</section>
+    <section class="card"><h2>By who asked</h2>${group(b, (x) => (x.requested_by === 'client' ? 'The client' : 'You'))}</section>
+    <section class="card"><h2>Every build</h2><div class="scroll"><table class="data"><thead><tr><th>When</th><th>Site</th><th>Kind</th><th>By</th><th>What changed</th><th class="num">Time</th><th class="num">Share</th><th class="num">Cost</th></tr></thead><tbody>${b.map((x) => `
+      <tr><td>${esc(new Date(x.started_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}${x.ok ? '' : ' <span class="error">failed</span>'}</td><td>${esc(x.business || '—')}</td><td>${esc(x.kindLabel)}${x.rules_refreshed ? ' <span class="muted">+ rules</span>' : ''}</td><td>${x.requested_by === 'client' ? 'Client' : 'You'}</td>
+      <td>${x.changes ? `<details class="chg"><summary>${x.change_count} change${x.change_count === 1 ? '' : 's'}</summary><pre>${esc(x.changes.replace(/`/g, ''))}</pre></details>` : x.change_count === 0 ? 'none' : '—'}</td>
+      <td class="num">${mins(x.seconds)}</td><td class="num">${pct(x.share)}</td><td class="num">${usd(x.dollars)}</td></tr>`).join('')}</tbody></table></div></section>`;
+
+  // Hover and focus tooltip per bar.
+  const tip = document.getElementById('tip'), ch = document.getElementById('chart');
+  if (ch) {
+    const show = (el) => {
+      const x = recent[+el.dataset.i]; const r = el.getBoundingClientRect(), box = ch.parentElement.getBoundingClientRect();
+      tip.innerHTML = `<b>${esc(x.business || '—')}</b> · ${esc(x.kindLabel)}<br>${esc(new Date(x.started_at).toLocaleString())}<br>${x.change_count != null ? `${x.change_count} change${x.change_count === 1 ? '' : 's'} · ` : ''}${mins(x.seconds)}<br>${usd(x.dollars)} · ${pct(x.share)} of a week`;
+      tip.hidden = false;
+      tip.style.left = Math.min(Math.max(0, r.left - box.left - tip.offsetWidth / 2 + r.width / 2), box.width - tip.offsetWidth) + 'px';
+      tip.style.top = (r.top - box.top - tip.offsetHeight - 8) + 'px';
+    };
+    ch.querySelectorAll('.bar').forEach((el) => { el.addEventListener('mouseenter', () => show(el)); el.addEventListener('focus', () => show(el)); el.addEventListener('mouseleave', () => { tip.hidden = true; }); el.addEventListener('blur', () => { tip.hidden = true; }); });
+  }
+}
+
+document.getElementById('saveplan').addEventListener('click', async () => {
+  const note = document.getElementById('plannote');
+  try { const r = await api('/usage', { method: 'POST', body: JSON.stringify({ planMonthlyUsd: document.getElementById('plan').value.replace(/[$,\s]/g, '') }) }); data.planMonthlyUsd = r.planMonthlyUsd; note.textContent = 'Saved.'; render(); }
+  catch (e) { note.innerHTML = `<span class="error">${esc(e.message)}</span>`; }
+});
+load();
+</script>
+</body>
+</html>

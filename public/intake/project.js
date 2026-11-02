@@ -239,9 +239,15 @@ export async function mountProject(o) {
     root.querySelector('#status').innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
-      ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
+      ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}
       ${agreementLine()}`;
+    const fr = root.querySelector('#fullrebuild');
+    if (fr) fr.onclick = async () => {
+      if (!confirm('Rebuild the whole site from the brief? It takes longer and uses more than an update; use it when an update isn’t enough.')) return;
+      fr.disabled = true;
+      try { await flush(); await api(routes.build, { method: 'POST', body: JSON.stringify({ full: true }) }); await refresh(); } catch (e) { alert(e.message); fr.disabled = false; }
+    };
     const so = root.querySelector('#signingopen');
     if (so) so.onchange = async () => { so.disabled = true; try { await api(routes.signing, { method: 'POST', body: JSON.stringify({ open: so.checked }) }); await refresh(); } catch (e) { alert(e.message); so.checked = !so.checked; } so.disabled = false; };
     const view = root.querySelector('[data-signed]');
