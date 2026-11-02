@@ -3,7 +3,7 @@
 import { json } from './_middleware.js';
 import { mergeClientAnswers } from '../../../server/client.js';
 import { fields } from '../../../server/intake.js';
-import { projectView, logEdit } from '../../../server/view.js';
+import { projectView, logEdit, markClientChange } from '../../../server/view.js';
 
 export const clientName = (answers) => (answers.contactName || '').trim().split(/\s+/)[0] || 'Your client';
 
@@ -20,5 +20,6 @@ export async function onRequestPatch({ request, env, data }) {
   await env.INTAKE.prepare('UPDATE projects SET answers = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(answers), now, p.id).run();
   const changed = Object.keys(body.answers).filter((k) => !dropped.includes(k));
   await logEdit(env, p.id, 'client', clientName(answers), changed.map((k) => fields[k]?.you || fields[k]?.label || k));
+  await markClientChange(env, p, changed);
   return json({ ...(await projectView(env, { ...p, answers: JSON.stringify(answers), updated_at: now }, { mode: 'client' })), dropped });
 }

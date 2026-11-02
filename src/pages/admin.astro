@@ -71,7 +71,7 @@ async function home() {
       ${leads.length ? leads.map((l) => `<div class="row"><div><b>${esc(l.name)}</b>${l.business ? ' · ' + esc(l.business) : ''}<div class="muted">${esc(tierOf(l.plan)?.name || l.plan || 'no package picked')} · ${esc(new Date(l.received_at).toLocaleDateString())}</div></div><button data-lead="${esc(l.id)}">Start from this</button></div>`).join('') : '<p class="muted">No new contact-form leads.</p>'}
     </section>
     <section class="card"><h2>Projects</h2>
-      ${projects.length ? projects.map((p) => `<div class="row"><div><a href="#p/${esc(p.id)}"><b>${esc(p.business || 'Untitled')}</b></a><div class="muted">${esc(tierOf(p.tier)?.name || 'no package')} · ${esc(new Date(p.updatedAt).toLocaleString())}</div></div><span class="badge${p.ready ? ' ready' : ''}">${esc(statusLabel[p.status] || p.status)}${p.status === 'intake' && p.ready ? ' · ready' : ''}</span></div>`).join('') : '<p class="muted">None yet.</p>'}
+      ${projects.length ? projects.map((p) => `<div class="row"><div><a href="#p/${esc(p.id)}"><b>${esc(p.business || 'Untitled')}</b></a><div class="muted">${esc(tierOf(p.tier)?.name || 'no package')} · ${esc(new Date(p.updatedAt).toLocaleString())}</div></div><span>${p.needsReview ? '<span class="badge review">Needs review</span> ' : ''}<span class="badge${p.ready ? ' ready' : ''}">${esc(statusLabel[p.status] || p.status)}${p.status === 'intake' && p.ready ? ' · ready' : ''}</span></span></div>`).join('') : '<p class="muted">None yet.</p>'}
     </section>`;
   app.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', () => create({ tier: b.dataset.new || undefined })));
   app.querySelectorAll('[data-lead]').forEach((b) => b.addEventListener('click', () => create({ leadId: b.dataset.lead })));
@@ -91,7 +91,7 @@ async function route() {
   const base = '/api/admin/projects/' + encodeURIComponent(m[1]);
   current = await mountProject({
     root: app, bar, progress, config: C, mode: 'admin', backHref: '#',
-    routes: { project: base, presence: base + '/presence', uploads: base + '/uploads', file: (id) => base + '/uploads/' + encodeURIComponent(id), build: base + '/build', link: base + '/link', agreement: base + '/agreement', signing: base + '/signing', },
+    routes: { project: base, presence: base + '/presence', uploads: base + '/uploads', file: (id) => base + '/uploads/' + encodeURIComponent(id), build: base + '/build', link: base + '/link', review: base + '/review', agreement: base + '/agreement', signing: base + '/signing', },
   });
 }
 addEventListener('hashchange', route);

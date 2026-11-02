@@ -50,6 +50,9 @@ export async function projectView(env, p, { mode }) {
     linkKeySet: mode === 'admin' ? !!env.LINK_KEY : undefined,
     failed: clientStatus(p).failed,
     agreement,
+    // What the client changed that hasn't gone into a preview yet, and what's waiting on Daniel.
+    pendingChanges: !!p.client_changed_at,
+    reviewNeeded: (() => { try { return JSON.parse(p.review_needed || '[]'); } catch { return []; } })(),
   };
 }
 
@@ -57,6 +60,17 @@ export async function projectView(env, p, { mode }) {
 export function setPresence(env, projectId, who, name, field) {
   return env.INTAKE.prepare('INSERT INTO presence (project_id, who, name, field, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (project_id, who) DO UPDATE SET name = excluded.name, field = excluded.field, at = excluded.at')
     .bind(projectId, who, name, field && /^[A-Za-z]{1,40}$/.test(field) ? field : null, new Date().toISOString()).run();
+}
+
+/**
+ * A client edit, for the box to pick up once they stop (2026-11-02): records what changed and when.
+ * Only once a first version exists; before that, Daniel starts the build himself.
+ */
+export async function markClientChange(env, project, keys) {
+  if (!keys.length || !project.preview_url) return;
+  const prev = (() => { try { return JSON.parse(project.client_changes || '[]'); } catch { return []; } })();
+  const merged = [...new Set([...prev, ...keys])];
+  await env.INTAKE.prepare('UPDATE projects SET client_changed_at = ?, client_changes = ? WHERE id = ?').bind(new Date().toISOString(), JSON.stringify(merged), project.id).run();
 }
 
 export const logEvent = (env, projectId, who, what) =>

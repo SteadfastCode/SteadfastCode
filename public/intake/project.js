@@ -241,7 +241,10 @@ export async function mountProject(o) {
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}
-      ${agreementLine()}`;
+      ${agreementLine()}
+      ${updateLines()}`;
+    const rv = root.querySelector('#markreviewed');
+    if (rv) rv.onclick = async () => { rv.disabled = true; try { await api(routes.review, { method: 'POST', body: '{}' }); await refresh(); } catch (e) { alert(e.message); rv.disabled = false; } };
     const fr = root.querySelector('#fullrebuild');
     if (fr) fr.onclick = async () => {
       if (!confirm('Rebuild the whole site from the brief? It takes longer and uses more than an update; use it when an update isn’t enough.')) return;
@@ -346,6 +349,23 @@ export async function mountProject(o) {
     });
   }
 
+  // Automatic updates (2026-11-02): the client's small changes update the preview on their own;
+  // bigger ones, and anything past the day's updates, wait for Daniel.
+  function updateLines() {
+    const flagged = P.reviewNeeded || [];
+    if (admin) {
+      if (!flagged.length) return '';
+      return `<div class="review"><b>Needs your review</b><ul>${flagged.map((x) => `<li>${esc(x.what)} <span class="muted">${esc(ago(x.at))}</span></li>`).join('')}</ul><button type="button" id="markreviewed">Mark reviewed</button></div>`;
+    }
+    if (!P.previewUrl) return '';
+    const lines = [];
+    if (building()) lines.push('Your preview is updating with your latest changes.');
+    else if (P.pendingChanges) lines.push('Your changes will show in your preview a few minutes after you stop.');
+    else lines.push('Changes you make here go into your preview on their own, a few minutes after you stop.');
+    if (flagged.length) lines.push('Some of what you asked for is a bigger change, so Daniel will look at it himself.');
+    return lines.map((l) => `<p class="muted">${esc(l)}</p>`).join('');
+  }
+
   function agreementLine() {
     const ag = P.agreement;
     if (!ag) return '';
@@ -365,11 +385,9 @@ export async function mountProject(o) {
       if (c.ready && P.agreement?.needed) readyEl.textContent = 'Ready · waiting on the signed contract';
       buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : building() ? 'Building…' : P.failed ? 'Restart build' : 'Start build';
     } else {
-      readyEl.textContent = building() ? 'Your site is being built' : P.status === 'preview' ? (P.changedSinceBuild ? 'You’ve made changes since this preview' : 'Preview is up to date') : '';
-      buildBtn.hidden = !(P.status === 'preview' || building());
-      bar.hidden = buildBtn.hidden;
-      buildBtn.disabled = building() || !P.changedSinceBuild || !c.ready;
-      buildBtn.textContent = building() ? 'Updating…' : 'Update my preview';
+      // No button and no bar for the client: their changes update the preview on their own (updateLines).
+      buildBtn.hidden = true;
+      bar.hidden = true;
     }
   }
 

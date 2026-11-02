@@ -2,7 +2,6 @@
 // token comes as a bearer header; image GETs may carry it as ?t= because an <img> can't send headers.
 // Writes only from this site's own pages. Not behind Cloudflare Access: the link is the login.
 import { hashToken } from '../../../server/client.js';
-import { agreementState } from '../../../server/agreement.js';
 
 export const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -25,12 +24,9 @@ export async function onRequest(context) {
   }
   context.data.link = link;
   context.data.project = project;
-  // The contract comes first for building, not for planning (Daniel, 2026-11-02): before it's signed
-  // a client can read it and fill in their planning page for a head start; asking for a build waits
-  // for the signature (and the first build is Daniel's, which checks it too).
-  if (request.method !== 'GET' && request.method !== 'HEAD' && url.pathname === '/api/client/build') {
-    if ((await agreementState(env, project)).needed) return json({ error: 'Sign the contract first.', needsAgreement: true }, 403);
-  }
+  // Planning is open before the contract is signed (Daniel, 2026-11-02). Building never comes from
+  // here: the box updates the preview from the client's edits once a first version exists, and the
+  // first build is Daniel's, which checks for the signature.
   try {
     return await context.next();
   } catch (err) {

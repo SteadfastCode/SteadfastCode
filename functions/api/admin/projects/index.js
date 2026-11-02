@@ -4,11 +4,11 @@ import { json } from '../_middleware.js';
 import { mergeAnswers, answersFromLead, check } from '../../../../server/intake.js';
 
 export async function onRequestGet({ env }) {
-  const { results } = await env.INTAKE.prepare('SELECT id, slug, tier, status, answers, preview_url, updated_at FROM projects ORDER BY updated_at DESC LIMIT 100').all();
+  const { results } = await env.INTAKE.prepare('SELECT id, slug, tier, status, answers, preview_url, updated_at, review_needed FROM projects ORDER BY updated_at DESC LIMIT 100').all();
   return json({
     projects: results.map((p) => {
       const a = JSON.parse(p.answers);
-      return { id: p.id, slug: p.slug, tier: p.tier, status: p.status, previewUrl: p.preview_url, updatedAt: p.updated_at, business: a.businessName ?? null, ready: check(a).ready };
+      return { id: p.id, slug: p.slug, tier: p.tier, status: p.status, previewUrl: p.preview_url, updatedAt: p.updated_at, business: a.businessName ?? null, ready: check(a).ready, needsReview: !!(p.review_needed && p.review_needed !== '[]') };
     }),
   });
 }

@@ -116,13 +116,19 @@ export const intakeSections = [
     title: 'Outside the package',
     fields: [
       { id: 'outOfScope', label: 'Asked for, not covered', type: 'list', help: 'Anything past the package, one per line. Quoted separately before it is built.', owner: 'daniel', you: 'Asked for, outside the package' },
-      { id: 'notes', label: 'Notes', type: 'textarea', you: 'Notes' },
+      { id: 'notes', label: 'Notes', type: 'textarea', you: 'Bigger changes or anything else', youHelp: 'New pages, new features, a different layout: Daniel looks at these himself.' },
     ],
   },
 ] as const;
 
 
 // Default pages offered when a package is picked and the list is still empty. Suggestions only.
+// What a client's own edits can update on their own, and what comes to Daniel instead (2026-11-02).
+// The box updates the preview from anything else a client changes; these never build on their own:
+// notes are where bigger asks go, pages change the structure (and can change the scope), and sites
+// they like are a redesign. Daniel's own edits aren't sorted; he builds when he means to.
+export const reviewFields = ['notes', 'pages', 'sitesLiked'] as const;
+
 export const defaultPages = {
   starter: ['Home'],
   business: ['Home', 'Services', 'About', 'Contact'],

@@ -2,15 +2,18 @@
 import { json } from '../_middleware.js';
 import { serveUpload, deleteUpload, setCaption } from '../../../../server/uploads.js';
 import { clientName } from '../project.js';
+import { markClientChange } from '../../../../server/view.js';
 
 export const onRequestGet = ({ env, data, params }) => serveUpload(env, data.project.id, params.id);
 
 export async function onRequestPatch({ request, env, data, params }) {
   const r = await setCaption(env, data.project.id, params.id, (await request.json().catch(() => ({}))).caption);
+  if (!r.error) await markClientChange(env, data.project, ['uploads']);
   return json(r.error ? { error: r.error } : { ok: true }, r.status);
 }
 
 export async function onRequestDelete({ env, data, params }) {
   const r = await deleteUpload(env, data.project, params.id, { who: 'client', whoLabel: clientName(JSON.parse(data.project.answers)) });
+  if (!r.error) await markClientChange(env, data.project, ['uploads']);
   return json(r.error ? { error: r.error } : { ok: true }, r.status);
 }
