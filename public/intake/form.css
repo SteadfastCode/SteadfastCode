@@ -5,6 +5,8 @@
   body { margin: 0; font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--ink); }
   main { max-width: 760px; margin: 0 auto; padding: 16px 16px 140px; }
   h1 { font-size: 1.35rem; margin: 4px 0 12px; } h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  /* A section's heading reads as the section, not as one more question: bigger, with a rule under it. */
+  section.card > h2 { font-size: 1.3rem; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
   a { color: var(--accent); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0 0 14px; }
   .muted { color: var(--muted); font-size: .9rem; }

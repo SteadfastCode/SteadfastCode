@@ -50,7 +50,7 @@ export const intakeSections = [
     title: 'What they sell',
     you: 'What you sell',
     fields: [
-      { id: 'services', label: 'Services or products', type: 'list', required: true, help: 'One per line.', you: 'What you offer' },
+      { id: 'services', label: 'Services or products', type: 'list', required: true, help: 'One per line.' },
       { id: 'mainAction', label: 'The one thing a visitor should do', type: 'choice', options: ['Call', 'Text', 'Fill out a form', 'Book online', 'Buy online', 'Visit in person'], you: 'The one thing you want visitors to do' },
       { id: 'bookingLink', label: 'Booking or scheduling link', type: 'text', help: 'If they book online: the page people book on.', you: 'Your booking link', youHelp: 'If customers book with you online, the link to your booking page.' },
       { id: 'customers', label: 'Who their customers are', type: 'textarea', you: 'Who your customers are' },
