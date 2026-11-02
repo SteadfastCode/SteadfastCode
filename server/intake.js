@@ -24,8 +24,53 @@ export function cleanValue(field, value) {
       if (!items) return undefined;
       return items.map((v) => String(v).trim().slice(0, 300)).filter(Boolean).slice(0, MAX_LIST);
     }
+    case 'hours': return cleanHours(value);
     default: return typeof value === 'string' ? value.trim().slice(0, MAX_TEXT) : undefined;
   }
+}
+
+export const DAYS = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Hours, structured. An old free-text answer ("Mon-Sat 6am-6pm") becomes the note, so nothing is lost. */
+export function cleanHours(value) {
+  if (typeof value === 'string') return value.trim() ? { mode: 'set', days: {}, note: value.trim().slice(0, 300) } : null;
+  if (!value || typeof value !== 'object') return undefined;
+  const mode = ['set', '247', 'appointment'].includes(value.mode) ? value.mode : 'set';
+  const days = {};
+  // Days are kept in every mode (a switch to 24/7 and back shouldn't lose them); they count only under 'set'.
+  for (const [d] of DAYS) {
+    const x = value.days?.[d];
+    if (x && TIME.test(x.open) && TIME.test(x.close)) days[d] = { open: x.open, close: x.close };
+  }
+  const note = typeof value.note === 'string' ? value.note.trim().slice(0, 300) : '';
+  if (mode === 'set' && !Object.keys(days).length && !note) return null;
+  return { mode, days, ...(note ? { note } : {}) };
+}
+
+const clock = (t) => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'am' : 'pm'}`; };
+
+/** "Mon–Fri 7am–5pm, Sat 8am–noon" — consecutive days with the same hours are grouped. */
+export function hoursText(h) {
+  if (!h) return '';
+  if (typeof h === 'string') return h;
+  const parts = [];
+  if (h.mode === '247') parts.push('Open 24/7');
+  else if (h.mode === 'appointment') parts.push('By appointment');
+  else {
+    let run = null;
+    const flush = () => { if (run) parts.push(`${run.from === run.to ? run.from : `${run.from}–${run.to}`} ${run.span}`); run = null; };
+    for (const [d, name] of DAYS) {
+      const x = h.days?.[d];
+      const span = x ? `${clock(x.open)}–${clock(x.close)}`.replace(/12pm/g, 'noon') : null;
+      const short = name.slice(0, 3);
+      if (span && run && run.span === span) run.to = short;
+      else { flush(); if (span) run = { from: short, to: short, span }; }
+    }
+    flush();
+  }
+  if (h.note) parts.push(h.note);
+  return parts.join(', ');
 }
 
 /** Merge a partial set of answers into the saved ones. Unknown keys and bad values are dropped. */
