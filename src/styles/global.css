@@ -211,7 +211,8 @@ form.contact select option { background: var(--bg-2); }
 /* Footer. */
 footer.site { border-top: 1px solid var(--line-soft); padding: 2.5rem 0 2rem; color: var(--muted); font-size: .93rem; background: var(--footer-bg); }
 footer.site .cols { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
-footer.site h3 { font-size: 1rem; color: var(--heading); font-family: system-ui, sans-serif; }
+/* Footer headings are h2 (a page with only an h1 above would otherwise skip a level), sized like h3. */
+footer.site h2 { font-size: 1rem; color: var(--heading); font-family: system-ui, sans-serif; }
 footer.site ul { list-style: none; padding: 0; margin: 0; }
 footer.site li { margin: .3rem 0; }
 footer.site a { color: var(--ink); text-decoration: none; }
@@ -342,3 +343,6 @@ form.contact input:focus-visible, form.contact textarea:focus-visible, form.cont
 /* Increase Contrast in light mode too: darker secondary text and stronger lines. */
 @media (prefers-contrast: more) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --muted: #1f2937; --line: rgba(29, 95, 174, 0.75); --line-soft: rgba(15, 23, 42, 0.4); } }
 @media (prefers-contrast: more) { :root[data-theme="light"] { --muted: #1f2937; --line: rgba(29, 95, 174, 0.75); --line-soft: rgba(15, 23, 42, 0.4); } }
+
+/* Read by screen readers, not shown: a heading that gives a section its place in the outline. */
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
