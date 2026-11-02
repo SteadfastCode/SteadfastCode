@@ -17,5 +17,8 @@
     "@astrojs/sitemap": "3.7.4",
     "@fontsource-variable/roboto-slab": "^5.2.5",
     "astro": "7.4.2"
+  },
+  "devDependencies": {
+    "axe-core": "4.10.2"
   }
 }

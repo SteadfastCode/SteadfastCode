@@ -254,3 +254,17 @@ a.card:hover, .tier:hover { transform: translateY(-3px); }
   a.card:hover, .tier:hover, .btn:hover { transform: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 }
+
+/* Accessibility that follows the visitor's own settings (2026-11-02). Nothing here shows unless
+   their device asks for it: "Increase contrast" (prefers-contrast), Windows High Contrast
+   (forced-colors), and a keyboard (focus-visible). Reduced motion is handled above. */
+:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+form.contact input:focus-visible, form.contact textarea:focus-visible, form.contact select:focus-visible { outline: 3px solid var(--cyan); outline-offset: 1px; }
+@media (prefers-contrast: more) {
+  :root { --muted: #e5e7eb; --line: rgba(127, 179, 240, 0.9); --line-soft: rgba(229, 231, 235, 0.55); --glow-blue: 0 0 0 2px #7fb3f0; --glow-blue-strong: 0 0 0 2px #e5e7eb; --glow-orange: 0 0 0 2px #fb923c; }
+  a:not(.btn) { text-decoration: underline; }
+}
+@media (forced-colors: active) {
+  :focus-visible, form.contact input:focus, form.contact textarea:focus, form.contact select:focus { outline: 3px solid Highlight; }
+  .btn, button, .faq details, .addon, .card { border: 1px solid CanvasText; }
+}
