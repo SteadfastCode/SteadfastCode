@@ -6,6 +6,7 @@ import { mergeAnswers, check } from '../../../../../server/intake.js';
 const view = (p, answers = JSON.parse(p.answers)) => ({
   id: p.id, slug: p.slug, status: p.status, previewUrl: p.preview_url, buildNote: p.build_note, leadId: p.lead_id,
   createdAt: p.created_at, updatedAt: p.updated_at, buildRequestedAt: p.build_requested_at, answers, check: check(answers),
+  buildStep: p.build_step ?? null, buildActivity: p.build_activity ?? null, buildStartedAt: p.build_started_at ?? null,
 });
 
 export async function onRequestGet({ env, params }) {

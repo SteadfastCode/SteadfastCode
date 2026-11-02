@@ -19,6 +19,6 @@ export async function onRequestPost({ env, params }) {
     for (let n = 2; await env.INTAKE.prepare('SELECT 1 FROM projects WHERE slug = ? AND id != ?').bind(slug, p.id).first(); n++) slug = `${base}-${n}`;
   }
   const now = new Date().toISOString();
-  await env.INTAKE.prepare("UPDATE projects SET status = 'build-requested', slug = ?, build_requested_at = ?, build_note = NULL, updated_at = ? WHERE id = ?").bind(slug, now, now, p.id).run();
+  await env.INTAKE.prepare("UPDATE projects SET status = 'build-requested', slug = ?, build_requested_at = ?, build_note = NULL, build_step = NULL, build_activity = NULL, build_started_at = NULL, updated_at = ? WHERE id = ?").bind(slug, now, now, p.id).run();
   return json({ ok: true, slug, status: 'build-requested' });
 }

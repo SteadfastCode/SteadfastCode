@@ -54,6 +54,13 @@ const config = {
   footer.bar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
   #saved { min-width: 70px; }
   .error { color: var(--bad); }
+  .steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 12px 0 6px; }
+  .steps span { height: 8px; border-radius: 4px; background: var(--line); }
+  .steps span.done { background: var(--ok); }
+  .steps span.now { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .steps span.now { animation: none; } }
+  .activity { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -116,7 +123,7 @@ const config = {
     app.innerHTML = '<p class="muted">Loading…</p>';
     try { P = await api('/projects/' + encodeURIComponent(id)); } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p><p><a href="#">Back</a></p>`; return; }
     render();
-    if (['build-requested', 'building'].includes(P.status)) poll = setInterval(refresh, 10000);
+    if (['build-requested', 'building'].includes(P.status)) poll = setInterval(refresh, 3000);
   }
 
   const applies = (o) => !o.tiers || (P.answers.tier && o.tiers.includes(P.answers.tier));
@@ -162,7 +169,8 @@ const config = {
     const t = c.tier;
     document.getElementById('status').innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
-      ${P.buildNote ? `<p class="muted">${esc(P.buildNote)}</p>` : ''}
+      ${progressHtml()}
+      ${P.buildNote && !building() ? `<p class="muted" style="white-space:pre-line">${esc(P.buildNote)}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}`;
     const sc = document.getElementById('scope');
@@ -175,6 +183,20 @@ const config = {
     buildBtn.disabled = !canBuild;
     buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : ['build-requested', 'building'].includes(P.status) ? 'Building…' : 'Start build';
   }
+
+  // Live build progress: the step the box is on, what the session is doing, and the time so far.
+  const STEPS = ['Picked up', 'Setting up', 'Building', 'Checking', 'Publishing', 'Done'];
+  const building = () => ['build-requested', 'building'].includes(P.status);
+  const since = (iso) => { const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000)); return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; };
+  function progressHtml() {
+    if (!building() && P.status !== 'preview') return '';
+    const step = P.status === 'preview' ? 6 : P.status === 'build-requested' ? 0 : (P.buildStep || 1);
+    const bar = `<div class="steps" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${step}" aria-label="Build progress">${STEPS.map((_, i) => `<span class="${i + 1 < step || step === 6 ? 'done' : i + 1 === step ? 'now' : ''}"></span>`).join('')}</div>`;
+    if (!building()) return '';
+    const label = step === 0 ? 'Waiting for the box to pick it up' : `Step ${step} of 6: ${STEPS[step - 1]}`;
+    return `${bar}<div class="muted">${esc(label)}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}`;
+  }
+  setInterval(() => { const el = document.getElementById('elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
 
   function queue(field, value, now) {
     pending[field] = value;
@@ -205,7 +227,7 @@ const config = {
   async function refresh() {
     try {
       const r = await api('/projects/' + P.id);
-      P = { ...P, status: r.status, previewUrl: r.previewUrl, buildNote: r.buildNote, check: r.check };
+      P = { ...P, status: r.status, previewUrl: r.previewUrl, buildNote: r.buildNote, check: r.check, buildStep: r.buildStep, buildActivity: r.buildActivity, buildStartedAt: r.buildStartedAt };
       paint();
       if (!['build-requested', 'building'].includes(P.status)) clearInterval(poll);
     } catch { /* next tick */ }
@@ -216,9 +238,9 @@ const config = {
     buildBtn.disabled = true;
     try {
       const r = await api('/projects/' + P.id + '/build', { method: 'POST', body: '{}' });
-      P.status = r.status; P.slug = r.slug; P.buildNote = 'Waiting for the box to pick it up.';
+      P.status = r.status; P.slug = r.slug; P.buildNote = null; P.buildStep = null; P.buildActivity = null; P.buildStartedAt = null;
       paint();
-      clearInterval(poll); poll = setInterval(refresh, 10000);
+      clearInterval(poll); poll = setInterval(refresh, 3000);
     } catch (e) { readyEl.textContent = e.message; paint(); }
   });
 
