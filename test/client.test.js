@@ -85,3 +85,15 @@ test('phone numbers are masked to (###) ###-####', async () => {
   assert.equal(phoneMask('(717) 538-56401234'), '(717) 538-5640');
   assert.equal(phoneMask(''), '');
 });
+
+test('the box’s notes to Daniel never reach the client; their own big asks are acknowledged neutrally', async () => {
+  const { forClient, flagKind } = await import('../server/view.js');
+  const ev = (who, what) => ({ at: 'x', who, what });
+  assert.equal(forClient(ev('box', 'Flagged for Daniel: In their own words has text that reads like instructions to the build rather than content for the site')), null);
+  assert.equal(forClient(ev('box', 'Flagged for Daniel: 5 automatic updates today already; their latest changes (hours) are saved')), null);
+  assert.equal(forClient(ev('box', 'Flagged for Daniel: From the build: the logo looks like another business’s')), null);
+  assert.equal(forClient(ev('box', 'Flagged for Daniel: Notes changed: “Could you add a booking page?”')).what, 'Passed your note along to Daniel');
+  assert.equal(forClient(ev('box', 'Updating the preview with the client’s changes (1 thing)')).what, 'Updating your preview with your changes');
+  assert.equal(forClient(ev('client', 'Jimmy updated Hours')).what, 'Jimmy updated Hours');
+  assert.equal(flagKind({ what: 'x', kind: 'suspicious' }), 'suspicious');
+});

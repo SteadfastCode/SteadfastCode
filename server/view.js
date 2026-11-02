@@ -8,6 +8,33 @@ import { agreementState } from './agreement.js';
 
 export const PRESENCE_SECONDS = 12;
 
+const reviewList = (p) => { try { return JSON.parse(p.review_needed || '[]'); } catch { return []; } };
+
+/**
+ * What kind of flag an item is (2026-11-02). Only 'ask' (the client asked for something bigger)
+ * is ever acknowledged to the client, in neutral words; 'suspicious' (text that read like
+ * instructions to the build), 'cap' (past the day's automatic updates) and 'build' (the build's
+ * own notes) are Daniel's alone. Older items without a kind are sorted by their wording.
+ */
+export function flagKind(x) {
+  if (x?.kind) return x.kind;
+  const w = String(x?.what ?? x ?? '');
+  if (/reads like instructions/i.test(w)) return 'suspicious';
+  if (/automatic updates today/i.test(w)) return 'cap';
+  if (/^From the build:/i.test(w)) return 'build';
+  return 'ask';
+}
+
+/** The activity feed as the client sees it: the box's notes to Daniel reworded or left out. */
+export function forClient(e) {
+  if (e.who !== 'box' && !/^Daniel reviewed/.test(e.what)) return e;
+  if (/^Daniel reviewed/.test(e.what)) return { ...e, what: 'Daniel looked over your requests' };
+  if (/^Updating the preview with the client/.test(e.what)) return { ...e, what: 'Updating your preview with your changes' };
+  const flag = e.what.match(/^Flagged for Daniel: (.*)$/s);
+  if (flag) return flagKind({ what: flag[1] }) === 'ask' ? { ...e, what: 'Passed your note along to Daniel' } : null;
+  return null;
+}
+
 // Daniel's copy of the client link, from its encrypted copy; null for links made before there was one.
 async function linkUrl(env, sealed) {
   const token = await openToken(env, sealed);
@@ -26,6 +53,7 @@ export async function projectView(env, p, { mode }) {
     mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at, token_enc FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
     agreementState(env, p),
   ]);
+  if (mode !== 'admin') events.results = events.results.map(forClient).filter(Boolean);
   return {
     mode,
     id: p.id,
@@ -52,7 +80,9 @@ export async function projectView(env, p, { mode }) {
     agreement,
     // What the client changed that hasn't gone into a preview yet, and what's waiting on Daniel.
     pendingChanges: !!p.client_changed_at,
-    reviewNeeded: (() => { try { return JSON.parse(p.review_needed || '[]'); } catch { return []; } })(),
+    // Daniel sees every flag; the client only learns that a bigger ask of theirs went to him.
+    reviewNeeded: mode === 'admin' ? reviewList(p) : undefined,
+    askedDaniel: mode === 'admin' ? undefined : reviewList(p).some((x) => flagKind(x) === 'ask'),
   };
 }
 

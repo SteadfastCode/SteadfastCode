@@ -362,7 +362,7 @@ export async function mountProject(o) {
     if (building()) lines.push('Your preview is updating with your latest changes.');
     else if (P.pendingChanges) lines.push('Your changes will show in your preview a few minutes after you stop.');
     else lines.push('Changes you make here go into your preview on their own, a few minutes after you stop.');
-    if (flagged.length) lines.push('Some of what you asked for is a bigger change, so Daniel will look at it himself.');
+    if (P.askedDaniel) lines.push('Some of what you asked for is a bigger change, so Daniel will look at it himself.');
     return lines.map((l) => `<p class="muted">${esc(l)}</p>`).join('');
   }
 
