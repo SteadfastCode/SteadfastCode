@@ -72,7 +72,8 @@ export async function mountProject(o) {
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
   // Before signing, the client's page has two tabs: the contract, and planning for a head start.
-  let tab = 'contract';
+  // Remembered for this browser tab, so a reload on Planning stays on Planning.
+  let tab = (() => { try { return sessionStorage.getItem('clientTab') === 'planning' ? 'planning' : 'contract'; } catch { return 'contract'; } })();
   const tabbed = () => gated() && P.agreement.reason !== 'no-package';
   const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + ':' + tab + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
 
@@ -240,7 +241,7 @@ export async function mountProject(o) {
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
-      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}
+      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
       ${updateLines()}`;
     const rv = root.querySelector('#markreviewed');
@@ -285,6 +286,7 @@ export async function mountProject(o) {
   function setTab(t) {
     if (tab === t) return;
     tab = t;
+    try { sessionStorage.setItem('clientTab', t); } catch {}
     scrollTo(0, 0);
     render();
   }
