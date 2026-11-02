@@ -40,14 +40,18 @@ function serve() {
 // Scroll through once so scroll-in animations settle on their final colors before contrast is measured.
 const settle = (p) => p.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 700) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 30)); } scrollTo(0, 0); });
 
-test('every page passes axe (WCAG A/AA) on desktop and phone, with and without increased contrast', { skip: !playwright && 'no Playwright on this machine', timeout: 600_000 }, async () => {
+test('every page passes axe (WCAG A/AA) in light and dark, on desktop and phone, with and without increased contrast', { skip: !playwright && 'no Playwright on this machine', timeout: 600_000 }, async () => {
   assert.ok(pages.length, 'run `yarn build` first');
   const server = await serve();
   const base = `http://127.0.0.1:${server.address().port}`;
   const browser = await playwright.chromium.launch();
   const problems = [];
   try {
-    for (const [label, opts] of [['desktop', { viewport: { width: 1280, height: 900 } }], ['phone', playwright.devices['iPhone 13']], ['phone, more contrast', { ...playwright.devices['iPhone 13'], contrast: 'more' }]]) {
+    const modes = [];
+    for (const scheme of ['light', 'dark']) {
+      modes.push([`desktop ${scheme}`, { viewport: { width: 1280, height: 900 }, colorScheme: scheme }], [`phone ${scheme}`, { ...playwright.devices['iPhone 13'], colorScheme: scheme }], [`phone ${scheme}, more contrast`, { ...playwright.devices['iPhone 13'], colorScheme: scheme, contrast: 'more' }]);
+    }
+    for (const [label, opts] of modes) {
       const ctx = await browser.newContext({ ...opts, reducedMotion: 'reduce' });
       const page = await ctx.newPage();
       for (const f of pages) {

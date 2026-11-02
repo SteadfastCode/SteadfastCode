@@ -122,7 +122,10 @@ test('every page counts visits only through its own /api/hit, and the privacy pa
   for (const p of pages) {
     const html = read(p);
     assert.match(html, /navigator\.sendBeacon\('\/api\/hit'/, `${rel(p)} lacks the Steadfast Analytics beacon`);
-    assert.doesNotMatch(html, /document\.cookie|localStorage|sessionStorage/, `${rel(p)} touches browser storage`);
+    // The one thing allowed in browser storage is the light/dark choice under the key 'theme'
+    // (2026-11-02, and the privacy page says so). Nothing else: no cookies, no session storage.
+    assert.doesNotMatch(html, /document\.cookie|sessionStorage/, `${rel(p)} touches browser storage`);
+    for (const m of html.matchAll(/localStorage\.(\w+)\(([^)]*)\)/g)) assert.match(m[2], /^'theme'/, `${rel(p)} uses localStorage for something other than the theme: ${m[0]}`);
   }
   const privacy = read(path.join(dist, 'privacy.html'));
   assert.match(privacy, /Steadfast Analytics/);

@@ -56,7 +56,8 @@ export function money(n: number, per?: string): string {
 // `scope` is the same promise in a form the admin intake and a client build can check against
 // (2026-11-01): it restates what each tier's `includes` says. `changeDays`: every package gets
 // unlimited changes within the package for 30 days from the first preview (Daniel, 2026-11-01,
-// replacing "two rounds of revisions" on Business and up).
+// replacing "two rounds of revisions" on Business and up). Accessibility is basic on every package
+// (Daniel, 2026-11-02): `accessibilityPass` now means the hands-on review Growth adds on top.
 export const websiteTiers = [
   {
     id: 'starter',
@@ -70,6 +71,7 @@ export const websiteTiers = [
       'One long-scroll page, written and designed around what you sell',
       'Mobile-first, plain custom code',
       'Built to load in well under a second on most phones and connections',
+      'Accessible from the start: built to WCAG 2.1 AA, light and dark mode, follows your visitors’ contrast, motion and text-size settings, and checked automatically on every version',
       'Contact form or booking link, click-to-call, map',
       'Google Business Profile set up or cleaned up',
       'Search basics done right: titles, descriptions, structured data, sitemap',
@@ -107,7 +109,7 @@ export const websiteTiers = [
       'Up to 15 pages, plus a friendly editor so you can change text and photos yourself',
       'Blog or resources section with a content plan for the first three months',
       'Integrations: scheduling, CRM, newsletter, payments, whatever you already use',
-      'Accessibility pass to WCAG 2.1 AA',
+      'A hands-on accessibility review to WCAG 2.1 AA: keyboard, screen reader and zoom, page by page',
       'Performance budget enforced in the build, so it stays fast after launch',
     ],
   },

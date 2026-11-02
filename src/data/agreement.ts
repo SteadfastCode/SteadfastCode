@@ -15,7 +15,7 @@
 
 import { business, money, websiteTiers, addOns, launchNote, domainNote } from './site.ts';
 
-export const AGREEMENT_VERSION = '2026-11-02c';
+export const AGREEMENT_VERSION = '2026-11-02d';
 
 type Tier = (typeof websiteTiers)[number];
 export type AgreementInput = {
@@ -117,6 +117,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
       p: [
         'Sites are built to load in well under a second on most phones and connections, but load times are also not a guarantee.',
         'I build the site to follow search engines’ guidelines, but nobody can promise rankings, traffic or sales, and I don’t.',
+        'No website can be certified as ADA compliant. I build and check to WCAG 2.1 AA, the standard websites are most commonly judged by for accessibility, and fix any accessibility problem you or a visitor reports.',
         'If something goes wrong, the most I’m responsible for is what you’ve paid me under this agreement.',
       ],
     },
