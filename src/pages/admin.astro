@@ -56,7 +56,8 @@ const config = {
   .error { color: var(--bad); }
   /* The build's progress stays at the top of the screen. Scrolled down it's just the bars; a tap
      (or hover with a mouse) shows the details again, and a tap pins it open or closed. */
-  #progress { position: sticky; top: 0; z-index: 5; margin: 0 -16px 14px; padding: 8px 16px 6px; background: var(--card); border-bottom: 1px solid var(--line); cursor: pointer; }
+  #progress { position: sticky; top: 0; z-index: 5; width: 100%; padding: 8px 16px 6px; background: var(--card); border-bottom: 1px solid var(--line); cursor: pointer; }
+  #progress .in { max-width: 728px; margin: 0 auto; }
   #progress .steps { margin: 2px 0 4px; }
   #progress .details { display: grid; gap: 2px; padding-bottom: 4px; }
   #progress.collapsed:not(.pinned) .details { display: none; }
@@ -72,6 +73,7 @@ const config = {
 </style>
 </head>
 <body>
+<div id="progress" role="button" tabindex="0" aria-expanded="true" hidden></div>
 <main id="app"><p class="muted">Loading…</p></main>
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" disabled>Start build</button></div></footer>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
@@ -94,6 +96,7 @@ const config = {
   // ---- Home: start from a package or a lead, or open a project ----
   async function home() {
     bar.hidden = true;
+    progressEl.hidden = true;
     app.innerHTML = '<h1>Client intake</h1><p class="muted">Loading…</p>';
     let leads = [], projects = [], err = '';
     try { [{ leads }, { projects }] = await Promise.all([api('/leads'), api('/projects')]); } catch (e) { err = e.message; }
@@ -155,7 +158,6 @@ const config = {
   function render() {
     const a = P.answers;
     app.innerHTML = `
-      <div id="progress" role="button" tabindex="0" aria-expanded="true" hidden></div>
       <p><a href="#">← All projects</a></p>
       <h1 id="title"></h1>
       <section class="card" id="status"></section>
@@ -166,10 +168,6 @@ const config = {
       const ev = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
       el.addEventListener(ev, () => queue(el.dataset.f, el.type === 'checkbox' ? el.checked : el.dataset.list ? el.value.split('\n') : el.value, ev === 'change'));
     });
-    const pr = document.getElementById('progress');
-    const toggle = () => { pr.classList.toggle('pinned'); pr.setAttribute('aria-expanded', String(!pr.classList.contains('collapsed') || pr.classList.contains('pinned'))); paint(); };
-    pr.addEventListener('click', (e) => { if (!e.target.closest('a')) toggle(); });
-    pr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     bar.hidden = false;
     paint();
   }
@@ -187,7 +185,8 @@ const config = {
     const pr = document.getElementById('progress');
     const ph = progressHtml();
     pr.hidden = !ph;
-    if (ph) pr.innerHTML = ph;
+    // The step bars run the full width of the window; the words stay in the page's column.
+    if (ph) pr.innerHTML = ph.replace(/(<div class="details">[\s\S]*<\/div>)$/, '<div class="in">$1</div>');
     const sc = document.getElementById('scope');
     sc.hidden = !c.scope.length;
     document.getElementById('scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join('');
@@ -258,6 +257,12 @@ const config = {
       clearInterval(poll); poll = setInterval(refresh, 3000);
     } catch (e) { readyEl.textContent = e.message; paint(); }
   });
+
+  // The progress bar lives outside the page column (full width), so it's wired once here.
+  const progressEl = document.getElementById('progress');
+  const toggleProgress = () => { progressEl.classList.toggle('pinned'); progressEl.setAttribute('aria-expanded', String(!progressEl.classList.contains('collapsed') || progressEl.classList.contains('pinned'))); };
+  progressEl.addEventListener('click', (e) => { if (!e.target.closest('a')) toggleProgress(); });
+  progressEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleProgress(); } });
 
   // Collapse to the bars once the page is scrolled; back to full at the top.
   addEventListener('scroll', () => {
