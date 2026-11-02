@@ -23,6 +23,8 @@ export async function agreementState(env, project) {
     signed: signed ? { id: signed.id, name: signed.signer_name, signedAt: signed.signed_at, version: signed.version, portfolioOk: signed.portfolio_ok, emailedTo: signed.emailed_to, valid } : null,
     needed: !valid,
     reason: !current ? 'no-package' : !signed ? 'unsigned' : valid ? null : 'changed',
+    // Daniel can let a client read it early and sign at the meeting (0 = review only).
+    signingOpen: project.signing_open !== 0,
   };
 }
 

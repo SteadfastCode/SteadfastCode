@@ -15,7 +15,7 @@
 
 import { business, money, websiteTiers, addOns, launchNote, domainNote } from './site.ts';
 
-export const AGREEMENT_VERSION = '2026-11-02d';
+export const AGREEMENT_VERSION = '2026-11-02e';
 
 type Tier = (typeof websiteTiers)[number];
 export type AgreementInput = {
@@ -55,7 +55,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
     {
       h: 'Who this is between',
       p: [
-        `This agreement is between ${business.owner} (${business.name}), ${business.city}, ${business.state}, “I” or “me” below, and ${client}, “you” below. It covers building your website in the ${tier.name} package. ${day}.`,
+        `This agreement is between ${business.owner} (${business.name}), ${business.city}, ${business.state}, “I” or “me” below, and ${client}, “you” and “your” below. It covers building your website in the ${tier.name} package. ${day}.`,
       ],
     },
     {

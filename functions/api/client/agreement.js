@@ -16,6 +16,7 @@ export async function onRequestPost({ request, env, data }) {
   const p = data.project;
   const state = await agreementState(env, p);
   if (!state.needed) return json({ ok: true, already: true, ...state });
+  if (!state.signingOpen) return json({ error: 'You’ll sign this together with Daniel at your meeting.' }, 403);
   const body = await request.json().catch(() => null);
   const c = checkSignature(body, state.current);
   if (c.error) return json({ error: c.error, stale: !!c.stale }, c.stale ? 409 : 400);

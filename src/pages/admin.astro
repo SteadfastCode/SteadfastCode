@@ -90,7 +90,7 @@ async function route() {
   const base = '/api/admin/projects/' + encodeURIComponent(m[1]);
   current = await mountProject({
     root: app, bar, progress, config: C, mode: 'admin', backHref: '#',
-    routes: { project: base, presence: base + '/presence', uploads: base + '/uploads', file: (id) => base + '/uploads/' + encodeURIComponent(id), build: base + '/build', link: base + '/link', agreement: base + '/agreement', },
+    routes: { project: base, presence: base + '/presence', uploads: base + '/uploads', file: (id) => base + '/uploads/' + encodeURIComponent(id), build: base + '/build', link: base + '/link', agreement: base + '/agreement', signing: base + '/signing', },
   });
 }
 addEventListener('hashchange', route);

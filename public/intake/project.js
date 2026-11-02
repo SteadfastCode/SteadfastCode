@@ -60,7 +60,7 @@ export async function mountProject(o) {
   const label = (f) => (!admin && f.you) || f.label;
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
 
   // ---- fields ----
   function fieldHtml(f) {
@@ -213,6 +213,8 @@ export async function mountProject(o) {
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}
       ${agreementLine()}`;
+    const so = root.querySelector('#signingopen');
+    if (so) so.onchange = async () => { so.disabled = true; try { await api(routes.signing, { method: 'POST', body: JSON.stringify({ open: so.checked }) }); await refresh(); } catch (e) { alert(e.message); so.checked = !so.checked; } so.disabled = false; };
     const view = root.querySelector('[data-signed]');
     if (view) view.onclick = async (e) => {
       e.preventDefault();
@@ -257,7 +259,8 @@ export async function mountProject(o) {
         <p class="muted">This is the agreement for your website: what's included, the price, and how changes and launch work. Once it's signed, this page opens up for planning your site together.</p>
       </section>
       <section class="card agreement"><h2>${esc(ag.current.title)}</h2>${agreementHtml(ag.current)}</section>
-      <section class="card" id="signbox">
+      ${ag.signingOpen ? '' : `<section class="card" id="reviewonly"><h2>Sign at our meeting</h2><p>You’ll sign this together with Daniel at our meeting. Feel free to read it over and bring any questions.</p></section>`}
+      <section class="card" id="signbox"${ag.signingOpen ? '' : ' hidden'}>
         <h2>Sign</h2>
         <label for="signname">Your full name</label>
         <input type="text" id="signname" autocomplete="name" placeholder="First and last name">
@@ -290,7 +293,8 @@ export async function mountProject(o) {
     if (ag.signed?.valid) return `<p class="muted">Agreement signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleString())}${ag.signed.portfolioOk === 1 ? ' · OK to show on the Work page' : ag.signed.portfolioOk === 0 ? ' · not on the Work page' : ''}. <a href="#" data-signed>View the signed copy</a></p><div id="signedcopy"></div>`;
     if (!admin) return '';
     if (ag.reason === 'no-package') return '<p class="muted">Agreement: picks up the package once it’s set.</p>';
-    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The package changed since the agreement was signed; the client will be asked to sign the updated one.' : 'Agreement not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${ag.current ? `<details><summary>Preview what they’ll sign</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>` : ''}`;
+    const toggle = `<label class="check"><input type="checkbox" id="signingopen"${ag.signingOpen ? ' checked' : ''}> Let them sign now</label><span class="help">${ag.signingOpen ? 'Turn off to let them read it ahead of the meeting without signing.' : 'Review only: they can read it, and sign once you turn this on.'}</span>`;
+    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The package changed since the agreement was signed; the client will be asked to sign the updated one.' : 'Agreement not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}${ag.current ? `<details><summary>Preview what they’ll sign</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>` : ''}`;
   }
 
   function paintBar() {
