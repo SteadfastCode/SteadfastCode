@@ -357,7 +357,7 @@ export async function mountProject(o) {
       if (c.ready && P.agreement?.needed) readyEl.textContent = 'Ready · waiting on the signed contract';
       buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : building() ? 'Building…' : P.failed ? 'Restart build' : 'Start build';
     } else {
-      readyEl.textContent = building() ? 'Your site is being built' : P.status === 'preview' ? (P.changedSinceBuild ? 'You’ve made changes since this preview' : 'Preview is up to date') : 'Daniel starts the first version';
+      readyEl.textContent = building() ? 'Your site is being built' : P.status === 'preview' ? (P.changedSinceBuild ? 'You’ve made changes since this preview' : 'Preview is up to date') : '';
       buildBtn.hidden = !(P.status === 'preview' || building());
       buildBtn.disabled = building() || !P.changedSinceBuild || !c.ready;
       buildBtn.textContent = building() ? 'Updating…' : 'Update my preview';
