@@ -43,10 +43,12 @@ const description = `Custom websites, built with AI coding tools, tested on real
           />
         ))}
       </div>
-      <p class="addon launch-note" id="launch-times">* {launchNote}</p>
-      {addOns.map((a) => (
-        <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
-      ))}
+      <div class="notes">
+        <p class="addon launch-note" id="launch-times">* {launchNote}</p>
+        {addOns.map((a) => (
+          <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
+        ))}
+      </div>
     </div>
   </section>
 
