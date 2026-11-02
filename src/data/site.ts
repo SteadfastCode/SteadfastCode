@@ -144,7 +144,7 @@ export const addOns = [
 // What every build has in common. Rendered once on /websites; the tiers above list only what
 // changes between them.
 // Shown with the launch windows: the quick end of each range depends on the client, not on us.
-export const launchNote = 'Launch times assume your content is ready: the words (or what you want them to say), photos, logo, and access to your domain. The quick end of each range is for when it all is. Waiting on any of it moves the date, never the price.';
+export const launchNote = 'Fast launch times assume your content is ready: the words (or what you want them to say), photos, logo, and access to your domain. The quick end of each range is for when it all is. Waiting on any of it moves the date, never the price.';
 
 export const everyBuild = [
   'Unlimited changes for 30 days from the day you first see your site: wording, photos, colors, layout, whatever it takes to make it yours, within your package. After that, changes come with a care plan or a quote.',
