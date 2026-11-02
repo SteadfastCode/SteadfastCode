@@ -54,6 +54,13 @@ const config = {
   footer.bar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
   #saved { min-width: 70px; }
   .error { color: var(--bad); }
+  /* The build's progress stays at the top of the screen. Scrolled down it's just the bars; a tap
+     (or hover with a mouse) shows the details again, and a tap pins it open or closed. */
+  #progress { position: sticky; top: 0; z-index: 5; margin: 0 -16px 14px; padding: 8px 16px 6px; background: var(--card); border-bottom: 1px solid var(--line); cursor: pointer; }
+  #progress .steps { margin: 2px 0 4px; }
+  #progress .details { display: grid; gap: 2px; padding-bottom: 4px; }
+  #progress.collapsed:not(.pinned) .details { display: none; }
+  @media (hover: hover) { #progress.collapsed:hover .details { display: grid; } }
   .steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 12px 0 6px; }
   .steps span { height: 8px; border-radius: 4px; background: var(--line); }
   .steps span.done { background: var(--ok); }
@@ -148,6 +155,7 @@ const config = {
   function render() {
     const a = P.answers;
     app.innerHTML = `
+      <div id="progress" role="button" tabindex="0" aria-expanded="true" hidden></div>
       <p><a href="#">← All projects</a></p>
       <h1 id="title"></h1>
       <section class="card" id="status"></section>
@@ -158,6 +166,10 @@ const config = {
       const ev = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
       el.addEventListener(ev, () => queue(el.dataset.f, el.type === 'checkbox' ? el.checked : el.dataset.list ? el.value.split('\n') : el.value, ev === 'change'));
     });
+    const pr = document.getElementById('progress');
+    const toggle = () => { pr.classList.toggle('pinned'); pr.setAttribute('aria-expanded', String(!pr.classList.contains('collapsed') || pr.classList.contains('pinned'))); paint(); };
+    pr.addEventListener('click', (e) => { if (!e.target.closest('a')) toggle(); });
+    pr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     bar.hidden = false;
     paint();
   }
@@ -169,10 +181,13 @@ const config = {
     const t = c.tier;
     document.getElementById('status').innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
-      ${progressHtml()}
       ${P.buildNote && !building() ? `<p class="muted" style="white-space:pre-line">${esc(P.buildNote)}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}`;
+    const pr = document.getElementById('progress');
+    const ph = progressHtml();
+    pr.hidden = !ph;
+    if (ph) pr.innerHTML = ph;
     const sc = document.getElementById('scope');
     sc.hidden = !c.scope.length;
     document.getElementById('scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join('');
@@ -192,9 +207,9 @@ const config = {
     if (!building() && P.status !== 'preview') return '';
     const step = P.status === 'preview' ? 6 : P.status === 'build-requested' ? 0 : (P.buildStep || 1);
     const bar = `<div class="steps" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${step}" aria-label="Build progress">${STEPS.map((_, i) => `<span class="${i + 1 < step || step === 6 ? 'done' : i + 1 === step ? 'now' : ''}"></span>`).join('')}</div>`;
-    if (!building()) return '';
+    if (!building()) return `${bar}<div class="details"><div class="muted">Preview ready · <a href="${esc(P.previewUrl || '#')}" target="_blank" rel="noopener">open it</a></div></div>`;
     const label = step === 0 ? 'Waiting for the box to pick it up' : `Step ${step} of 6: ${STEPS[step - 1]}`;
-    return `${bar}<div class="muted">${esc(label)}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}`;
+    return `${bar}<div class="details"><div class="muted">${esc(label)}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}</div>`;
   }
   setInterval(() => { const el = document.getElementById('elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
 
@@ -243,6 +258,15 @@ const config = {
       clearInterval(poll); poll = setInterval(refresh, 3000);
     } catch (e) { readyEl.textContent = e.message; paint(); }
   });
+
+  // Collapse to the bars once the page is scrolled; back to full at the top.
+  addEventListener('scroll', () => {
+    const pr = document.getElementById('progress');
+    if (!pr || pr.hidden) return;
+    const was = pr.classList.contains('collapsed');
+    pr.classList.toggle('collapsed', scrollY > 60);
+    if (was !== pr.classList.contains('collapsed')) { pr.setAttribute('aria-expanded', String(!pr.classList.contains('collapsed') || pr.classList.contains('pinned'))); }
+  }, { passive: true });
 
   window.addEventListener('beforeunload', (e) => { if (Object.keys(pending).length) { flush(); e.preventDefault(); } });
   const route = () => { clearInterval(poll); if (Object.keys(pending).length) flush(); const m = location.hash.match(/^#p\/([\w-]+)$/); m ? project(m[1]) : home(); };
