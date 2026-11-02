@@ -52,26 +52,27 @@ export function money(n: number, per?: string): string {
 // ------------------------------------------------------------------------------------ websites
 // A website is priced by what it has to do, not by the hour. Each tier is a fixed price with a
 // stated scope, and anything past that scope is quoted before it's built. `pages` is the ceiling
-// the price covers; `days` is the usual working-time to launch once the content is in hand.
+// the price covers; `days` is the launch window, which assumes the content is ready (`launchNote`).
 // `scope` is the same promise in a form the admin intake and a client build can check against
-// (2026-11-01): it restates only what each tier's `includes` says. Starter's revision rounds are
-// `null` because the tier doesn't promise a number yet — Daniel's call, not a default.
+// (2026-11-01): it restates what each tier's `includes` says. `changeDays`: every package gets
+// unlimited changes within the package for 30 days from the first preview (Daniel, 2026-11-01,
+// replacing "two rounds of revisions" on Business and up).
 export const websiteTiers = [
   {
     id: 'starter',
     name: 'Starter',
     price: 1500,
     pages: 1,
-    days: 'about a week',
+    days: '1 day to 2 weeks',
     who: 'A new business, a side business, or a campaign that needs one great page.',
-    scope: { pages: 1, revisionRounds: null, editor: 'add-on', copyHelp: false, serviceAreaPages: false, handoffCall: false, blog: false, integrations: false, accessibilityPass: false, store: false },
+    scope: { pages: 1, changeDays: 30, editor: 'add-on', copyHelp: false, serviceAreaPages: false, handoffCall: false, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
       'One long-scroll page, written and designed around what you sell',
       'Mobile-first, plain custom code, loads in well under a second',
       'Contact form or booking link, click-to-call, map',
       'Google Business Profile set up or cleaned up',
       'Search basics done right: titles, descriptions, structured data, sitemap',
-      'Launch on your domain with SSL, plus 30 days of fixes or tweaks after launch',
+      'Launch on your domain with SSL',
     ],
   },
   {
@@ -79,14 +80,13 @@ export const websiteTiers = [
     name: 'Business',
     price: 3900,
     pages: 6,
-    days: '2–3 weeks',
+    days: '1 day to 2 weeks',
     who: 'Most local businesses: a home page, services, about, contact, and room for a couple more.',
     featured: true,
-    scope: { pages: 6, revisionRounds: 2, editor: 'add-on', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: false, integrations: false, accessibilityPass: false, store: false },
+    scope: { pages: 6, changeDays: 30, editor: 'add-on', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
       'Everything in Starter',
       'Up to 6 pages, each one written to answer the question people actually search',
-      'Two rounds of revisions on a real, clickable site, not a mockup',
       'Photo and copy help, so you are not stuck writing it alone',
       'Local SEO foundation: service-area pages where they are honest, reviews wired in, schema on every page',
       'Forms that reach you by email or text and never silently drop a lead',
@@ -98,9 +98,9 @@ export const websiteTiers = [
     name: 'Growth',
     price: 6900,
     pages: 15,
-    days: '3–5 weeks',
+    days: '1–3 weeks',
     who: 'A business with a lot to say: many services, locations, a blog or resources, a team.',
-    scope: { pages: 15, revisionRounds: 2, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: false },
+    scope: { pages: 15, changeDays: 30, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: false },
     includes: [
       'Everything in Business',
       'Up to 15 pages, plus a friendly editor so you can change text and photos yourself',
@@ -116,9 +116,9 @@ export const websiteTiers = [
     price: 8500,
     from: true,
     pages: 15,
-    days: '4–6 weeks',
+    days: '2–4 weeks',
     who: 'Selling products online, from a dozen items to a few hundred.',
-    scope: { pages: 15, revisionRounds: 2, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: true },
+    scope: { pages: 15, changeDays: 30, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: true },
     includes: [
       'Everything in Growth',
       'Shopify or a headless store on a fast front end, depending on what you need',
@@ -143,7 +143,12 @@ export const addOns = [
 
 // What every build has in common. Rendered once on /websites; the tiers above list only what
 // changes between them.
+// Shown with the launch windows: the quick end of each range depends on the client, not on us.
+export const launchNote = 'Launch times assume your content is ready: the words (or what you want them to say), photos, logo, and access to your domain. The quick end of each range is for when it all is. Waiting on any of it moves the date, never the price.';
+
 export const everyBuild = [
+  'Unlimited changes for 30 days from the day you first see your site: wording, photos, colors, layout, whatever it takes to make it yours, within your package. After that, changes come with a care plan or a quote.',
+  'If something I built doesn’t work the way I said it would, I fix it free.',
   'Custom code, not a template or a page builder. AI coding tools write it, automated checks gate every build, and I direct the work and test the result on real phones. The code is yours, in a GitHub repository under your name if you want it.',
   'Built to score 100 on Google’s performance, accessibility and SEO checks, and tested on real phones before launch.',
   'No plugin sprawl, no monthly license fees for a theme, no surprise "your site needs updating" emails.',
@@ -327,11 +332,11 @@ export const process = [
   },
   {
     step: 'Revise',
-    text: 'Two rounds of changes are in the price, and small things in between are just a text. Copy, photos, order, colors, whatever it takes to make it yours.',
+    text: 'Unlimited changes for 30 days from the day you first see it, and small things are just a text. Copy, photos, order, colors, whatever it takes to make it yours.',
   },
   {
     step: 'Launch',
-    text: 'On your domain, with your Google Business Profile, search setup and forms all tested. Then 30 days of fixes or tweaks on me, and a care plan if you want someone keeping an eye on it.',
+    text: 'On your domain, with your Google Business Profile, search setup and forms all tested. Anything that doesn’t work the way I said gets fixed free, and a care plan is there if you want someone keeping an eye on it.',
   },
 ] as const;
 
@@ -343,7 +348,7 @@ export const faq = [
     a: 'Because I hate it when I cannot find a price. A fixed price for a stated scope is fairer to both of us: you know what you are getting into, and I know exactly what I\u2019m getting for it. If your project does not fit a tier, I will tell you a number before I start.',
   },
   {
-    q: 'How can you build a custom site in two or three weeks?',
+    q: 'How can a custom site be ready in days instead of months?',
     a: 'Honestly, two reasons. I do not use page builders or templates, so there is no fighting the tool, and I use AI coding tools heavily: they write most of the code. I decide what the site is and what it says, direct the work, test it on real phones, and nothing goes live until the automated checks pass. The thing that actually sets the schedule is usually getting the words and photos from you, so I help with those too.',
   },
   {

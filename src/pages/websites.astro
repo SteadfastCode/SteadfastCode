@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import PriceCard from '../components/PriceCard.astro';
 import Faq from '../components/Faq.astro';
 import Cta from '../components/Cta.astro';
-import { addOns, carePlans, everyBuild, faq, money, websiteTiers } from '../data/site';
+import { addOns, carePlans, everyBuild, faq, launchNote, money, websiteTiers } from '../data/site';
 import { faqPage } from '../lib/schema';
 
 const title = 'Website design and pricing — Steadfast Code, Lititz PA';
@@ -17,7 +17,7 @@ const description = `Custom websites, built with AI coding tools, tested on real
       <p class="answer">
         Every site is custom code, not a template: AI coding tools write it, automated checks run on every version before it can go live, and I test the result on real phones before you see it. The tiers below are the scopes I have found most businesses actually need, each with a fixed price and a usual timeline. If yours does not fit one, I will tell you a number before I start.
       </p>
-      <p class="lede">Half to start, half at launch. The site is yours outright when it is paid for, and the 30 days of fixes or tweaks after launch are included.</p>
+      <p class="lede">Half to start, half at launch. The site is yours outright when it is paid for, and 30 days of unlimited changes from your first preview are included.</p>
     </div>
   </section>
 
@@ -30,7 +30,7 @@ const description = `Custom websites, built with AI coding tools, tested on real
             name={t.name}
             price={`${'from' in t && t.from ? 'from ' : ''}${money(t.price)}`}
             priceNote="one time"
-            meta={`${t.pages === 1 ? 'One page' : `Up to ${t.pages} pages`} · ${t.days} to launch`}
+            meta={`${t.pages === 1 ? 'One page' : `Up to ${t.pages} pages`} · ${t.days} to launch*`}
             who={t.who}
             includes={t.includes}
             featured={'featured' in t && t.featured}
@@ -39,6 +39,7 @@ const description = `Custom websites, built with AI coding tools, tested on real
           />
         ))}
       </div>
+      <p class="addon launch-note" id="launch-times">* {launchNote}</p>
       {addOns.map((a) => (
         <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
       ))}
