@@ -75,3 +75,13 @@ test('the client page is private: noindex, no referrer, out of the sitemap, noth
   for (const m of html.matchAll(/(?:src|href)="(https?:)?\/\/([^"/]+)/g)) assert.equal(m[2], 'steadfastcode.tech');
   for (const f of fs.readdirSync(dist).filter((x) => x.startsWith('sitemap') && x.endsWith('.xml'))) assert.doesNotMatch(fs.readFileSync(path.join(dist, f), 'utf8'), /\/client/);
 });
+
+test('phone numbers are masked to (###) ###-####', async () => {
+  const { phoneMask } = await import('../public/intake/project.js');
+  assert.equal(phoneMask('7175385640'), '(717) 538-5640');
+  assert.equal(phoneMask('1 717 538 5640'), '(717) 538-5640');
+  assert.equal(phoneMask('717'), '(717');
+  assert.equal(phoneMask('71753'), '(717) 53');
+  assert.equal(phoneMask('(717) 538-56401234'), '(717) 538-5640');
+  assert.equal(phoneMask(''), '');
+});

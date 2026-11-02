@@ -18,6 +18,14 @@ const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).
 const clock = (t) => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`; };
 // Hours as the form holds them: an old free-text answer shows as the note.
 const normHours = (v) => (!v ? { mode: 'set', days: {}, note: '' } : typeof v === 'string' ? { mode: 'set', days: {}, note: v } : { mode: v.mode || 'set', days: v.days || {}, note: v.note || '' });
+// "(717) 538-5640" as it's typed: digits only, a leading 1 dropped, ten digits at most.
+export function phoneMask(value) {
+  const d = String(value || '').replace(/\D/g, '').replace(/^1(?=\d{10})/, '').slice(0, 10);
+  if (!d) return '';
+  if (d.length <= 3) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(iso).toLocaleDateString(); };
 
 /**
@@ -107,7 +115,9 @@ export async function mountProject(o) {
         break;
       default:
         lab = `<label for="${id}">${esc(label(f))}${req}${help}</label>`;
-        ctl = `<input type="${f.type}" id="${id}" data-f="${f.id}" value="${esc(v)}" autocomplete="off"${dis}>`;
+        ctl = f.type === 'tel'
+          ? `<input type="tel" id="${id}" data-f="${f.id}" data-mask="phone" value="${esc(phoneMask(v) || v || '')}" placeholder="(###) ###-####" inputmode="tel" autocomplete="tel"${dis}>`
+          : `<input type="${f.type}" id="${id}" data-f="${f.id}" value="${esc(v)}" autocomplete="off"${dis}>`;
     }
     return `<div class="field" data-field="${f.id}">${lab}<div class="ctl">${who}${ctl}</div>${after}</div>`;
   }
@@ -194,6 +204,17 @@ export async function mountProject(o) {
     root.querySelectorAll('[data-f]').forEach((el) => {
       if (el.dataset.kind === 'hours') wireHours(el);
       else {
+        if (el.dataset.mask === 'phone') {
+          let before = el.value;
+          el.addEventListener('beforeinput', () => { before = el.value; });
+          // Runs before the save listener below, so what's saved is the formatted number.
+          el.addEventListener('input', (e) => {
+            let next = phoneMask(el.value);
+            // Backspacing over ")", " " or "-" would otherwise put it straight back: drop a digit instead.
+            if (e.inputType === 'deleteContentBackward' && next === phoneMask(before) && before.length > el.value.length) next = phoneMask(before.replace(/\D/g, '').slice(0, -1));
+            el.value = next;
+          });
+        }
         const ev = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
         el.addEventListener(ev, () => queue(el.dataset.f, valueOf(el), ev === 'change'));
       }
