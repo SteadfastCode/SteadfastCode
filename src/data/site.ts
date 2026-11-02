@@ -147,6 +147,11 @@ export const addOns = [
 // Shown with the launch windows: the quick end of each range depends on the client, not on us.
 export const launchNote = 'Fast launch times assume your content is ready: the words (or what you want them to say), photos, logo, and access to your domain. Waiting on any of it moves the date, never the price.';
 
+// Who holds a client's domain (Daniel, 2026-11-02): always registered in their name and paid with
+// their card; it sits in Daniel's registrar account only while they're on a plan, and moves to theirs
+// for free on request. Shown under the care plans and in the agreement.
+export const domainNote = 'If you’d rather I handle the domain, I can keep it in my registrar account while you’re on a hosting or care plan, still registered in your name and paid with your card. If you leave the plan, or just ask, I transfer it to your own account for free.';
+
 export const everyBuild = [
   'Unlimited changes for 30 days from the day you first see your site: wording, photos, colors, layout, whatever it takes to make it yours, within your package. After that, changes come with a care plan or a quote.',
   'If something I built doesn’t work the way I said it would, I fix it free.',

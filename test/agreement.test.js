@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agreementFor, termsKey } from '../src/data/agreement.ts';
 import { checkSignature, sha256 } from '../server/agreement.js';
-import { websiteTiers, launchNote } from '../src/data/site.ts';
+import { websiteTiers, launchNote, domainNote } from '../src/data/site.ts';
 
 const base = { tier: 'starter', businessName: 'Joshua Lawn & Garden', contactName: 'Joshua Smith', email: 'j@example.com' };
 
@@ -19,6 +19,7 @@ test('the agreement carries the package, its full list, the price and the halves
   assert.doesNotMatch(a.text, /• Built to load/);
   assert.match(a.text, /load in well under a second on most phones and connections, but load times are also not a guarantee/);
   assert.match(a.text, /registered in your name and paid with your card/);
+  assert.ok(a.text.includes(domainNote), 'who holds the domain, word for word as on /websites');
   assert.match(a.text, /Half \(\$750\) is due when you sign.*The other half \(\$750\) is due at launch/s);
   assert.ok(a.text.includes(launchNote));
   assert.match(a.text, /plus any sales tax that applies/);

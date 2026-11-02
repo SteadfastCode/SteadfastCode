@@ -13,9 +13,9 @@
 // can start in the first meeting). "Daniel Ecker (Steadfast Code)" rather than "doing business as"
 // until the fictitious name is registered.
 
-import { business, money, websiteTiers, addOns, launchNote } from './site.ts';
+import { business, money, websiteTiers, addOns, launchNote, domainNote } from './site.ts';
 
-export const AGREEMENT_VERSION = '2026-11-02b';
+export const AGREEMENT_VERSION = '2026-11-02c';
 
 type Tier = (typeof websiteTiers)[number];
 export type AgreementInput = {
@@ -101,6 +101,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
       p: [
         'You’ll provide the content you want on the site (or tell me what you want it to say), and access to your domain and your Google Business Profile when it’s time to launch.',
         'If you don’t have a domain yet, I’ll help you buy one. Either way it’s registered in your name and paid with your card, so it’s yours.',
+        domainNote,
         'You confirm you have the right to use the words, photos and logos you give me, and that what you tell me about your business is true.',
       ],
     },
