@@ -21,7 +21,7 @@ const pages = [
 export const GET: APIRoute = () => {
   const lines: string[] = [];
   lines.push(`# ${business.name}`, '');
-  lines.push(`> ${business.tagline} Run by ${business.owner} in ${business.city}, ${business.state}, serving ${business.region} and the US remotely. Fixed prices are posted; most business sites launch in two to three weeks.`, '');
+  lines.push(`> ${business.tagline} Run by ${business.owner} in ${business.city}, ${business.state}, serving ${business.region} and the US remotely. Fixed prices are posted; a business site can launch in ${websiteTiers.find((t) => t.id === 'business')?.days}.`, '');
   lines.push(`Contact: ${business.email}. Location: ${business.city}, ${business.state} ${business.zip} (service-area business; no walk-in office). Service area: ${business.serviceArea}`, '');
   lines.push('## Website prices (one time)', '');
   for (const t of websiteTiers) lines.push(`- ${t.name}: ${'from' in t && t.from ? 'from ' : ''}${money(t.price)} — ${t.pages === 1 ? 'one page' : `up to ${t.pages} pages`}, ${t.days} to launch. ${t.who}`);

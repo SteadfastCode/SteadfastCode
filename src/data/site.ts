@@ -68,11 +68,12 @@ export const websiteTiers = [
     scope: { pages: 1, changeDays: 30, editor: 'add-on', copyHelp: false, serviceAreaPages: false, handoffCall: false, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
       'One long-scroll page, written and designed around what you sell',
-      'Mobile-first, plain custom code, loads in well under a second',
+      'Mobile-first, plain custom code',
+      'Built to load in well under a second on most phones and connections',
       'Contact form or booking link, click-to-call, map',
       'Google Business Profile set up or cleaned up',
       'Search basics done right: titles, descriptions, structured data, sitemap',
-      'Launch on your domain with SSL',
+      'Your domain and SSL set up for you. No domain yet? I’ll help you buy one, registered in your name',
     ],
   },
   {

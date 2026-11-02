@@ -15,7 +15,7 @@
 
 import { business, money, websiteTiers, addOns, launchNote } from './site.ts';
 
-export const AGREEMENT_VERSION = '2026-11-02';
+export const AGREEMENT_VERSION = '2026-11-02b';
 
 type Tier = (typeof websiteTiers)[number];
 export type AgreementInput = {
@@ -45,8 +45,10 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
   const half = Math.round(price / 2);
   const from = 'from' in tier && tier.from;
   const client = [a.contactName, a.businessName].filter(Boolean).join(', for ') || 'the client';
-  const included = tier.includes.filter((x) => !/^Everything in /.test(x));
-  const earlier = websiteTiers.slice(0, websiteTiers.indexOf(tier)).flatMap((t) => t.includes.filter((x) => !/^Everything in /.test(x)));
+  // Speed is a build target, not a deliverable: it's in "What I don't promise" below (Daniel, 2026-11-02).
+  const listed = (t: Tier) => t.includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x));
+  const included = listed(tier);
+  const earlier = websiteTiers.slice(0, websiteTiers.indexOf(tier)).flatMap(listed);
   const day = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
 
   const sections: { h: string; p: string[] }[] = [
@@ -98,6 +100,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
       h: 'Your part',
       p: [
         'You’ll provide the content you want on the site (or tell me what you want it to say), and access to your domain and your Google Business Profile when it’s time to launch.',
+        'If you don’t have a domain yet, I’ll help you buy one. Either way it’s registered in your name and paid with your card, so it’s yours.',
         'You confirm you have the right to use the words, photos and logos you give me, and that what you tell me about your business is true.',
       ],
     },
@@ -111,7 +114,8 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
     {
       h: 'What I don’t promise',
       p: [
-        'I build the site to be fast and to follow search engines’ guidelines, but nobody can promise rankings, traffic or sales, and I don’t.',
+        'Sites are built to load in well under a second on most phones and connections, but load times are also not a guarantee.',
+        'I build the site to follow search engines’ guidelines, but nobody can promise rankings, traffic or sales, and I don’t.',
         'If something goes wrong, the most I’m responsible for is what you’ve paid me under this agreement.',
       ],
     },

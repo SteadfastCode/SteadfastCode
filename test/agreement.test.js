@@ -14,7 +14,11 @@ test('the agreement carries the package, its full list, the price and the halves
   assert.equal(a.price, 1500);
   assert.match(a.text, /Joshua Smith, for Joshua Lawn & Garden/);
   assert.match(a.text, /The Starter package: one page/);
-  for (const line of websiteTiers[0].includes) assert.ok(a.text.includes(line), line);
+  for (const line of websiteTiers[0].includes.filter((x) => !/well under a second/.test(x))) assert.ok(a.text.includes(line), line);
+  // Speed is a target, said once, as not a guarantee (Daniel, 2026-11-02).
+  assert.doesNotMatch(a.text, /• Built to load/);
+  assert.match(a.text, /load in well under a second on most phones and connections, but load times are also not a guarantee/);
+  assert.match(a.text, /registered in your name and paid with your card/);
   assert.match(a.text, /Half \(\$750\) is due when you sign.*The other half \(\$750\) is due at launch/s);
   assert.ok(a.text.includes(launchNote));
   assert.match(a.text, /plus any sales tax that applies/);
@@ -23,7 +27,7 @@ test('the agreement carries the package, its full list, the price and the halves
 test('higher packages spell out everything they include, not "Everything in ..."', () => {
   const g = agreementFor({ ...base, tier: 'growth' });
   assert.doesNotMatch(g.text, /Everything in /);
-  for (const t of websiteTiers.slice(0, 3)) for (const line of t.includes.filter((x) => !/^Everything in /.test(x))) assert.ok(g.text.includes(line), line);
+  for (const t of websiteTiers.slice(0, 3)) for (const line of t.includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x))) assert.ok(g.text.includes(line), line);
 });
 
 test('the editor add-on adds its price on Starter and Business, and is ignored where it is included', () => {
