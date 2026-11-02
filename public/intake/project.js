@@ -306,7 +306,7 @@ export async function mountProject(o) {
       <h1>Before we start</h1>
       <section class="card">
         ${ag.reason === 'changed' ? '<p class="error">Your package changed since you signed, so here is the updated contract.</p>' : ''}
-        <p class="muted">This is the contract for your website: what's included, the price, and how changes and launch work. Once it's signed, this page opens up for planning your site together.</p>
+        <p class="muted">This is the contract for your website: what's included, the price, and how changes and launch work. You can read it here and start planning in the Planning tab any time; building starts once it's signed.</p>
       </section>
       <section class="card agreement"><h2>${esc(ag.current.title)}</h2>${agreementHtml(ag.current)}</section>
       ${ag.signingOpen ? '' : `<section class="card" id="reviewonly"><h2>Sign at our meeting</h2><p>We’ll sign this together at our meeting. Feel free to read it over and bring any questions.</p><p>If you have info you’d like to start filling in now, tap the <a href="#" data-tab="planning">Planning</a> tab at the bottom of the screen to get a head start!</p></section>`}
