@@ -70,31 +70,41 @@ export async function mountProject(o) {
     const id = 'f-' + f.id;
     const who = `<span class="who" data-who="${f.id}" hidden></span>`;
     const req = f.required ? ' *' : '';
-    let body;
+    // Each field is its label, then its control in a .ctl box; the "is editing" badge sits on that
+    // box's top border, so it lands in the same place whatever the label and help text above it.
+    let lab = '';
+    let ctl;
+    let after = '';
     switch (f.type) {
       case 'tier':
-        body = `<div class="tiers">${C.tiers.map((t) => `<button type="button" data-tier="${t.id}" aria-pressed="${v === t.id}"${dis}><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}</div>${editable ? '' : help}`;
+        ctl = `<div class="tiers">${C.tiers.map((t) => `<button type="button" data-tier="${t.id}" aria-pressed="${v === t.id}"${dis}><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}</div>`;
+        after = editable ? '' : help;
         break;
       case 'bool':
-        body = `<label class="check"><input type="checkbox" id="${id}" data-f="${f.id}" ${v ? 'checked' : ''}${dis}> ${esc(label(f))}${f.id === 'editor' && C.editorPrice ? ` (+${money(C.editorPrice)})` : ''}</label>${help}`;
+        ctl = `<label class="check"><input type="checkbox" id="${id}" data-f="${f.id}" ${v ? 'checked' : ''}${dis}> ${esc(label(f))}${f.id === 'editor' && C.editorPrice ? ` (+${money(C.editorPrice)})` : ''}</label>`;
+        after = help;
         break;
-      case 'hours': {
-        body = `<label>${esc(label(f))}${req}${help}</label><div class="hours" data-f="${f.id}" data-kind="hours">${hoursInner(normHours(v), editable)}</div>`;
+      case 'hours':
+        lab = `<label>${esc(label(f))}${req}${help}</label>`;
+        ctl = `<div class="hours" data-f="${f.id}" data-kind="hours">${hoursInner(normHours(v), editable)}</div>`;
         break;
-      }
       case 'choice':
-        body = `<label for="${id}">${esc(label(f))}${req}${help}</label><select id="${id}" data-f="${f.id}"${dis}><option value=""></option>${f.options.map((x) => { const val = x.value ?? x; return `<option value="${esc(val)}"${v === val ? ' selected' : ''}>${esc((!admin && x.you) || val)}</option>`; }).join('')}</select>`;
+        lab = `<label for="${id}">${esc(label(f))}${req}${help}</label>`;
+        ctl = `<select id="${id}" data-f="${f.id}"${dis}><option value=""></option>${f.options.map((x) => { const val = x.value ?? x; return `<option value="${esc(val)}"${v === val ? ' selected' : ''}>${esc((!admin && x.you) || val)}</option>`; }).join('')}</select>`;
         break;
       case 'list': case 'pages':
-        body = `<label for="${id}">${esc(label(f))}${req}${help}${f.type === 'pages' ? '<span class="help count" id="pagecount"></span>' : ''}</label><textarea id="${id}" data-f="${f.id}" data-list="1"${dis}>${esc((v || []).join('\n'))}</textarea>`;
+        lab = `<label for="${id}">${esc(label(f))}${req}${help}${f.type === 'pages' ? '<span class="help count" id="pagecount"></span>' : ''}</label>`;
+        ctl = `<textarea id="${id}" data-f="${f.id}" data-list="1"${dis}>${esc((v || []).join('\n'))}</textarea>`;
         break;
       case 'textarea':
-        body = `<label for="${id}">${esc(label(f))}${req}${help}</label><textarea id="${id}" data-f="${f.id}"${dis}>${esc(v)}</textarea>`;
+        lab = `<label for="${id}">${esc(label(f))}${req}${help}</label>`;
+        ctl = `<textarea id="${id}" data-f="${f.id}"${dis}>${esc(v)}</textarea>`;
         break;
       default:
-        body = `<label for="${id}">${esc(label(f))}${req}${help}</label><input type="${f.type}" id="${id}" data-f="${f.id}" value="${esc(v)}" autocomplete="off"${dis}>`;
+        lab = `<label for="${id}">${esc(label(f))}${req}${help}</label>`;
+        ctl = `<input type="${f.type}" id="${id}" data-f="${f.id}" value="${esc(v)}" autocomplete="off"${dis}>`;
     }
-    return `<div class="field" data-field="${f.id}">${who}${body}</div>`;
+    return `<div class="field" data-field="${f.id}">${lab}<div class="ctl">${who}${ctl}</div>${after}</div>`;
   }
 
   // ---- hours: day boxes with open/close times, 24/7, by appointment, and a copy-to-all ----

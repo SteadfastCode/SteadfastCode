@@ -54,8 +54,9 @@
   [hidden] { display: none !important; }
 
   /* The shared form (public/intake/project.js) */
-  .field { position: relative; }
-  .who { position: absolute; right: 0; top: 12px; font-size: .75rem; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); }
+  /* The "is editing" badge sits on the top border of the control, the same spot on every field. */
+  .ctl { position: relative; }
+  .who { position: absolute; right: 12px; top: 0; transform: translateY(-50%); z-index: 1; pointer-events: none; font-size: .75rem; line-height: 1.5; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 2px var(--card); }
   .changed { box-shadow: 0 0 0 2px var(--ok); transition: box-shadow .3s; }
   input:disabled, textarea:disabled, select:disabled { opacity: .75; cursor: not-allowed; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
