@@ -94,3 +94,13 @@
   #savetoast { position: fixed; top: 12px; right: 12px; z-index: 7; background: var(--card); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .85rem; opacity: 0; transition: opacity .3s; pointer-events: none; }
   #savetoast.show { opacity: 1; }
   #savetoast.error { color: var(--bad); border-color: var(--bad); opacity: 1; }
+  /* Admin header and nav (2026-11-02): a real header instead of bare links between the admin pages. */
+  .admin-head { background: var(--card); border-bottom: 1px solid var(--line); }
+  .admin-head .in { max-width: 760px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
+  .admin-head .mark { font-weight: 700; }
+  .admin-head nav { display: flex; gap: 4px; }
+  .admin-head nav a { text-decoration: none; color: var(--muted); font-weight: 600; padding: 8px 12px; border-radius: 8px; }
+  .admin-head nav a:hover { color: var(--ink); background: var(--hover); }
+  .admin-head nav a[aria-current="page"] { color: var(--ink); background: var(--hover); box-shadow: inset 0 -2px 0 var(--accent); }
+  a.back { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--muted); font-weight: 600; padding: 6px 12px 6px 8px; border: 1px solid var(--line); border-radius: 999px; }
+  a.back:hover { color: var(--ink); border-color: var(--accent); background: var(--hover); }

@@ -193,7 +193,7 @@ export async function mountProject(o) {
     const sel = focus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const y = scrollY;
     root.innerHTML = `
-      ${o.backHref ? `<p><a href="${o.backHref}">← All projects</a></p>` : ''}
+      ${o.backHref ? `<p><a class="back" href="${o.backHref}"><span aria-hidden="true">‹</span> All projects</a></p>` : ''}
       <h1 id="title"></h1>
       ${admin ? '' : '<p class="muted">This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.</p>'}
       <section class="card" id="status"></section>
