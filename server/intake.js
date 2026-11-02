@@ -137,7 +137,7 @@ export function check(answers) {
       scope.push(`Content editor add-on: +$${editor.price.toLocaleString('en-US')}.`);
     }
   }
-  for (const item of answers.outOfScope ?? []) scope.push(`Outside the package, quote separately: ${item}`);
+  for (const item of answers.outOfScope ?? []) scope.push(`Extra, quoted separately: ${item}`);
   const price = tier ? tier.price + (answers.editor && tier.scope.editor === 'add-on' ? addOns.find((a) => a.id === 'editor').price : 0) : null;
   return { ready: missing.length === 0, missing, scope, price, tier: tier ? { id: tier.id, name: tier.name, price: tier.price, from: !!tier.from, scope: tier.scope } : null };
 }

@@ -57,7 +57,7 @@ test('ready means the required answers are in; scope notes name everything past 
   assert.match(over.scope[0], /7 pages; Business covers 6\. Growth covers up to 15/);
   assert.ok(over.scope.some((s) => /Integrations \(Calendly\)/.test(s)));
   assert.ok(over.scope.some((s) => /Content editor add-on: \+\$500/.test(s)));
-  assert.ok(over.scope.some((s) => /quote separately: Logo design/.test(s)));
+  assert.ok(over.scope.some((s) => /quoted separately: Logo design/.test(s)));
   assert.equal(over.price, 3900 + 500);
   assert.equal(check({ ...base, tier: 'growth', editor: true }).price, 6900, 'Growth includes the editor');
   assert.equal(check({}).ready, false);

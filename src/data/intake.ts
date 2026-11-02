@@ -13,7 +13,8 @@
 //
 // Shared with the client (2026-11-01): their page at /client shows this same form, live, and they
 // can edit every field except the ones marked `owner: 'daniel'` — the package, the add-on and the
-// out-of-scope list, which set the price; they can see them, but only Daniel changes them. Pages
+// out-of-scope list, which set the price; they can see them, but only Daniel changes them (the
+// out-of-scope list shows to them through the scope card, not as a field: `clientHidden`). Pages
 // are theirs to edit too (Daniel, 2026-11-01): going past the package shows a scope note to both
 // sides at once, and nothing a client types changes the price. Nothing is hidden from them;
 // Daniel's call, to build trust. `you` is the question as the client reads it, where the wording
@@ -113,9 +114,13 @@ export const intakeSections = [
   },
   {
     id: 'extras',
-    title: 'Outside the package',
+    title: 'Extras and notes',
+    you: 'Anything else',
     fields: [
-      { id: 'outOfScope', label: 'Asked for, not covered', type: 'list', help: 'Anything past the package, one per line. Quoted separately before it is built.', owner: 'daniel', you: 'Asked for, outside the package' },
+      // Daniel's list of extras he's agreed to price; the client sees each one in "Past the package"
+      // (the scope card), so the field itself isn't on their form (2026-11-02: it read as a second,
+      // locked request box beside Notes).
+      { id: 'outOfScope', label: 'Extras to quote', type: 'list', help: 'What you’ve agreed to price separately, one per line. They see these under “Past the package.”', owner: 'daniel', clientHidden: true },
       { id: 'notes', label: 'Notes', type: 'textarea', you: 'Bigger changes or anything else', youHelp: 'New pages, new features, a different layout: Daniel looks at these himself.' },
     ],
   },

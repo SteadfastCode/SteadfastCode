@@ -25,7 +25,7 @@ test('a client can change everything except the package and what sets the scope'
 test('every question, help line and dropdown answer has client wording, or wording that already works for them', () => {
   // The question and the help line under it, as the client reads them (Daniel caught the help lines, 2026-11-01).
   for (const sec of intakeSections) assert.doesNotMatch(sec.you || sec.title, /\b(they|their|them|theirs)\b/i, `section "${sec.you || sec.title}" talks about the client in the third person`);
-  for (const f of intakeSections.flatMap((s) => s.fields)) {
+  for (const f of intakeSections.flatMap((s) => s.fields).filter((f) => !f.clientHidden)) {
     const answers = (f.options || []).map((o) => o.you || o.value || o);
     for (const text of [f.you || f.label, f.youHelp || f.help, ...answers].filter(Boolean)) assert.doesNotMatch(text, /\b(they|their|them|theirs)\b/i, `${f.id}: "${text}" talks about the client in the third person`);
   }

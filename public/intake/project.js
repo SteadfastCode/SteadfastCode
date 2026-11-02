@@ -66,7 +66,7 @@ export async function mountProject(o) {
     return j;
   };
   const tierOf = (id) => C.tiers.find((t) => t.id === id);
-  const applies = (x) => !x.tiers || (P.answers.tier && x.tiers.includes(P.answers.tier));
+  const applies = (x) => (!x.clientHidden || admin) && (!x.tiers || (P.answers.tier && x.tiers.includes(P.answers.tier)));
   const canEdit = (f) => admin || (P.editable || []).includes(f.id);
   const label = (f) => (!admin && f.you) || f.label;
   const building = () => ['build-requested', 'building'].includes(P.status);
