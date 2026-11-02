@@ -179,7 +179,7 @@ const config = {
     const t = c.tier;
     document.getElementById('status').innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
-      ${P.buildNote && !building() ? `<p class="muted" style="white-space:pre-line">${esc(P.buildNote)}</p>` : ''}
+      ${P.buildNote && !building() ? `<p class="${/^(Build failed|The box restarted)/.test(P.buildNote) ? 'error' : 'muted'}" style="white-space:pre-line">${esc(P.buildNote)}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}`;
     const pr = document.getElementById('progress');
@@ -195,7 +195,10 @@ const config = {
     readyEl.textContent = c.ready ? (c.scope.length ? `Ready · ${c.scope.length} scope note${c.scope.length === 1 ? '' : 's'}` : 'Ready') : `${c.missing.length} to go`;
     const canBuild = c.ready && ['intake', 'preview'].includes(P.status);
     buildBtn.disabled = !canBuild;
-    buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : ['build-requested', 'building'].includes(P.status) ? 'Building…' : 'Start build';
+    // A failed or interrupted build starts over from the top (nothing resumes mid-session), so
+    // the button says Restart rather than Continue; the reason it stopped is on the status card.
+    const stopped = P.status === 'intake' && /^(Build failed|The box restarted)/.test(P.buildNote || '');
+    buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : building() ? 'Building…' : stopped ? 'Restart build' : 'Start build';
   }
 
   // Live build progress: the step the box is on, what the session is doing, and the time so far.
