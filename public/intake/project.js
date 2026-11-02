@@ -186,7 +186,7 @@ export async function mountProject(o) {
   function render() {
     paintTabs();
     if (gated() && (tab === 'contract' || !tabbed())) return renderAgreement();
-    bar.hidden = false; // the contract screen hides it; the form always shows it
+    if (admin) bar.hidden = false; // the client's bar shows only with a build or preview (paintBar)
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
     const sel = focus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const y = scrollY;
@@ -359,6 +359,7 @@ export async function mountProject(o) {
     } else {
       readyEl.textContent = building() ? 'Your site is being built' : P.status === 'preview' ? (P.changedSinceBuild ? 'You’ve made changes since this preview' : 'Preview is up to date') : '';
       buildBtn.hidden = !(P.status === 'preview' || building());
+      bar.hidden = buildBtn.hidden;
       buildBtn.disabled = building() || !P.changedSinceBuild || !c.ready;
       buildBtn.textContent = building() ? 'Updating…' : 'Update my preview';
     }
@@ -450,10 +451,23 @@ export async function mountProject(o) {
   }
 
   // ---- saving ----
+  // The save status: in the bar on Daniel's side; on the client's, a small note in the corner that
+  // fades, since their bar only appears once there's a build or preview to show (Daniel, 2026-11-02).
+  let toastTimer = null;
+  function saved(text, error = false) {
+    savedEl.innerHTML = error ? `<span class="error">${esc(text)}</span>` : esc(text);
+    if (admin || !bar.hidden) return;
+    let t = document.getElementById('savetoast');
+    if (!t) { t = document.createElement('div'); t.id = 'savetoast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = text;
+    t.className = error ? 'error show' : 'show';
+    clearTimeout(toastTimer);
+    if (!error && text === 'Saved') toastTimer = setTimeout(() => { t.className = ''; }, 1500);
+  }
   function queue(field, value, now) {
     pending[field] = value;
     localEditAt[field] = Date.now();
-    savedEl.textContent = 'Saving…';
+    saved('Saving…');
     clearTimeout(saveTimer);
     saveTimer = setTimeout(flush, now ? 0 : 700);
   }
@@ -464,11 +478,11 @@ export async function mountProject(o) {
     if (!Object.keys(patch).length) return;
     try {
       const r = await api(routes.project, { method: 'PATCH', body: JSON.stringify({ answers: patch }) });
-      savedEl.textContent = Object.keys(pending).length ? 'Saving…' : 'Saved';
+      saved(Object.keys(pending).length ? 'Saving…' : 'Saved');
       apply(r);
     } catch (e) {
       pending = { ...patch, ...pending };
-      savedEl.innerHTML = '<span class="error">Not saved</span>';
+      saved('Not saved', true);
       readyEl.textContent = e.message;
       clearTimeout(saveTimer);
       saveTimer = setTimeout(flush, 5000);
@@ -526,7 +540,7 @@ export async function mountProject(o) {
   // ---- start ----
   root.innerHTML = '<p class="muted">Loading…</p>';
   try { P = await api(routes.project); } catch (e) { root.innerHTML = `<p class="error">${esc(e.message)}</p>${o.backHref ? `<p><a href="${o.backHref}">Back</a></p>` : ''}`; return { stop() {} }; }
-  bar.hidden = false;
+  if (admin) bar.hidden = false;
   render();
   pollTimer = setInterval(() => { if (!stopped && document.visibilityState === 'visible' && !Object.keys(pending).length) refresh(); }, POLL_MS);
   addEventListener('beforeunload', (e) => { if (Object.keys(pending).length) { flush(); e.preventDefault(); } });
