@@ -2,6 +2,7 @@
 // token comes as a bearer header; image GETs may carry it as ?t= because an <img> can't send headers.
 // Writes only from this site's own pages. Not behind Cloudflare Access: the link is the login.
 import { hashToken } from '../../../server/client.js';
+import { agreementState } from '../../../server/agreement.js';
 
 export const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -24,6 +25,11 @@ export async function onRequest(context) {
   }
   context.data.link = link;
   context.data.project = project;
+  // The agreement comes first (2026-11-02): until it's signed for the current package, the only
+  // change a client can make is signing it. Reading their page is fine; it shows the agreement.
+  if (request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/client/agreement') {
+    if ((await agreementState(env, project)).needed) return json({ error: 'Sign the agreement first.', needsAgreement: true }, 403);
+  }
   try {
     return await context.next();
   } catch (err) {

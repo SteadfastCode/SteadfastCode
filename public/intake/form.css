@@ -77,3 +77,8 @@
   .hday select { padding: 8px; }
   .hday select:disabled { opacity: .4; }
   .hcopy { justify-self: start; font-size: .9rem; padding: 8px 12px; }
+  .agreement h3 { font-size: 1rem; margin: 18px 0 6px; }
+  .agreement p { margin: 0 0 8px; }
+  #signbox .check { margin-top: 14px; }
+  pre.signed { white-space: pre-wrap; font: inherit; font-size: .9rem; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: 420px; overflow: auto; }
+  details summary { cursor: pointer; color: var(--accent); }

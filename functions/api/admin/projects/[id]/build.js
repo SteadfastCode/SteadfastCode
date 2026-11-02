@@ -3,6 +3,7 @@
 // `client-<slug>`, and writes status, build_note and preview_url back here.
 import { json } from '../../_middleware.js';
 import { check, slugFor } from '../../../../../server/intake.js';
+import { agreementState } from '../../../../../server/agreement.js';
 
 export async function onRequestPost({ env, params }) {
   const p = await env.INTAKE.prepare('SELECT * FROM projects WHERE id = ?').bind(params.id).first();
@@ -11,6 +12,9 @@ export async function onRequestPost({ env, params }) {
   const c = check(answers);
   if (!c.ready) return json({ error: `Still missing: ${c.missing.map((m) => m.label).join(', ')}.` }, 409);
   if (!['intake', 'preview'].includes(p.status)) return json({ error: `A build is already ${p.status}.` }, 409);
+  // The deposit is non-refundable once a build starts, so a build waits for the signed agreement.
+  const ag = await agreementState(env, p);
+  if (ag.needed) return json({ error: ag.reason === 'changed' ? 'The package changed since the agreement was signed. The client needs to sign the updated one first.' : 'The client needs to sign the agreement before the build starts.' }, 409);
   let slug = p.slug;
   if (!slug) {
     const base = slugFor(answers.businessName);

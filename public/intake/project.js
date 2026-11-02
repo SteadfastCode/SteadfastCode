@@ -59,7 +59,8 @@ export async function mountProject(o) {
   const canEdit = (f) => admin || (P.editable || []).includes(f.id);
   const label = (f) => (!admin && f.you) || f.label;
   const building = () => ['build-requested', 'building'].includes(P.status);
-  const shape = () => C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  const gated = () => !admin && P.agreement?.needed;
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
 
   // ---- fields ----
   function fieldHtml(f) {
@@ -169,6 +170,7 @@ export async function mountProject(o) {
 
   // ---- render: the whole form; repaint: the parts that change without touching what's typed ----
   function render() {
+    if (gated()) return renderAgreement();
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
     const sel = focus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const y = scrollY;
@@ -209,7 +211,15 @@ export async function mountProject(o) {
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
-      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}`;
+      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}
+      ${agreementLine()}`;
+    const view = root.querySelector('[data-signed]');
+    if (view) view.onclick = async (e) => {
+      e.preventDefault();
+      const box = root.querySelector('#signedcopy');
+      if (box.innerHTML) { box.innerHTML = ''; return; }
+      try { const a = await api(routes.agreement + '?signed=1'); box.innerHTML = `<pre class="signed">${esc(a.text)}\n\nSigned electronically by ${esc(a.signer_name || a.name)} on ${esc(new Date(a.signed_at || a.signedAt).toLocaleString())}.\nFingerprint (SHA-256): ${esc(a.sha256)}</pre>`; } catch (err) { box.textContent = err.message; }
+    };
     const sc = root.querySelector('#scope');
     sc.hidden = !c.scope.length;
     root.querySelector('#scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join('');
@@ -229,12 +239,67 @@ export async function mountProject(o) {
     paintBar();
   }
 
+  // ---- the agreement: on the client's page it comes first, until it's signed ----
+  const agreementHtml = (a) => a.sections.map((x) => `<h3>${esc(x.h)}</h3>${x.p.map((t) => `<p>${esc(t)}</p>`).join('')}`).join('');
+
+  function renderAgreement() {
+    const ag = P.agreement;
+    progress.hidden = true;
+    bar.hidden = true;
+    if (ag.reason === 'no-package' || !ag.current) {
+      root.innerHTML = `<h1>Your website</h1><section class="card"><p>Daniel is setting up your project. This page updates on its own as soon as it's ready for you.</p></section>`;
+      return;
+    }
+    root.innerHTML = `
+      <h1>Before we start</h1>
+      <section class="card">
+        ${ag.reason === 'changed' ? '<p class="error">Your package changed since you signed, so here is the updated agreement.</p>' : ''}
+        <p class="muted">This is the agreement for your website: what's included, the price, and how changes and launch work. Once it's signed, this page opens up for planning your site together.</p>
+      </section>
+      <section class="card agreement"><h2>${esc(ag.current.title)}</h2>${agreementHtml(ag.current)}</section>
+      <section class="card" id="signbox">
+        <h2>Sign</h2>
+        <label for="signname">Your full name</label>
+        <input type="text" id="signname" autocomplete="name" placeholder="First and last name">
+        <label class="check"><input type="checkbox" id="signagree"> I agree to this agreement, and to signing it electronically.</label>
+        <label class="check"><input type="checkbox" id="signportfolio"> It's OK to show my finished site on Steadfast Code's Work page.</label><span class="help">Optional, and separate from the agreement.</span>
+        <p><button type="button" class="primary" id="signbtn" disabled>Sign and continue</button> <span id="signnote" class="muted"></span></p>
+      </section>`;
+    const name = root.querySelector('#signname'), agree = root.querySelector('#signagree'), btn = root.querySelector('#signbtn'), note = root.querySelector('#signnote');
+    const ready = () => { btn.disabled = !(agree.checked && /\S+\s+\S+/.test(name.value.trim())); };
+    name.addEventListener('input', ready);
+    agree.addEventListener('change', ready);
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      note.textContent = 'Signing…';
+      try {
+        const r = await api(routes.agreement, { method: 'POST', body: JSON.stringify({ name: name.value, agreed: agree.checked, sha256: ag.current.sha256, portfolio: root.querySelector('#signportfolio').checked }) });
+        note.textContent = r.mailedTo?.length ? 'Signed. A copy is on its way to your email.' : 'Signed.';
+        await refresh();
+      } catch (e) {
+        note.innerHTML = `<span class="error">${esc(e.message)}</span>`;
+        ready();
+        if (/changed while you were reading/.test(e.message)) await refresh();
+      }
+    });
+  }
+
+  function agreementLine() {
+    const ag = P.agreement;
+    if (!ag) return '';
+    if (ag.signed?.valid) return `<p class="muted">Agreement signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleString())}${ag.signed.portfolioOk === 1 ? ' · OK to show on the Work page' : ag.signed.portfolioOk === 0 ? ' · not on the Work page' : ''}. <a href="#" data-signed>View the signed copy</a></p><div id="signedcopy"></div>`;
+    if (!admin) return '';
+    if (ag.reason === 'no-package') return '<p class="muted">Agreement: picks up the package once it’s set.</p>';
+    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The package changed since the agreement was signed; the client will be asked to sign the updated one.' : 'Agreement not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${ag.current ? `<details><summary>Preview what they’ll sign</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>` : ''}`;
+  }
+
   function paintBar() {
     const c = P.check;
     if (admin) {
       readyEl.textContent = c.ready ? (c.scope.length ? `Ready · ${c.scope.length} scope note${c.scope.length === 1 ? '' : 's'}` : 'Ready') : `${c.missing.length} to go`;
       buildBtn.hidden = false;
-      buildBtn.disabled = !(c.ready && ['intake', 'preview'].includes(P.status));
+      buildBtn.disabled = !(c.ready && ['intake', 'preview'].includes(P.status) && !P.agreement?.needed);
+      if (c.ready && P.agreement?.needed) readyEl.textContent = 'Ready · waiting on the signed agreement';
       buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : building() ? 'Building…' : P.failed ? 'Restart build' : 'Start build';
     } else {
       readyEl.textContent = building() ? 'Your site is being built' : P.status === 'preview' ? (P.changedSinceBuild ? 'You’ve made changes since this preview' : 'Preview is up to date') : 'Daniel starts the first version';
@@ -349,6 +414,8 @@ export async function mountProject(o) {
     // Unsaved local edits win over what the server says until they're saved.
     P = { ...r, answers: { ...r.answers, ...pending } };
     if (before !== shape()) return render();
+    // On the agreement screen there's nothing else to update, and redrawing would wipe a half-typed name.
+    if (gated()) return;
     for (const el of root.querySelectorAll('[data-f]')) {
       const f = el.dataset.f;
       if (el.contains(document.activeElement) || f in pending || Date.now() - (localEditAt[f] || 0) < 4000) continue;

@@ -4,6 +4,7 @@
 
 import { check } from './intake.js';
 import { clientStatus, clientEditable } from './client.js';
+import { agreementState } from './agreement.js';
 
 export const PRESENCE_SECONDS = 12;
 
@@ -11,12 +12,13 @@ export async function projectView(env, p, { mode }) {
   const answers = JSON.parse(p.answers);
   const db = env.INTAKE;
   const since = new Date(Date.now() - PRESENCE_SECONDS * 1000).toISOString();
-  const [uploads, events, presence, lastBuild, link] = await Promise.all([
+  const [uploads, events, presence, lastBuild, link, agreement] = await Promise.all([
     db.prepare('SELECT id, kind, filename, content_type, bytes, caption, source, uploaded_at FROM uploads WHERE project_id = ? AND deleted_at IS NULL ORDER BY uploaded_at').bind(p.id).all(),
     db.prepare('SELECT at, who, what FROM project_events WHERE project_id = ? ORDER BY id DESC LIMIT 20').bind(p.id).all(),
     db.prepare('SELECT who, name, field FROM presence WHERE project_id = ? AND at > ? AND who != ?').bind(p.id, since, mode === 'admin' ? 'daniel' : 'client').all(),
     db.prepare('SELECT finished_at FROM builds WHERE project_id = ? AND ok = 1 ORDER BY finished_at DESC LIMIT 1').bind(p.id).first(),
     mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
+    agreementState(env, p),
   ]);
   return {
     mode,
@@ -39,6 +41,7 @@ export async function projectView(env, p, { mode }) {
     changedSinceBuild: !!(p.preview_url && lastBuild && p.updated_at > lastBuild.finished_at),
     clientLink: link ? { createdAt: link.created_at, expiresAt: link.expires_at, lastUsedAt: link.last_used_at } : null,
     failed: clientStatus(p).failed,
+    agreement,
   };
 }
 
