@@ -59,7 +59,7 @@ export function clientStatus(p) {
   const building = p.status === 'build-requested' || p.status === 'building';
   return {
     building,
-    step: p.status === 'preview' ? 6 : p.status === 'build-requested' ? 0 : building ? (p.build_step || 1) : null,
+    step: p.status === 'preview' ? 8 : p.status === 'build-requested' ? 0 : building ? (p.build_step || 1) : null,
     note: building ? p.build_note : null,
     activity: building ? p.build_activity : null,
     startedAt: building ? p.build_started_at : null,

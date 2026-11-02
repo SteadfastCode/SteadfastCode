@@ -8,7 +8,9 @@
 // the other screen shows "<name> is editing" on it instead.
 
 const POLL_MS = 2000;
-const STEPS = ['Picked up', 'Setting up', 'Building', 'Checking', 'Publishing', 'Done'];
+// The stages the build service reports (steadfast-ai scripts/client-builds.mjs, build_step 1–8).
+const STEPS = ['Picked up', 'Setting up', 'Reading the brief', 'Writing the site', 'Running the checks', 'Final check', 'Publishing', 'Done'];
+const LAST = STEPS.length;
 const statusLabel = { intake: 'Getting started', 'build-requested': 'Build requested', building: 'Building', preview: 'Preview ready', live: 'Live', closed: 'Closed' };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const money = (n, from) => (from ? 'from ' : '') + '$' + Number(n).toLocaleString('en-US');
@@ -368,10 +370,10 @@ export async function mountProject(o) {
   function paintProgress() {
     let html = '';
     if (building() || P.status === 'preview') {
-      const step = P.status === 'preview' ? 6 : P.status === 'build-requested' ? 0 : (P.buildStep || 1);
-      const steps = `<div class="steps" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${step}" aria-label="Build progress">${STEPS.map((_, i) => `<span class="${i + 1 < step || step === 6 ? 'done' : i + 1 === step ? 'now' : ''}"></span>`).join('')}</div>`;
+      const step = P.status === 'preview' ? LAST : P.status === 'build-requested' ? 0 : Math.min(P.buildStep || 1, LAST);
+      const steps = `<div class="steps" role="progressbar" aria-valuemin="0" aria-valuemax="${LAST}" aria-valuenow="${step}" aria-label="Build progress">${STEPS.map((_, i) => `<span class="${i + 1 < step || step === LAST ? 'done' : i + 1 === step ? 'now' : ''}"></span>`).join('')}</div>`;
       const details = building()
-        ? `<div class="muted">${step === 0 ? 'Waiting for the build to start' : `Step ${step} of 6: ${STEPS[step - 1]}`}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}`
+        ? `<div class="muted">${step === 0 ? 'Waiting for the build to start' : `Step ${step} of ${LAST}: ${STEPS[step - 1]}`}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}`
         : `<div class="muted">Preview ready · <a href="${esc(P.previewUrl || '#')}" target="_blank" rel="noopener">open it</a></div>`;
       html = `${steps}<div class="in"><div class="details">${details}</div></div>`;
     }

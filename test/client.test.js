@@ -56,7 +56,7 @@ test('link tokens are long and random, and only their hash is kept', async () =>
 test('a client sees a plain build status; a failed build is flagged but not explained to them', () => {
   assert.deepEqual(clientStatus({ status: 'building', build_step: 3, build_note: 'x', build_activity: 'Writing', build_started_at: 't', preview_url: null }).step, 3);
   assert.equal(clientStatus({ status: 'intake', build_note: 'Build failed: git push' }).failed, true);
-  assert.equal(clientStatus({ status: 'preview', preview_url: 'https://stdfst-x.pages.dev' }).step, 6);
+  assert.equal(clientStatus({ status: 'preview', preview_url: 'https://stdfst-x.pages.dev' }).step, 8);
 });
 
 test('the client API refuses a missing, malformed or unknown link', async () => {
