@@ -97,6 +97,8 @@
   /* Admin header and nav (2026-11-02): a real header instead of bare links between the admin pages. */
   .admin-head { background: var(--card); border-bottom: 1px solid var(--line); }
   .admin-head .in { max-width: 760px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
+  /* Sticky where nothing else holds the top (the usage page); /admin keeps its sticky progress bar there. */
+  .admin-head.stick { position: sticky; top: 0; z-index: 5; }
   .admin-head .mark { font-weight: 700; }
   .admin-head nav { display: flex; gap: 4px; }
   .admin-head nav a { text-decoration: none; color: var(--muted); font-weight: 600; padding: 8px 12px; border-radius: 8px; }
