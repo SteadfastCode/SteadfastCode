@@ -23,6 +23,10 @@ test('the agreement carries the package, its full list, the price and the halves
   assert.match(a.text, /Half \(\$750\) is due when you sign.*The other half \(\$750\) is due at launch/s);
   assert.ok(a.text.includes(launchNote));
   assert.match(a.text, /plus any sales tax that applies/);
+  // A contract, by that name, with the footer credit the client can remove (Daniel, 2026-11-02).
+  assert.match(a.text, /^Website contract — /);
+  assert.doesNotMatch(a.text, /\bagreement\b/i);
+  assert.match(a.text, /small “Built by Steadfast Code” link\. It’s yours to keep or remove; just ask\./);
 });
 
 test('higher packages spell out everything they include, not "Everything in ..."', () => {

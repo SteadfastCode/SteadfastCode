@@ -14,7 +14,7 @@ export async function onRequestPost({ env, params }) {
   if (!['intake', 'preview'].includes(p.status)) return json({ error: `A build is already ${p.status}.` }, 409);
   // The deposit is non-refundable once a build starts, so a build waits for the signed agreement.
   const ag = await agreementState(env, p);
-  if (ag.needed) return json({ error: ag.reason === 'changed' ? 'The package changed since the agreement was signed. The client needs to sign the updated one first.' : 'The client needs to sign the agreement before the build starts.' }, 409);
+  if (ag.needed) return json({ error: ag.reason === 'changed' ? 'The package changed since the contract was signed. The client needs to sign the updated one first.' : 'The client needs to sign the contract before the build starts.' }, 409);
   let slug = p.slug;
   if (!slug) {
     const base = slugFor(answers.businessName);

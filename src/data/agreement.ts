@@ -15,7 +15,7 @@
 
 import { business, money, websiteTiers, addOns, launchNote, domainNote } from './site.ts';
 
-export const AGREEMENT_VERSION = '2026-11-02e';
+export const AGREEMENT_VERSION = '2026-11-02f';
 
 type Tier = (typeof websiteTiers)[number];
 export type AgreementInput = {
@@ -55,7 +55,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
     {
       h: 'Who this is between',
       p: [
-        `This agreement is between ${business.owner} (${business.name}), ${business.city}, ${business.state}, “I” or “me” below, and ${client}, “you” and “your” below. It covers building your website in the ${tier.name} package. ${day}.`,
+        `This contract is between ${business.owner} (${business.name}), ${business.city}, ${business.state}, “I” or “me” below, and ${client}, “you” and “your” below. It covers building your website in the ${tier.name} package. ${day}.`,
       ],
     },
     {
@@ -72,7 +72,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
       p: [
         `${from ? 'The price for your store, as we agreed it, starts at' : 'The price is'} ${money(price)}${editor ? ` (${money(tier.price)} for ${tier.name}, plus ${money(editorAddOn.price)} for the content editor)` : ''}, plus any sales tax that applies.`,
         `Half (${money(half)}) is due when you sign, to start. The other half (${money(price - half)}) is due at launch.`,
-        'Hosting and care plans are separate, month to month, and optional. Nothing in this agreement signs you up for one.',
+        'Hosting and care plans are separate, month to month, and optional. Nothing in this contract signs you up for one.',
       ],
     },
     {
@@ -110,6 +110,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
       p: [
         'Once it’s paid in full, the site is yours: its content, its design and its code. I hand the code over at launch, and you can host it anywhere.',
         'Tools and building blocks I use across projects stay mine, and you get a permanent, free license to use them as part of your site.',
+        'Your site’s footer includes a small “Built by Steadfast Code” link. It’s yours to keep or remove; just ask.',
       ],
     },
     {
@@ -118,18 +119,18 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
         'Sites are built to load in well under a second on most phones and connections, but load times are also not a guarantee.',
         'I build the site to follow search engines’ guidelines, but nobody can promise rankings, traffic or sales, and I don’t.',
         'No website can be certified as ADA compliant. I build and check to WCAG 2.1 AA, the standard websites are most commonly judged by for accessibility, and fix any accessibility problem you or a visitor reports.',
-        'If something goes wrong, the most I’m responsible for is what you’ve paid me under this agreement.',
+        'If something goes wrong, the most I’m responsible for is what you’ve paid me under this contract.',
       ],
     },
     {
       h: 'The fine print',
       p: [
         'Either of us can end this in writing. If you do, the deposit section above applies; if I do before launch, I refund what you’ve paid.',
-        'This agreement is governed by Pennsylvania law. It’s the whole agreement for this website; anything we add later is in writing (an email is fine).',
+        'This contract is governed by Pennsylvania law. It’s the whole contract for this website; anything we add later is in writing (an email is fine).',
         'By typing your name and ticking the box below, you agree to sign electronically, and that your electronic signature counts the same as one on paper. You’ll get a copy by email.',
       ],
     },
   ];
-  const text = [`Website agreement — ${business.name}`, `Version ${AGREEMENT_VERSION}`, '', ...sections.flatMap((s) => [s.h.toUpperCase(), ...s.p, ''])].join('\n');
-  return { title: `Website agreement — ${tier.name}`, version: AGREEMENT_VERSION, price, sections, text, key: termsKey(a) };
+  const text = [`Website contract — ${business.name}`, `Version ${AGREEMENT_VERSION}`, '', ...sections.flatMap((s) => [s.h.toUpperCase(), ...s.p, ''])].join('\n');
+  return { title: `Website contract — ${tier.name}`, version: AGREEMENT_VERSION, price, sections, text, key: termsKey(a) };
 }

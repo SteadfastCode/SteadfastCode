@@ -28,7 +28,7 @@ export async function onRequest(context) {
   // The agreement comes first (2026-11-02): until it's signed for the current package, the only
   // change a client can make is signing it. Reading their page is fine; it shows the agreement.
   if (request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/client/agreement') {
-    if ((await agreementState(env, project)).needed) return json({ error: 'Sign the agreement first.', needsAgreement: true }, 403);
+    if ((await agreementState(env, project)).needed) return json({ error: 'Sign the contract first.', needsAgreement: true }, 403);
   }
   try {
     return await context.next();

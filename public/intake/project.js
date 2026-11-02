@@ -255,17 +255,17 @@ export async function mountProject(o) {
     root.innerHTML = `
       <h1>Before we start</h1>
       <section class="card">
-        ${ag.reason === 'changed' ? '<p class="error">Your package changed since you signed, so here is the updated agreement.</p>' : ''}
-        <p class="muted">This is the agreement for your website: what's included, the price, and how changes and launch work. Once it's signed, this page opens up for planning your site together.</p>
+        ${ag.reason === 'changed' ? '<p class="error">Your package changed since you signed, so here is the updated contract.</p>' : ''}
+        <p class="muted">This is the contract for your website: what's included, the price, and how changes and launch work. Once it's signed, this page opens up for planning your site together.</p>
       </section>
       <section class="card agreement"><h2>${esc(ag.current.title)}</h2>${agreementHtml(ag.current)}</section>
-      ${ag.signingOpen ? '' : `<section class="card" id="reviewonly"><h2>Sign at our meeting</h2><p>You’ll sign this together with Daniel at our meeting. Feel free to read it over and bring any questions.</p></section>`}
+      ${ag.signingOpen ? '' : `<section class="card" id="reviewonly"><h2>Sign at our meeting</h2><p>We’ll sign this together at our meeting. Feel free to read it over and bring any questions.</p></section>`}
       <section class="card" id="signbox"${ag.signingOpen ? '' : ' hidden'}>
         <h2>Sign</h2>
         <label for="signname">Your full name</label>
         <input type="text" id="signname" autocomplete="name" placeholder="First and last name">
-        <label class="check"><input type="checkbox" id="signagree"> I agree to this agreement, and to signing it electronically.</label>
-        <label class="check"><input type="checkbox" id="signportfolio"> It's OK to show my finished site on Steadfast Code's Work page.</label><span class="help">Optional, and separate from the agreement.</span>
+        <label class="check"><input type="checkbox" id="signagree"> I agree to this contract, and to signing it electronically.</label>
+        <label class="check"><input type="checkbox" id="signportfolio"> It's OK to show my finished site on Steadfast Code's Work page.</label><span class="help">Optional, and separate from the contract.</span>
         <p><button type="button" class="primary" id="signbtn" disabled>Sign and continue</button> <span id="signnote" class="muted"></span></p>
       </section>`;
     const name = root.querySelector('#signname'), agree = root.querySelector('#signagree'), btn = root.querySelector('#signbtn'), note = root.querySelector('#signnote');
@@ -290,11 +290,11 @@ export async function mountProject(o) {
   function agreementLine() {
     const ag = P.agreement;
     if (!ag) return '';
-    if (ag.signed?.valid) return `<p class="muted">Agreement signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleString())}${ag.signed.portfolioOk === 1 ? ' · OK to show on the Work page' : ag.signed.portfolioOk === 0 ? ' · not on the Work page' : ''}. <a href="#" data-signed>View the signed copy</a></p><div id="signedcopy"></div>`;
+    if (ag.signed?.valid) return `<p class="muted">Contract signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleString())}${ag.signed.portfolioOk === 1 ? ' · OK to show on the Work page' : ag.signed.portfolioOk === 0 ? ' · not on the Work page' : ''}. <a href="#" data-signed>View the signed copy</a></p><div id="signedcopy"></div>`;
     if (!admin) return '';
-    if (ag.reason === 'no-package') return '<p class="muted">Agreement: picks up the package once it’s set.</p>';
+    if (ag.reason === 'no-package') return '<p class="muted">Contract: picks up the package once it’s set.</p>';
     const toggle = `<label class="check"><input type="checkbox" id="signingopen"${ag.signingOpen ? ' checked' : ''}> Let them sign now</label><span class="help">${ag.signingOpen ? 'Turn off to let them read it ahead of the meeting without signing.' : 'Review only: they can read it, and sign once you turn this on.'}</span>`;
-    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The package changed since the agreement was signed; the client will be asked to sign the updated one.' : 'Agreement not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}${ag.current ? `<details><summary>Preview what they’ll sign</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>` : ''}`;
+    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The package changed since the contract was signed; the client will be asked to sign the updated one.' : 'Contract not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}${ag.current ? `<details><summary>Preview what they’ll sign</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>` : ''}`;
   }
 
   function paintBar() {
@@ -303,7 +303,7 @@ export async function mountProject(o) {
       readyEl.textContent = c.ready ? (c.scope.length ? `Ready · ${c.scope.length} scope note${c.scope.length === 1 ? '' : 's'}` : 'Ready') : `${c.missing.length} to go`;
       buildBtn.hidden = false;
       buildBtn.disabled = !(c.ready && ['intake', 'preview'].includes(P.status) && !P.agreement?.needed);
-      if (c.ready && P.agreement?.needed) readyEl.textContent = 'Ready · waiting on the signed agreement';
+      if (c.ready && P.agreement?.needed) readyEl.textContent = 'Ready · waiting on the signed contract';
       buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : building() ? 'Building…' : P.failed ? 'Restart build' : 'Start build';
     } else {
       readyEl.textContent = building() ? 'Your site is being built' : P.status === 'preview' ? (P.changedSinceBuild ? 'You’ve made changes since this preview' : 'Preview is up to date') : 'Daniel starts the first version';

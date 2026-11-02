@@ -34,7 +34,7 @@ export function checkSignature(body, current) {
   if (name.length < 3 || !/\s/.test(name) || name.length > 120) return { error: 'Type your full name (first and last) to sign.' };
   if (body?.agreed !== true) return { error: 'Tick the box to agree and sign.' };
   if (!current) return { error: 'There’s no package on this project yet, so nothing to sign.' };
-  if (body?.sha256 !== current.sha256) return { error: 'The agreement changed while you were reading it. Read the updated one and sign again.', stale: true };
+  if (body?.sha256 !== current.sha256) return { error: 'The contract changed while you were reading it. Read the updated one and sign again.', stale: true };
   return { name, portfolioOk: typeof body.portfolio === 'boolean' ? (body.portfolio ? 1 : 0) : null };
 }
 
@@ -46,7 +46,7 @@ export async function emailSignedCopy(env, { to, name, signedAt, text, sha, ip, 
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${env.RESEND_API_KEY}` },
-    body: JSON.stringify({ from: env.CONTACT_FROM || 'Steadfast Code <site@steadfastcode.tech>', to: recipients, reply_to: env.CONTACT_TO || 'support@steadfastcode.tech', subject: `Your signed website agreement — ${business || 'Steadfast Code'}`, text: body }),
+    body: JSON.stringify({ from: env.CONTACT_FROM || 'Steadfast Code <site@steadfastcode.tech>', to: recipients, reply_to: env.CONTACT_TO || 'support@steadfastcode.tech', subject: `Your signed website contract — ${business || 'Steadfast Code'}`, text: body }),
   }).catch(() => null);
   return r?.ok ? recipients : [];
 }

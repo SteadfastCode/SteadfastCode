@@ -16,7 +16,7 @@ export async function onRequestPost({ request, env, data }) {
   const p = data.project;
   const state = await agreementState(env, p);
   if (!state.needed) return json({ ok: true, already: true, ...state });
-  if (!state.signingOpen) return json({ error: 'You’ll sign this together with Daniel at your meeting.' }, 403);
+  if (!state.signingOpen) return json({ error: 'We’ll sign this together at our meeting.' }, 403);
   const body = await request.json().catch(() => null);
   const c = checkSignature(body, state.current);
   if (c.error) return json({ error: c.error, stale: !!c.stale }, c.stale ? 409 : 400);
@@ -27,7 +27,7 @@ export async function onRequestPost({ request, env, data }) {
   const id = crypto.randomUUID();
   await env.INTAKE.prepare('INSERT INTO agreements (id, project_id, version, terms_key, text, sha256, signer_name, signed_at, ip, user_agent, link_id, portfolio_ok) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(id, p.id, state.current.version, state.current.key, state.current.text, state.current.sha256, c.name, now, ip, ua, data.link.id, c.portfolioOk).run();
-  await logEvent(env, p.id, 'client', `${c.name} signed the website agreement${c.portfolioOk === 1 ? ' (and said yes to showing the site on the Work page)' : ''}`);
+  await logEvent(env, p.id, 'client', `${c.name} signed the website contract${c.portfolioOk === 1 ? ' (and said yes to showing the site on the Work page)' : ''}`);
   // The copy goes out after the signature is recorded; a mail failure never undoes a signing.
   const mailed = await emailSignedCopy(env, { to: answers.email, name: c.name, signedAt: now, text: state.current.text, sha: state.current.sha256, ip, business: answers.businessName });
   if (mailed.length) await env.INTAKE.prepare('UPDATE agreements SET emailed_to = ? WHERE id = ?').bind(mailed.join(', '), id).run();

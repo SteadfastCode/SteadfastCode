@@ -8,6 +8,6 @@ export async function onRequestPost({ request, env, params }) {
   if (typeof body.open !== 'boolean') return json({ error: 'Send { open: true | false }.' }, 400);
   const r = await env.INTAKE.prepare('UPDATE projects SET signing_open = ?, updated_at = ? WHERE id = ?').bind(body.open ? 1 : 0, new Date().toISOString(), params.id).run();
   if (!r.meta?.changes) return json({ error: 'No such project.' }, 404);
-  await logEvent(env, params.id, 'daniel', body.open ? 'Daniel opened the agreement for signing' : 'Daniel set the agreement to review only');
+  await logEvent(env, params.id, 'daniel', body.open ? 'Daniel opened the contract for signing' : 'Daniel set the contract to review only');
   return json({ ok: true, open: body.open });
 }
