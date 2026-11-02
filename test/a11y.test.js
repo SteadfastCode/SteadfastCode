@@ -78,7 +78,11 @@ test('every page reflows at 320 px wide (no sideways scrolling), and the first T
       await page.goto(base + route(f), { waitUntil: 'load' });
       const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
       if (over > 1) problems.push(`${route(f)} scrolls sideways by ${over}px at 320px`);
+      // Focus the page and let the browser apply :focus before reading it; reading in the same
+      // tick sometimes saw the skip link still parked off-screen.
+      await page.bringToFront();
       await page.keyboard.press('Tab');
+      await page.waitForTimeout(50);
       const first = await page.evaluate(() => { const el = document.activeElement; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { text: el.textContent.trim(), href: el.getAttribute('href'), visible: r.width > 0 && r.left >= 0 && r.top >= 0, outline: cs.outlineStyle !== 'none' || cs.boxShadow !== 'none' }; });
       if (!/skip to content/i.test(first.text) || !first.href?.startsWith('#')) problems.push(`${route(f)} first Tab lands on "${first.text.slice(0, 40)}", not a skip link`);
       else if (!first.visible) problems.push(`${route(f)} skip link doesn't appear when focused`);
