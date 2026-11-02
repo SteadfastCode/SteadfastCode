@@ -5,11 +5,13 @@ interface Props { items: readonly { readonly q: string; readonly a: string }[]; 
 const { items, heading = 'Questions people ask' } = Astro.props;
 ---
 <h2>{heading}</h2>
-<dl class="faq">
+{/* Each question is a <details>: the summary is the question, the paragraph its answer. Not a <dl>:
+    a <details> can't sit inside one, and screen readers lost the list (axe, 2026-11-02). */}
+<div class="faq">
   {items.map((item, i) => (
     <details data-reveal style={`--i:${Math.min(i, 6)}`} open={i === 0}>
-      <summary><dt>{item.q}</dt></summary>
-      <dd>{item.a}</dd>
+      <summary><span class="q">{item.q}</span></summary>
+      <p class="a">{item.a}</p>
     </details>
   ))}
-</dl>
+</div>

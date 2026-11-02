@@ -75,9 +75,9 @@ const description = `Local SEO from ${money(local.price, 'mo')} and a one-time s
   <section class="block soft">
     <div class="wrap narrow">
       <h2>Questions people ask</h2>
-      <dl class="faq">
-        {seoFaq.map((item, i) => <details data-reveal style={`--i:${i}`} open={i === 0}><summary><dt>{item.q}</dt></summary><dd>{item.a}</dd></details>)}
-      </dl>
+      <div class="faq">
+        {seoFaq.map((item, i) => <details data-reveal style={`--i:${i}`} open={i === 0}><summary><span class="q">{item.q}</span></summary><p class="a">{item.a}</p></details>)}
+      </div>
     </div>
   </section>
 

@@ -151,15 +151,15 @@ ol.steps p { margin: 0; color: var(--muted); }
 ul.checks { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .7rem; }
 ul.checks li { padding-left: 1.7rem; position: relative; }
 ul.checks li::before { content: ''; position: absolute; left: 0; top: .45rem; width: .8rem; height: .45rem; border-left: 2.5px solid var(--cyan); border-bottom: 2.5px solid var(--cyan); transform: rotate(-45deg); filter: drop-shadow(0 0 4px var(--cyan)); }
-dl.faq { margin: 1rem 0 0; display: grid; gap: .5rem; }
-dl.faq details { background: var(--surface); border-radius: 12px; box-shadow: var(--glow-blue); padding: 0 1.2rem; }
-dl.faq details[open] { box-shadow: var(--glow-blue-strong); }
-dl.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem 0; font-weight: 600; color: #fff; }
-dl.faq summary::-webkit-details-marker { display: none; }
-dl.faq summary::after { content: ''; flex: none; width: .6rem; height: .6rem; border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); transform: rotate(45deg); transition: transform .2s ease; margin-right: .2rem; }
-dl.faq details[open] summary::after { transform: rotate(-135deg); }
-dl.faq dt { margin: 0; }
-dl.faq dd { margin: 0; padding: 0 0 1.1rem; color: var(--muted); }
+.faq { margin: 1rem 0 0; display: grid; gap: .5rem; }
+.faq details { background: var(--surface); border-radius: 12px; box-shadow: var(--glow-blue); padding: 0 1.2rem; }
+.faq details[open] { box-shadow: var(--glow-blue-strong); }
+.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem 0; font-weight: 600; color: #fff; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: ''; flex: none; width: .6rem; height: .6rem; border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); transform: rotate(45deg); transition: transform .2s ease; margin-right: .2rem; }
+.faq details[open] summary::after { transform: rotate(-135deg); }
+.faq .q { margin: 0; }
+.faq .a { margin: 0; padding: 0 0 1.1rem; color: var(--muted); }
 .case { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; }
 .case figure { margin: 0; }
 .case img { display: block; width: 100%; border-radius: var(--radius); box-shadow: var(--glow-blue); background: var(--surface); }
