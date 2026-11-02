@@ -10,8 +10,9 @@ import { addOns, business, carePlans, money, nav, seoPlans, websiteTiers } from 
 
 const dist = path.resolve('dist');
 const pages = fs.existsSync(dist)
-  // admin.html is the private intake tool behind Cloudflare Access (test/admin.test.js), not a public page.
-  ? fs.readdirSync(dist, { recursive: true }).filter((f) => f.endsWith('.html') && f !== 'admin.html').map((f) => path.join(dist, f))
+  // admin.html (the intake behind Cloudflare Access) and client.html (a client's private project
+  // page) are tools, not public pages; test/admin.test.js covers them.
+  ? fs.readdirSync(dist, { recursive: true }).filter((f) => f.endsWith('.html') && !['admin.html', 'client.html'].includes(f)).map((f) => path.join(dist, f))
   : [];
 const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(dist, p);

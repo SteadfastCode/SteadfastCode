@@ -7,7 +7,12 @@
 import { intakeSections, defaultPages } from '../data/intake';
 import { websiteTiers, addOns } from '../data/site';
 
+// One version per build, on the shared script's and stylesheet's addresses, so a deploy is never
+// served from a browser's cached copy of the old ones.
+const v = Date.now().toString(36);
+
 const config = {
+  script: `/intake/project.js?v=${v}`,
   sections: intakeSections,
   defaultPages,
   tiers: websiteTiers.map((t) => ({ id: t.id, name: t.name, price: t.price, from: !!('from' in t && t.from), scope: t.scope, who: t.who })),
@@ -21,271 +26,75 @@ const config = {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Client intake — Steadfast Code admin</title>
-<style is:global>
-  :root { --bg: #f7f7f5; --card: #fff; --ink: #1d1f22; --muted: #5d636b; --line: #dcdfe3; --accent: #1f5f8b; --accent-hover: #174a6d; --on-accent: #fff; --hover: #eef1f4; --ok: #1d7a46; --warn: #9a5b00; --bad: #a12a2a; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #15171a; --card: #1e2125; --ink: #e8eaed; --muted: #a2a8b0; --line: #343941; --accent: #6fb3e0; --accent-hover: #8cc6ec; --on-accent: #0b1a24; --hover: #262a2f; --ok: #5cc28a; --warn: #e0a54a; --bad: #ec7d7d; } }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--ink); }
-  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 140px; }
-  h1 { font-size: 1.35rem; margin: 4px 0 12px; } h2 { font-size: 1.05rem; margin: 0 0 10px; }
-  a { color: var(--accent); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0 0 14px; }
-  .muted { color: var(--muted); font-size: .9rem; }
-  button, .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
-  /* Text on the accent is dark in dark mode: white on the light blue was 2.3:1 and read as disabled. */
-  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-  button:not(:disabled):hover, .btn:hover { background: var(--hover); border-color: var(--accent); }
-  button.primary:not(:disabled):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-  button:focus-visible, .btn:focus-visible, #progress:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  /* Disabled is plainly gray, so it can't be mistaken for the primary color. */
-  button:disabled, button.primary:disabled { background: var(--line); border-color: var(--line); color: var(--muted); cursor: not-allowed; }
-  .tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-  .tiers button { text-align: left; }
-  .tiers button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
-  .tiers b { display: block; } .tiers span { font-size: .85rem; color: var(--muted); }
-  label { display: block; font-weight: 600; margin: 12px 0 4px; }
-  label.check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
-  .help { font-weight: 400; color: var(--muted); font-size: .85rem; display: block; }
-  input[type=text], input[type=email], input[type=tel], textarea, select { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
-  textarea { min-height: 84px; resize: vertical; }
-  input[type=checkbox] { width: 22px; height: 22px; }
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
-  .row:first-of-type { border-top: 0; }
-  .badge { font-size: .8rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
-  .badge.ready { color: var(--ok); border-color: var(--ok); }
-  .scope li { color: var(--warn); }
-  .count.over { color: var(--bad); font-weight: 600; }
-  footer.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 10px 16px; }
-  footer.bar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-  #saved { min-width: 70px; }
-  .error { color: var(--bad); }
-  /* The build's progress stays at the top of the screen. Scrolled down it's just the bars; a tap
-     (or hover with a mouse) shows the details again, and a tap pins it open or closed. */
-  #progress { position: sticky; top: 0; z-index: 5; width: 100%; padding: 8px 16px 6px; background: var(--card); border-bottom: 1px solid var(--line); cursor: pointer; }
-  #progress .in { max-width: 728px; margin: 0 auto; }
-  #progress .steps { margin: 2px 0 4px; }
-  #progress .details { display: grid; gap: 2px; padding-bottom: 4px; }
-  #progress.collapsed:not(.pinned) .details { display: none; }
-  @media (hover: hover) { #progress.collapsed:hover .details { display: grid; } }
-  .steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 12px 0 6px; }
-  .steps span { height: 8px; border-radius: 4px; background: var(--line); }
-  .steps span.done { background: var(--ok); }
-  .steps span.now { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .45; } }
-  @media (prefers-reduced-motion: reduce) { .steps span.now { animation: none; } }
-  .activity { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
-  [hidden] { display: none !important; }
-</style>
+<link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
 </head>
 <body>
 <div id="progress" role="button" tabindex="0" aria-expanded="true" hidden></div>
 <main id="app"><p class="muted">Loading…</p></main>
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" disabled>Start build</button></div></footer>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
-<script is:inline>
-(() => {
-  const C = JSON.parse(document.getElementById('intake-config').textContent);
-  const app = document.getElementById('app');
-  const bar = document.getElementById('bar');
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const money = (n, from) => (from ? 'from ' : '') + '$' + Number(n).toLocaleString('en-US');
-  const tierOf = (id) => C.tiers.find((t) => t.id === id);
-  const api = async (path, init = {}) => {
-    const r = await fetch('/api/admin' + path, { credentials: 'same-origin', headers: { 'content-type': 'application/json' }, ...init });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-    return j;
-  };
-  const statusLabel = { intake: 'Intake', 'build-requested': 'Build requested', building: 'Building', preview: 'Preview ready', live: 'Live', closed: 'Closed' };
+<script type="module" is:inline>
 
-  // ---- Home: start from a package or a lead, or open a project ----
-  async function home() {
-    bar.hidden = true;
-    progressEl.hidden = true;
-    app.innerHTML = '<h1>Client intake</h1><p class="muted">Loading…</p>';
-    let leads = [], projects = [], err = '';
-    try { [{ leads }, { projects }] = await Promise.all([api('/leads'), api('/projects')]); } catch (e) { err = e.message; }
-    app.innerHTML = `
-      <h1>Client intake</h1>
-      ${err ? `<p class="error">${esc(err)}</p>` : ''}
-      <section class="card"><h2>New project</h2><div class="tiers">
-        ${C.tiers.map((t) => `<button data-new="${t.id}"><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}
-        <button data-new=""><b>Not sure yet</b><span>Pick the package as you talk</span></button>
-      </div></section>
-      <section class="card"><h2>From a contact form</h2>
-        ${leads.length ? leads.map((l) => `<div class="row"><div><b>${esc(l.name)}</b>${l.business ? ' · ' + esc(l.business) : ''}<div class="muted">${esc(tierOf(l.plan)?.name || l.plan || 'no package picked')} · ${esc(new Date(l.received_at).toLocaleDateString())}</div></div><button data-lead="${esc(l.id)}">Start from this</button></div>`).join('') : '<p class="muted">No new contact-form leads.</p>'}
-      </section>
-      <section class="card"><h2>Projects</h2>
-        ${projects.length ? projects.map((p) => `<div class="row"><div><a href="#p/${esc(p.id)}"><b>${esc(p.business || 'Untitled')}</b></a><div class="muted">${esc(tierOf(p.tier)?.name || 'no package')} · ${esc(new Date(p.updatedAt).toLocaleString())}</div></div><span class="badge${p.ready ? ' ready' : ''}">${esc(statusLabel[p.status] || p.status)}${p.status === 'intake' && p.ready ? ' · ready' : ''}</span></div>`).join('') : '<p class="muted">None yet.</p>'}
-      </section>`;
-    app.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', () => create({ tier: b.dataset.new || undefined })));
-    app.querySelectorAll('[data-lead]').forEach((b) => b.addEventListener('click', () => create({ leadId: b.dataset.lead })));
-  }
+const C = JSON.parse(document.getElementById('intake-config').textContent);
+const { mountProject, wireProgress } = await import(C.script);
+const app = document.getElementById('app');
+const bar = document.getElementById('bar');
+const progress = document.getElementById('progress');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const money = (n, from) => (from ? 'from ' : '') + '$' + Number(n).toLocaleString('en-US');
+const tierOf = (id) => C.tiers.find((t) => t.id === id);
+const statusLabel = { intake: 'Intake', 'build-requested': 'Build requested', building: 'Building', preview: 'Preview ready', live: 'Live', closed: 'Closed' };
+const api = async (path, init = {}) => {
+  const r = await fetch('/api/admin' + path, { credentials: 'same-origin', headers: { 'content-type': 'application/json' }, ...init });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+  return j;
+};
+wireProgress(progress);
 
-  async function create(body) {
-    try { const p = await api('/projects', { method: 'POST', body: JSON.stringify(body) }); location.hash = 'p/' + p.id; }
-    catch (e) { alert('Could not start the project: ' + e.message); }
-  }
+// ---- Home: start from a package or a lead, or open a project ----
+async function home() {
+  bar.hidden = true;
+  progress.hidden = true;
+  app.innerHTML = '<h1>Client intake</h1><p class="muted">Loading…</p>';
+  let leads = [], projects = [], err = '';
+  try { [{ leads }, { projects }] = await Promise.all([api('/leads'), api('/projects')]); } catch (e) { err = e.message; }
+  app.innerHTML = `
+    <h1>Client intake</h1>
+    ${err ? `<p class="error">${esc(err)}</p>` : ''}
+    <section class="card"><h2>New project</h2><div class="tiers">
+      ${C.tiers.map((t) => `<button data-new="${t.id}"><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}
+      <button data-new=""><b>Not sure yet</b><span>Pick the package as you talk</span></button>
+    </div></section>
+    <section class="card"><h2>From a contact form</h2>
+      ${leads.length ? leads.map((l) => `<div class="row"><div><b>${esc(l.name)}</b>${l.business ? ' · ' + esc(l.business) : ''}<div class="muted">${esc(tierOf(l.plan)?.name || l.plan || 'no package picked')} · ${esc(new Date(l.received_at).toLocaleDateString())}</div></div><button data-lead="${esc(l.id)}">Start from this</button></div>`).join('') : '<p class="muted">No new contact-form leads.</p>'}
+    </section>
+    <section class="card"><h2>Projects</h2>
+      ${projects.length ? projects.map((p) => `<div class="row"><div><a href="#p/${esc(p.id)}"><b>${esc(p.business || 'Untitled')}</b></a><div class="muted">${esc(tierOf(p.tier)?.name || 'no package')} · ${esc(new Date(p.updatedAt).toLocaleString())}</div></div><span class="badge${p.ready ? ' ready' : ''}">${esc(statusLabel[p.status] || p.status)}${p.status === 'intake' && p.ready ? ' · ready' : ''}</span></div>`).join('') : '<p class="muted">None yet.</p>'}
+    </section>`;
+  app.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', () => create({ tier: b.dataset.new || undefined })));
+  app.querySelectorAll('[data-lead]').forEach((b) => b.addEventListener('click', () => create({ leadId: b.dataset.lead })));
+}
 
-  // ---- Project: the questions, autosaved field by field ----
-  let P = null, pending = {}, timer = null, poll = null;
-  const savedEl = document.getElementById('saved');
-  const readyEl = document.getElementById('readiness');
-  const buildBtn = document.getElementById('build');
+async function create(body) {
+  try { const p = await api('/projects', { method: 'POST', body: JSON.stringify(body) }); location.hash = 'p/' + p.id; }
+  catch (e) { alert('Could not start the project: ' + e.message); }
+}
 
-  async function project(id) {
-    clearInterval(poll);
-    app.innerHTML = '<p class="muted">Loading…</p>';
-    try { P = await api('/projects/' + encodeURIComponent(id)); } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p><p><a href="#">Back</a></p>`; return; }
-    render();
-    if (['build-requested', 'building'].includes(P.status)) poll = setInterval(refresh, 3000);
-  }
-
-  const applies = (o) => !o.tiers || (P.answers.tier && o.tiers.includes(P.answers.tier));
-
-  function fieldHtml(f) {
-    const v = P.answers[f.id];
-    const help = f.help ? `<span class="help">${esc(f.help)}</span>` : '';
-    const id = 'f-' + f.id;
-    switch (f.type) {
-      case 'tier': return `<div class="tiers">${C.tiers.map((t) => `<button type="button" data-tier="${t.id}" aria-pressed="${v === t.id}"><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}</div>`;
-      case 'bool': return `<label class="check"><input type="checkbox" id="${id}" data-f="${f.id}" ${v ? 'checked' : ''}> ${esc(f.label)}${f.id === 'editor' && C.editorPrice ? ` (+${money(C.editorPrice)})` : ''}</label>${help}`;
-      case 'choice': return `<label for="${id}">${esc(f.label)}${help}</label><select id="${id}" data-f="${f.id}"><option value=""></option>${f.options.map((o) => `<option ${v === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
-      case 'list': case 'pages': {
-        const count = f.type === 'pages' ? `<span class="help count" id="pagecount"></span>` : '';
-        return `<label for="${id}">${esc(f.label)}${f.required ? ' *' : ''}${help}${count}</label><textarea id="${id}" data-f="${f.id}" data-list="1">${esc((v || []).join('\n'))}</textarea>`;
-      }
-      case 'textarea': return `<label for="${id}">${esc(f.label)}${f.required ? ' *' : ''}${help}</label><textarea id="${id}" data-f="${f.id}">${esc(v)}</textarea>`;
-      default: return `<label for="${id}">${esc(f.label)}${f.required ? ' *' : ''}${help}</label><input type="${f.type}" id="${id}" data-f="${f.id}" value="${esc(v)}" autocomplete="off">`;
-    }
-  }
-
-  function render() {
-    const a = P.answers;
-    app.innerHTML = `
-      <p><a href="#">← All projects</a></p>
-      <h1 id="title"></h1>
-      <section class="card" id="status"></section>
-      <section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>
-      ${C.sections.filter(applies).map((s) => `<section class="card"><h2>${esc(s.title)}</h2>${s.fields.filter(applies).map(fieldHtml).join('')}</section>`).join('')}`;
-    app.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => { queue('tier', b.dataset.tier, true); }));
-    app.querySelectorAll('[data-f]').forEach((el) => {
-      const ev = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
-      el.addEventListener(ev, () => queue(el.dataset.f, el.type === 'checkbox' ? el.checked : el.dataset.list ? el.value.split('\n') : el.value, ev === 'change'));
-    });
-    bar.hidden = false;
-    paint();
-  }
-
-  // The parts that change as answers save, repainted without touching the field being typed in.
-  function paint() {
-    const a = P.answers, c = P.check;
-    document.getElementById('title').textContent = a.businessName || 'New project';
-    const t = c.tier;
-    document.getElementById('status').innerHTML = `
-      <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
-      ${P.buildNote && !building() ? `<p class="${/^(Build failed|The box restarted)/.test(P.buildNote) ? 'error' : 'muted'}" style="white-space:pre-line">${esc(P.buildNote)}</p>` : ''}
-      ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a></p>` : ''}
-      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}`;
-    const pr = document.getElementById('progress');
-    const ph = progressHtml();
-    pr.hidden = !ph;
-    // The step bars run the full width of the window; the words stay in the page's column.
-    if (ph) pr.innerHTML = ph.replace(/(<div class="details">[\s\S]*<\/div>)$/, '<div class="in">$1</div>');
-    const sc = document.getElementById('scope');
-    sc.hidden = !c.scope.length;
-    document.getElementById('scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join('');
-    const pc = document.getElementById('pagecount');
-    if (pc && t) { const n = (a.pages || []).length; pc.textContent = `${n} of ${t.scope.pages} in ${t.name}`; pc.classList.toggle('over', n > t.scope.pages); }
-    readyEl.textContent = c.ready ? (c.scope.length ? `Ready · ${c.scope.length} scope note${c.scope.length === 1 ? '' : 's'}` : 'Ready') : `${c.missing.length} to go`;
-    const canBuild = c.ready && ['intake', 'preview'].includes(P.status);
-    buildBtn.disabled = !canBuild;
-    // A failed or interrupted build starts over from the top (nothing resumes mid-session), so
-    // the button says Restart rather than Continue; the reason it stopped is on the status card.
-    const stopped = P.status === 'intake' && /^(Build failed|The box restarted)/.test(P.buildNote || '');
-    buildBtn.textContent = P.status === 'preview' ? 'Rebuild' : building() ? 'Building…' : stopped ? 'Restart build' : 'Start build';
-  }
-
-  // Live build progress: the step the box is on, what the session is doing, and the time so far.
-  const STEPS = ['Picked up', 'Setting up', 'Building', 'Checking', 'Publishing', 'Done'];
-  const building = () => ['build-requested', 'building'].includes(P.status);
-  const since = (iso) => { const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000)); return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; };
-  function progressHtml() {
-    if (!building() && P.status !== 'preview') return '';
-    const step = P.status === 'preview' ? 6 : P.status === 'build-requested' ? 0 : (P.buildStep || 1);
-    const bar = `<div class="steps" role="progressbar" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${step}" aria-label="Build progress">${STEPS.map((_, i) => `<span class="${i + 1 < step || step === 6 ? 'done' : i + 1 === step ? 'now' : ''}"></span>`).join('')}</div>`;
-    if (!building()) return `${bar}<div class="details"><div class="muted">Preview ready · <a href="${esc(P.previewUrl || '#')}" target="_blank" rel="noopener">open it</a></div></div>`;
-    const label = step === 0 ? 'Waiting for the box to pick it up' : `Step ${step} of 6: ${STEPS[step - 1]}`;
-    return `${bar}<div class="details"><div class="muted">${esc(label)}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}</div>`;
-  }
-  setInterval(() => { const el = document.getElementById('elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
-
-  function queue(field, value, now) {
-    pending[field] = value;
-    savedEl.textContent = 'Saving…';
-    clearTimeout(timer);
-    timer = setTimeout(flush, now ? 0 : 700);
-  }
-
-  async function flush() {
-    const patch = pending; pending = {};
-    if (!Object.keys(patch).length) return;
-    try {
-      const prevTier = P.answers.tier, hadPages = !!(P.answers.pages || []).length;
-      const r = await api('/projects/' + P.id, { method: 'PATCH', body: JSON.stringify({ answers: patch }) });
-      P = { ...P, ...r };
-      savedEl.textContent = Object.keys(pending).length ? 'Saving…' : 'Saved';
-      // A new package changes which sections show (and may fill in the usual pages): redraw, keeping the place.
-      if (r.answers.tier !== prevTier || (!hadPages && (r.answers.pages || []).length)) { const y = scrollY; render(); scrollTo(0, y); }
-      else paint();
-    } catch (e) {
-      Object.assign(patch, pending); pending = patch;
-      savedEl.innerHTML = '<span class="error">Not saved</span>';
-      readyEl.textContent = e.message;
-      clearTimeout(timer); timer = setTimeout(flush, 5000);
-    }
-  }
-
-  async function refresh() {
-    try {
-      const r = await api('/projects/' + P.id);
-      P = { ...P, status: r.status, previewUrl: r.previewUrl, buildNote: r.buildNote, check: r.check, buildStep: r.buildStep, buildActivity: r.buildActivity, buildStartedAt: r.buildStartedAt };
-      paint();
-      if (!['build-requested', 'building'].includes(P.status)) clearInterval(poll);
-    } catch { /* next tick */ }
-  }
-
-  buildBtn.addEventListener('click', async () => {
-    await flush();
-    buildBtn.disabled = true;
-    try {
-      const r = await api('/projects/' + P.id + '/build', { method: 'POST', body: '{}' });
-      P.status = r.status; P.slug = r.slug; P.buildNote = null; P.buildStep = null; P.buildActivity = null; P.buildStartedAt = null;
-      paint();
-      clearInterval(poll); poll = setInterval(refresh, 3000);
-    } catch (e) { readyEl.textContent = e.message; paint(); }
+// ---- A project: the shared form (public/intake/project.js), Daniel's side ----
+let current = null;
+async function route() {
+  if (current) { current.stop(); current = null; }
+  const m = location.hash.match(/^#p\/([\w-]+)$/);
+  if (!m) return home();
+  const base = '/api/admin/projects/' + encodeURIComponent(m[1]);
+  current = await mountProject({
+    root: app, bar, progress, config: C, mode: 'admin', backHref: '#',
+    routes: { project: base, presence: base + '/presence', uploads: base + '/uploads', file: (id) => base + '/uploads/' + encodeURIComponent(id), build: base + '/build', link: base + '/link' },
   });
-
-  // The progress bar lives outside the page column (full width), so it's wired once here.
-  const progressEl = document.getElementById('progress');
-  const toggleProgress = () => { progressEl.classList.toggle('pinned'); progressEl.setAttribute('aria-expanded', String(!progressEl.classList.contains('collapsed') || progressEl.classList.contains('pinned'))); };
-  progressEl.addEventListener('click', (e) => { if (!e.target.closest('a')) toggleProgress(); });
-  progressEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleProgress(); } });
-
-  // Collapse to the bars once the page is scrolled; back to full at the top.
-  addEventListener('scroll', () => {
-    const pr = document.getElementById('progress');
-    if (!pr || pr.hidden) return;
-    const was = pr.classList.contains('collapsed');
-    pr.classList.toggle('collapsed', scrollY > 60);
-    if (was !== pr.classList.contains('collapsed')) { pr.setAttribute('aria-expanded', String(!pr.classList.contains('collapsed') || pr.classList.contains('pinned'))); }
-  }, { passive: true });
-
-  window.addEventListener('beforeunload', (e) => { if (Object.keys(pending).length) { flush(); e.preventDefault(); } });
-  const route = () => { clearInterval(poll); if (Object.keys(pending).length) flush(); const m = location.hash.match(/^#p\/([\w-]+)$/); m ? project(m[1]) : home(); };
-  window.addEventListener('hashchange', route);
-  route();
-})();
+}
+addEventListener('hashchange', route);
+route();
 </script>
 </body>
 </html>

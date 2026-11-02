@@ -1,0 +1,60 @@
+---
+// The client's side of their project (2026-11-01): the same form Daniel works from at /admin,
+// live, from a private link (/client#<token>, made on the admin page). The token stays in the
+// fragment, which browsers never send to the server; the page passes it to /api/client as a bearer
+// header. Not a public page: noindex, out of the sitemap, outside the public-page tests.
+import { intakeSections } from '../data/intake';
+import { websiteTiers, addOns, business } from '../data/site';
+
+// One version per build, on the shared script's and stylesheet's addresses, so a deploy is never
+// served from a browser's cached copy of the old ones.
+const v = Date.now().toString(36);
+
+const config = {
+  script: `/intake/project.js?v=${v}`,
+  sections: intakeSections,
+  tiers: websiteTiers.map((t) => ({ id: t.id, name: t.name, price: t.price, from: !!('from' in t && t.from), scope: t.scope })),
+  editorPrice: addOns.find((a) => a.id === 'editor')?.price ?? null,
+};
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your website — Steadfast Code</title>
+<link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+</head>
+<body>
+<div id="progress" role="button" tabindex="0" hidden></div>
+<main id="app"><p class="muted">Loading…</p></main>
+<footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" hidden>Update my preview</button></div></footer>
+<p class="muted" style="text-align:center;padding:0 16px 120px">Questions? Email <a href={`mailto:${business.email}`}>{business.email}</a>. Steadfast Code.</p>
+<script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
+<script type="module" is:inline>
+
+const C = JSON.parse(document.getElementById('intake-config').textContent);
+const { mountProject, wireProgress } = await import(C.script);
+const app = document.getElementById('app');
+const token = location.hash.slice(1);
+if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) {
+  app.innerHTML = '<h1>Your website</h1><p>This page needs the private link Daniel sent you. If you opened it from a message, try tapping the link again.</p>';
+} else {
+  const progress = document.getElementById('progress');
+  wireProgress(progress);
+  const q = '?t=' + encodeURIComponent(token);
+  mountProject({
+    root: app, bar: document.getElementById('bar'), progress, config: C, mode: 'client',
+    headers: { authorization: 'Bearer ' + token },
+    routes: {
+      project: '/api/client/project', presence: '/api/client/presence', uploads: '/api/client/uploads', build: '/api/client/build',
+      // An <img> can't send the header, so a picture's address carries the token; changes don't.
+      file: (id, forApi) => '/api/client/uploads/' + encodeURIComponent(id) + (forApi ? '' : q),
+    },
+  });
+}
+</script>
+</body>
+</html>

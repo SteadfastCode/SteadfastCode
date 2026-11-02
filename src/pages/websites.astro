@@ -15,9 +15,9 @@ const description = `Custom websites, built with AI coding tools, tested on real
       <p class="eyebrow">Websites</p>
       <h1>Fixed prices, posted. <em>Pick a tier, get a date.</em></h1>
       <p class="answer">
-        Every site is custom code, not a template: AI coding tools write it, guided by rules, guardrails, and a custom system I've built around it.
-        We meet and start the process and the site starts getting built during the first meeting.
-        Automated checks run on every version before it can go live, and I test the result on real phones before you see it.
+        Every site is custom code, not a template: AI coding tools write it, guided by rules and checks I've built around it.
+        The building starts while we're still in our first meeting, so you can see a first version before we're done talking.
+        Automated checks run on every version before it can go live, and I test it on real phones before launch.
         The tiers below are the scopes most businesses actually need, each with a fixed price and a usual timeline.
         If yours does not fit one, I will tell you a number before I start.
       </p>
@@ -43,10 +43,12 @@ const description = `Custom websites, built with AI coding tools, tested on real
           />
         ))}
       </div>
-      {addOns.map((a) => (
-        <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
-      ))}
+      <div class="notes">
+          {addOns.map((a) => (
+          <p class="addon" id={a.id}><strong>Add-on: {a.name.toLowerCase()}, {money(a.price)}.</strong> {a.what} {a.who}</p>
+        ))}
       <p class="addon launch-note" id="launch-times">* {launchNote}</p>
+      </div>
     </div>
   </section>
 

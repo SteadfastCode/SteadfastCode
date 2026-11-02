@@ -1,17 +1,12 @@
-// GET /api/admin/projects/:id: the project, its answers, and where they stand against the package.
-// PATCH /api/admin/projects/:id { answers }: save some answers (the page autosaves field by field).
+// GET /api/admin/projects/:id: the shared form as Daniel sees it (server/view.js), plus the link.
+// PATCH /api/admin/projects/:id { answers }: save some answers (autosaved field by field).
 import { json } from '../../_middleware.js';
-import { mergeAnswers, check } from '../../../../../server/intake.js';
-
-const view = (p, answers = JSON.parse(p.answers)) => ({
-  id: p.id, slug: p.slug, status: p.status, previewUrl: p.preview_url, buildNote: p.build_note, leadId: p.lead_id,
-  createdAt: p.created_at, updatedAt: p.updated_at, buildRequestedAt: p.build_requested_at, answers, check: check(answers),
-  buildStep: p.build_step ?? null, buildActivity: p.build_activity ?? null, buildStartedAt: p.build_started_at ?? null,
-});
+import { mergeAnswers, fields } from '../../../../../server/intake.js';
+import { projectView, logEdit } from '../../../../../server/view.js';
 
 export async function onRequestGet({ env, params }) {
   const p = await env.INTAKE.prepare('SELECT * FROM projects WHERE id = ?').bind(params.id).first();
-  return p ? json(view(p)) : json({ error: 'No such project.' }, 404);
+  return p ? json(await projectView(env, p, { mode: 'admin' })) : json({ error: 'No such project.' }, 404);
 }
 
 export async function onRequestPatch({ request, env, params }) {
@@ -22,5 +17,6 @@ export async function onRequestPatch({ request, env, params }) {
   const { answers, dropped } = mergeAnswers(JSON.parse(p.answers), body.answers);
   const now = new Date().toISOString();
   await env.INTAKE.prepare('UPDATE projects SET answers = ?, tier = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(answers), answers.tier ?? null, now, p.id).run();
-  return json({ ...view({ ...p, updated_at: now }, answers), dropped });
+  await logEdit(env, p.id, 'daniel', 'Daniel', Object.keys(body.answers).filter((k) => !dropped.includes(k)).map((k) => fields[k]?.you || fields[k]?.label || k));
+  return json({ ...(await projectView(env, { ...p, answers: JSON.stringify(answers), tier: answers.tier ?? null, updated_at: now }, { mode: 'admin' })), dropped });
 }
