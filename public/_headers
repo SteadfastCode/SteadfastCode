@@ -3,3 +3,9 @@
 # (revalidate every time), so a new deploy shows up immediately.
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The admin intake and client page load these by a versioned address (?v=<build>), and they also
+# revalidate every time, so a deploy never leaves a page running yesterday's form script
+# (2026-11-01: a cached project.js showed [object Object] in every dropdown).
+/intake/*
+  Cache-Control: no-cache

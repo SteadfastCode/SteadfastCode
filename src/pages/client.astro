@@ -6,7 +6,12 @@
 import { intakeSections } from '../data/intake';
 import { websiteTiers, addOns, business } from '../data/site';
 
+// One version per build, on the shared script's and stylesheet's addresses, so a deploy is never
+// served from a browser's cached copy of the old ones.
+const v = Date.now().toString(36);
+
 const config = {
+  script: `/intake/project.js?v=${v}`,
   sections: intakeSections,
   tiers: websiteTiers.map((t) => ({ id: t.id, name: t.name, price: t.price, from: !!('from' in t && t.from), scope: t.scope })),
   editorPrice: addOns.find((a) => a.id === 'editor')?.price ?? null,
@@ -20,7 +25,7 @@ const config = {
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>Your website — Steadfast Code</title>
-<link rel="stylesheet" href="/intake/form.css">
+<link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
 </head>
 <body>
 <div id="progress" role="button" tabindex="0" hidden></div>
@@ -29,9 +34,9 @@ const config = {
 <p class="muted" style="text-align:center;padding:0 16px 120px">Questions? Email <a href={`mailto:${business.email}`}>{business.email}</a>. Steadfast Code.</p>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
 <script type="module" is:inline>
-import { mountProject, wireProgress } from '/intake/project.js';
 
 const C = JSON.parse(document.getElementById('intake-config').textContent);
+const { mountProject, wireProgress } = await import(C.script);
 const app = document.getElementById('app');
 const token = location.hash.slice(1);
 if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) {

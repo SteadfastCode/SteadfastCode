@@ -7,7 +7,12 @@
 import { intakeSections, defaultPages } from '../data/intake';
 import { websiteTiers, addOns } from '../data/site';
 
+// One version per build, on the shared script's and stylesheet's addresses, so a deploy is never
+// served from a browser's cached copy of the old ones.
+const v = Date.now().toString(36);
+
 const config = {
+  script: `/intake/project.js?v=${v}`,
   sections: intakeSections,
   defaultPages,
   tiers: websiteTiers.map((t) => ({ id: t.id, name: t.name, price: t.price, from: !!('from' in t && t.from), scope: t.scope, who: t.who })),
@@ -21,7 +26,7 @@ const config = {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Client intake — Steadfast Code admin</title>
-<link rel="stylesheet" href="/intake/form.css">
+<link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
 </head>
 <body>
 <div id="progress" role="button" tabindex="0" aria-expanded="true" hidden></div>
@@ -29,9 +34,9 @@ const config = {
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" disabled>Start build</button></div></footer>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
 <script type="module" is:inline>
-import { mountProject, wireProgress } from '/intake/project.js';
 
 const C = JSON.parse(document.getElementById('intake-config').textContent);
+const { mountProject, wireProgress } = await import(C.script);
 const app = document.getElementById('app');
 const bar = document.getElementById('bar');
 const progress = document.getElementById('progress');

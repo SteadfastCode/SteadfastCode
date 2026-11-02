@@ -87,7 +87,7 @@ export const intakeSections = [
     title: 'Accounts and access',
     fields: [
       { id: 'registrar', label: 'Where the domain is registered', type: 'text', you: 'Where your domain is registered' },
-      { id: 'gbp', label: 'Google Business Profile', type: 'choice', options: [{ value: 'Claimed, they have access', you: 'I have one and can log in' }, { value: 'Exists, not claimed', you: 'There’s one, but I can’t log in to it' }, { value: 'None yet', you: 'I don’t have one' }], you: 'Your Google Business Profile' },
+      { id: 'gbp', label: 'Google Business Profile', type: 'choice', options: [{ value: 'Claimed, they have access', you: 'I have one and can log in' }, { value: 'Exists, not claimed', you: 'There’s one, but I can’t log in to it' }, { value: 'None yet', you: 'I don’t have one' }, { value: 'Not sure', you: 'I’m not sure' }], you: 'Your Google Business Profile' },
       { id: 'formsTo', label: 'Where form messages should go', type: 'text', help: 'An email address, or a phone for texts.', you: 'Where messages from the site should go' },
     ],
   },
