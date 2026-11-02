@@ -283,11 +283,11 @@ form.contact input:focus-visible, form.contact textarea:focus-visible, form.cont
    site's own look; light keeps the same blues and orange on white. The glows go quiet in light. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-  --bg: #f6f8fb;
-    --bg-2: #ffffff;
+  --bg: #e8f0fb;
+    --bg-2: #f2f7fd;
     --surface: #ffffff;
-    --surface-2: #eef2f7;
-    --line: rgba(29, 95, 174, 0.3);
+    --surface-2: #f3f7fd;
+    --line: rgba(29, 95, 174, 0.35);
     --line-soft: rgba(15, 23, 42, 0.12);
     --blue: #1d5fae;
     --blue-bright: #174f93;
@@ -295,26 +295,27 @@ form.contact input:focus-visible, form.contact textarea:focus-visible, form.cont
     --ink: #1f2937;
     --muted: #4b5563;
     --heading: #0b1220;
-    --page-edge: #e8edf4;
-    --header-bg: rgba(246, 248, 251, 0.88);
-    --soft-bg: rgba(15, 23, 42, 0.035);
+    --page-edge: #dbe7f7;
+    --header-bg: rgba(232, 240, 251, 0.9);
+    --soft-bg: rgba(29, 95, 174, 0.05);
     --track: rgba(15, 23, 42, 0.1);
     --field-bg: #ffffff;
-    --footer-bg: #eef2f7;
+    --footer-bg: #dde8f7;
     --hot: #b4410c;
-    --glow-blue: 0 0 0 1px rgba(29, 95, 174, 0.2), 0 6px 18px rgba(15, 23, 42, 0.07);
-    --glow-blue-strong: 0 0 0 1px rgba(29, 95, 174, 0.45), 0 8px 24px rgba(15, 23, 42, 0.12);
+    --glow-blue: 0 0 0 1px rgba(29, 95, 174, 0.3), 0 6px 18px rgba(29, 68, 120, 0.1);
+    --glow-blue-strong: 0 0 0 1px rgba(29, 95, 174, 0.55), 0 8px 26px rgba(29, 68, 120, 0.16);
     --glow-orange: 0 0 0 1px rgba(234, 88, 12, 0.55), 0 8px 24px rgba(234, 88, 12, 0.16);
     color-scheme: light;
   }
   :root:not([data-theme="dark"]) .hero h1, :root:not([data-theme="dark"]) .stat .n { text-shadow: none; }
+  :root:not([data-theme="dark"]) .hero-art { opacity: .5; filter: drop-shadow(0 0 24px rgba(29, 95, 174, 0.25)); }
 }
 :root[data-theme="light"] {
-  --bg: #f6f8fb;
-  --bg-2: #ffffff;
+  --bg: #e8f0fb;
+  --bg-2: #f2f7fd;
   --surface: #ffffff;
-  --surface-2: #eef2f7;
-  --line: rgba(29, 95, 174, 0.3);
+  --surface-2: #f3f7fd;
+  --line: rgba(29, 95, 174, 0.35);
   --line-soft: rgba(15, 23, 42, 0.12);
   --blue: #1d5fae;
   --blue-bright: #174f93;
@@ -322,18 +323,22 @@ form.contact input:focus-visible, form.contact textarea:focus-visible, form.cont
   --ink: #1f2937;
   --muted: #4b5563;
   --heading: #0b1220;
-  --page-edge: #e8edf4;
-  --header-bg: rgba(246, 248, 251, 0.88);
-  --soft-bg: rgba(15, 23, 42, 0.035);
+  --page-edge: #dbe7f7;
+  --header-bg: rgba(232, 240, 251, 0.9);
+  --soft-bg: rgba(29, 95, 174, 0.05);
   --track: rgba(15, 23, 42, 0.1);
   --field-bg: #ffffff;
-  --footer-bg: #eef2f7;
+  --footer-bg: #dde8f7;
   --hot: #b4410c;
-  --glow-blue: 0 0 0 1px rgba(29, 95, 174, 0.2), 0 6px 18px rgba(15, 23, 42, 0.07);
-  --glow-blue-strong: 0 0 0 1px rgba(29, 95, 174, 0.45), 0 8px 24px rgba(15, 23, 42, 0.12);
+  --glow-blue: 0 0 0 1px rgba(29, 95, 174, 0.3), 0 6px 18px rgba(29, 68, 120, 0.1);
+  --glow-blue-strong: 0 0 0 1px rgba(29, 95, 174, 0.55), 0 8px 26px rgba(29, 68, 120, 0.16);
   --glow-orange: 0 0 0 1px rgba(234, 88, 12, 0.55), 0 8px 24px rgba(234, 88, 12, 0.16);
   color-scheme: light;
 }
 :root[data-theme="light"] .hero h1, :root[data-theme="light"] .stat .n { text-shadow: none; }
+:root[data-theme="light"] .hero-art { opacity: .5; filter: drop-shadow(0 0 24px rgba(29, 95, 174, 0.25)); }
 .theme-switch { font: inherit; font-size: .88rem; color: var(--muted); background: none; border: 1px solid var(--line-soft); border-radius: 999px; padding: .3rem .8rem; cursor: pointer; }
 .theme-switch:hover { color: var(--heading); border-color: var(--line); }
+/* Increase Contrast in light mode too: darker secondary text and stronger lines. */
+@media (prefers-contrast: more) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --muted: #1f2937; --line: rgba(29, 95, 174, 0.75); --line-soft: rgba(15, 23, 42, 0.4); } }
+@media (prefers-contrast: more) { :root[data-theme="light"] { --muted: #1f2937; --line: rgba(29, 95, 174, 0.75); --line-soft: rgba(15, 23, 42, 0.4); } }
