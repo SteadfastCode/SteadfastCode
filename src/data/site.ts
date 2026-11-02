@@ -63,7 +63,7 @@ export const websiteTiers = [
     name: 'Starter',
     price: 1500,
     pages: 1,
-    days: '1 day to 2 weeks',
+    days: '1 to 5 days',
     who: 'A new business, a side business, or a campaign that needs one great page.',
     scope: { pages: 1, changeDays: 30, editor: 'add-on', copyHelp: false, serviceAreaPages: false, handoffCall: false, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
