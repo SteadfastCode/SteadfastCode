@@ -25,9 +25,10 @@ export async function onRequest(context) {
   }
   context.data.link = link;
   context.data.project = project;
-  // The agreement comes first (2026-11-02): until it's signed for the current package, the only
-  // change a client can make is signing it. Reading their page is fine; it shows the agreement.
-  if (request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/client/agreement') {
+  // The contract comes first for building, not for planning (Daniel, 2026-11-02): before it's signed
+  // a client can read it and fill in their planning page for a head start; asking for a build waits
+  // for the signature (and the first build is Daniel's, which checks it too).
+  if (request.method !== 'GET' && request.method !== 'HEAD' && url.pathname === '/api/client/build') {
     if ((await agreementState(env, project)).needed) return json({ error: 'Sign the contract first.', needsAgreement: true }, 403);
   }
   try {

@@ -32,6 +32,7 @@ export const intakeSections = [
   {
     id: 'business',
     title: 'The business',
+    you: 'Your business',
     fields: [
       { id: 'businessName', label: 'Business name', type: 'text', required: true },
       { id: 'contactName', label: 'Contact name', type: 'text', required: true, you: 'Your name' },
@@ -47,6 +48,7 @@ export const intakeSections = [
   {
     id: 'offer',
     title: 'What they sell',
+    you: 'What you sell',
     fields: [
       { id: 'services', label: 'Services or products', type: 'list', required: true, help: 'One per line.', you: 'What you offer' },
       { id: 'mainAction', label: 'The one thing a visitor should do', type: 'choice', options: ['Call', 'Text', 'Fill out a form', 'Book online', 'Buy online', 'Visit in person'], you: 'The one thing you want visitors to do' },

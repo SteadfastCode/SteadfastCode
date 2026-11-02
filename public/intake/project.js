@@ -61,7 +61,10 @@ export async function mountProject(o) {
   const label = (f) => (!admin && f.you) || f.label;
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  // Before signing, the client's page has two tabs: the contract, and planning for a head start.
+  let tab = 'contract';
+  const tabbed = () => gated() && P.agreement.reason !== 'no-package';
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + ':' + tab + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
 
   // ---- fields ----
   function fieldHtml(f) {
@@ -171,7 +174,9 @@ export async function mountProject(o) {
 
   // ---- render: the whole form; repaint: the parts that change without touching what's typed ----
   function render() {
-    if (gated()) return renderAgreement();
+    paintTabs();
+    if (gated() && (tab === 'contract' || !tabbed())) return renderAgreement();
+    bar.hidden = false; // the contract screen hides it; the form always shows it
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
     const sel = focus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const y = scrollY;
@@ -183,7 +188,7 @@ export async function mountProject(o) {
       <section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>
       ${admin ? '<section class="card" id="linkcard"></section>' : ''}
       <section class="card" id="files"></section>
-      ${C.sections.filter(applies).map((s) => `<section class="card"><h2>${esc(s.title)}</h2>${s.fields.filter(applies).map(fieldHtml).join('')}</section>`).join('')}
+      ${C.sections.filter(applies).map((s) => `<section class="card"><h2>${esc((!admin && s.you) || s.title)}</h2>${s.fields.filter(applies).map(fieldHtml).join('')}</section>`).join('')}
       <section class="card" id="activity"></section>`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     root.querySelectorAll('[data-f]').forEach((el) => {
@@ -245,6 +250,29 @@ export async function mountProject(o) {
   // ---- the agreement: on the client's page it comes first, until it's signed ----
   const agreementHtml = (a) => a.sections.map((x) => `<h3>${esc(x.h)}</h3>${x.p.map((t) => `<p>${esc(t)}</p>`).join('')}`).join('');
 
+  function setTab(t) {
+    if (tab === t) return;
+    tab = t;
+    scrollTo(0, 0);
+    render();
+  }
+
+  function paintTabs() {
+    let nav = document.getElementById('tabs');
+    if (!tabbed()) { if (nav) nav.remove(); document.body.classList.remove('has-tabs'); return; }
+    if (!nav) {
+      nav = document.createElement('nav');
+      nav.id = 'tabs';
+      nav.className = 'tabs';
+      nav.setAttribute('aria-label', 'Contract or planning');
+      nav.innerHTML = '<button type="button" data-t="contract">Contract</button><button type="button" data-t="planning">Planning</button>';
+      nav.addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) setTab(b.dataset.t); });
+      document.body.appendChild(nav);
+    }
+    document.body.classList.add('has-tabs');
+    nav.querySelectorAll('[data-t]').forEach((b) => { const on = b.dataset.t === tab; b.setAttribute('aria-current', on ? 'page' : 'false'); b.classList.toggle('on', on); });
+  }
+
   function renderAgreement() {
     const ag = P.agreement;
     progress.hidden = true;
@@ -260,7 +288,7 @@ export async function mountProject(o) {
         <p class="muted">This is the contract for your website: what's included, the price, and how changes and launch work. Once it's signed, this page opens up for planning your site together.</p>
       </section>
       <section class="card agreement"><h2>${esc(ag.current.title)}</h2>${agreementHtml(ag.current)}</section>
-      ${ag.signingOpen ? '' : `<section class="card" id="reviewonly"><h2>Sign at our meeting</h2><p>We’ll sign this together at our meeting. Feel free to read it over and bring any questions.</p></section>`}
+      ${ag.signingOpen ? '' : `<section class="card" id="reviewonly"><h2>Sign at our meeting</h2><p>We’ll sign this together at our meeting. Feel free to read it over and bring any questions.</p><p>If you have info you’d like to start filling in now, tap the <a href="#" data-tab="planning">Planning</a> tab at the bottom of the screen to get a head start!</p></section>`}
       <section class="card" id="signbox"${ag.signingOpen ? '' : ' hidden'}>
         <h2>Sign</h2>
         <label for="signname">Your full name</label>
@@ -269,6 +297,7 @@ export async function mountProject(o) {
         <label class="check"><input type="checkbox" id="signportfolio"> It's OK to show my finished site on Steadfast Code's Work page.</label><span class="help">Optional, and separate from the contract.</span>
         <p><button type="button" class="primary" id="signbtn" disabled>Sign and continue</button> <span id="signnote" class="muted"></span></p>
       </section>`;
+    root.querySelectorAll('[data-tab]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); setTab(a.dataset.tab); }));
     const name = root.querySelector('#signname'), agree = root.querySelector('#signagree'), btn = root.querySelector('#signbtn'), note = root.querySelector('#signnote');
     const ready = () => { btn.disabled = !(agree.checked && /\S+\s+\S+/.test(name.value.trim())); };
     name.addEventListener('input', ready);
@@ -432,7 +461,7 @@ export async function mountProject(o) {
     P = { ...r, answers: { ...r.answers, ...pending } };
     if (before !== shape()) return render();
     // On the agreement screen there's nothing else to update, and redrawing would wipe a half-typed name.
-    if (gated()) return;
+    if (gated() && (tab === 'contract' || !tabbed())) return;
     for (const el of root.querySelectorAll('[data-f]')) {
       const f = el.dataset.f;
       if (el.contains(document.activeElement) || f in pending || Date.now() - (localEditAt[f] || 0) < 4000) continue;

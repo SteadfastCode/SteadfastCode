@@ -82,3 +82,9 @@
   #signbox .check { margin-top: 14px; }
   pre.signed { white-space: pre-wrap; font: inherit; font-size: .9rem; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: 420px; overflow: auto; }
   details summary { cursor: pointer; color: var(--accent); }
+  /* Before signing: a Contract / Planning tab strip at the bottom of the client's screen. */
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: 1fr 1fr; background: var(--card); border-top: 1px solid var(--line); }
+  nav.tabs button { border: 0; border-radius: 0; padding: 14px 10px; font-weight: 600; background: var(--card); color: var(--muted); }
+  nav.tabs button.on { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+  body.has-tabs footer.bar { bottom: 50px; }
+  body.has-tabs main { padding-bottom: 200px; }
