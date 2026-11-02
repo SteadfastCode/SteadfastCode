@@ -83,7 +83,7 @@ export async function mountProject(o) {
         break;
       }
       case 'choice':
-        body = `<label for="${id}">${esc(label(f))}${req}${help}</label><select id="${id}" data-f="${f.id}"${dis}><option value=""></option>${f.options.map((x) => `<option ${v === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+        body = `<label for="${id}">${esc(label(f))}${req}${help}</label><select id="${id}" data-f="${f.id}"${dis}><option value=""></option>${f.options.map((x) => { const val = x.value ?? x; return `<option value="${esc(val)}"${v === val ? ' selected' : ''}>${esc((!admin && x.you) || val)}</option>`; }).join('')}</select>`;
         break;
       case 'list': case 'pages':
         body = `<label for="${id}">${esc(label(f))}${req}${help}${f.type === 'pages' ? '<span class="help count" id="pagecount"></span>' : ''}</label><textarea id="${id}" data-f="${f.id}" data-list="1"${dis}>${esc((v || []).join('\n'))}</textarea>`;

@@ -17,7 +17,7 @@ export function cleanValue(field, value) {
   switch (field.type) {
     case 'bool': return typeof value === 'boolean' ? value : undefined;
     case 'tier': return typeof value === 'string' && tierById(value) ? value : undefined;
-    case 'choice': return typeof value === 'string' && (value === '' || field.options.includes(value)) ? value : undefined;
+    case 'choice': return typeof value === 'string' && (value === '' || field.options.some((o) => (o.value ?? o) === value)) ? value : undefined;
     case 'list':
     case 'pages': {
       const items = Array.isArray(value) ? value : typeof value === 'string' ? value.split('\n') : null;

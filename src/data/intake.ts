@@ -3,7 +3,8 @@
 // server (server/intake.js) validates answers and checks scope against it, so a question added here
 // shows up and is saved in both places.
 //
-// Field types: text, email, tel, textarea, list (one item per line), choice (`options`), bool,
+// Field types: text, email, tel, textarea, list (one item per line), choice (`options`: a string,
+// or { value, you } where `you` is the answer as the client reads it; `value` is what's saved), bool,
 // tier (the website packages from site.ts), pages (a list counted against the package's pages),
 // hours ({ mode: 'set' | '247' | 'appointment', days: { mon: { open: '08:00', close: '17:00' } … },
 // note } — structured so a client site can publish it as Google's opening-hours data).
@@ -11,8 +12,10 @@
 // A section with `tiers` only shows for those packages.
 //
 // Shared with the client (2026-11-01): their page at /client shows this same form, live, and they
-// can edit every field except the ones marked `owner: 'daniel'` — the package and everything that
-// sets the scope and price, which they can see but only Daniel changes. Nothing is hidden from them;
+// can edit every field except the ones marked `owner: 'daniel'` — the package, the add-on and the
+// out-of-scope list, which set the price; they can see them, but only Daniel changes them. Pages
+// are theirs to edit too (Daniel, 2026-11-01): going past the package shows a scope note to both
+// sides at once, and nothing a client types changes the price. Nothing is hidden from them;
 // Daniel's call, to build trust. `you` is the question as the client reads it, where the wording
 // differs from Daniel's ("Who their customers are" → "Who your customers are"), and `youHelp` the
 // same for the help line under it.
@@ -56,14 +59,14 @@ export const intakeSections = [
     id: 'pages',
     title: 'Pages',
     fields: [
-      { id: 'pages', label: 'Pages', type: 'pages', required: true, help: 'One per line. Counted against the package.', owner: 'daniel', you: 'Pages on your site' },
+      { id: 'pages', label: 'Pages', type: 'pages', required: true, help: 'One per line. Counted against the package.', you: 'Pages on your site' },
     ],
   },
   {
     id: 'look',
     title: 'Look and feel',
     fields: [
-      { id: 'logo', label: 'Logo', type: 'choice', options: ['Have one, will send', 'Need one', 'Just use the name'], you: 'Your logo' },
+      { id: 'logo', label: 'Logo', type: 'choice', options: [{ value: 'Have one, will send', you: 'I have one and will send it' }, { value: 'Need one', you: 'I need one' }, { value: 'Just use the name', you: 'Just use my business name' }], you: 'Your logo' },
       { id: 'colors', label: 'Colors', type: 'text' },
       { id: 'sitesLiked', label: 'Sites they like', type: 'list', help: 'Links, one per line.', you: 'Websites you like the look of' },
       { id: 'tone', label: 'How they want to sound', type: 'text', you: 'How you want to sound' },
@@ -73,9 +76,9 @@ export const intakeSections = [
     id: 'content',
     title: 'Content',
     fields: [
-      { id: 'copy', label: 'Who writes the words', type: 'choice', options: ['They do', 'I draft, they edit', 'I write it'], you: 'Who writes the words' },
+      { id: 'copy', label: 'Who writes the words', type: 'choice', options: [{ value: 'They do', you: 'I’ll write it myself' }, { value: 'I draft, they edit', you: 'Daniel drafts, I edit' }, { value: 'I write it', you: 'Daniel writes it' }], you: 'Who writes the words' },
       { id: 'ownWords', label: 'In their own words', type: 'textarea', help: 'Anything they want the site to say, however rough: about them, how they work, what to promise.', you: 'Anything you want the site to say', youHelp: 'However rough: about you, how you work, what you promise.' },
-      { id: 'photos', label: 'Photos', type: 'choice', options: ['They have good ones', 'Some, need more', 'None yet'], you: 'Your photos' },
+      { id: 'photos', label: 'Photos', type: 'choice', options: [{ value: 'They have good ones', you: 'I have good ones' }, { value: 'Some, need more', you: 'Some, but I need more' }, 'None yet'], you: 'Your photos' },
       { id: 'reviews', label: 'Where their reviews are', type: 'text', help: 'Google, Facebook, Yelp…', you: 'Where your reviews are' },
     ],
   },
@@ -84,7 +87,7 @@ export const intakeSections = [
     title: 'Accounts and access',
     fields: [
       { id: 'registrar', label: 'Where the domain is registered', type: 'text', you: 'Where your domain is registered' },
-      { id: 'gbp', label: 'Google Business Profile', type: 'choice', options: ['Claimed, they have access', 'Exists, not claimed', 'None yet'], you: 'Your Google Business Profile' },
+      { id: 'gbp', label: 'Google Business Profile', type: 'choice', options: [{ value: 'Claimed, they have access', you: 'I have one and can log in' }, { value: 'Exists, not claimed', you: 'There’s one, but I can’t log in to it' }, { value: 'None yet', you: 'I don’t have one' }], you: 'Your Google Business Profile' },
       { id: 'formsTo', label: 'Where form messages should go', type: 'text', help: 'An email address, or a phone for texts.', you: 'Where messages from the site should go' },
     ],
   },

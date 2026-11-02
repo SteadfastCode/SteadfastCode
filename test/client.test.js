@@ -11,20 +11,22 @@ import { onRequest as clientMiddleware } from '../functions/api/client/_middlewa
 
 test('a client can change everything except the package and what sets the scope', () => {
   const owned = intakeSections.flatMap((s) => s.fields).filter((f) => f.owner === 'daniel').map((f) => f.id).sort();
-  assert.deepEqual(owned, ['editor', 'outOfScope', 'pages', 'tier']);
+  assert.deepEqual(owned, ['editor', 'outOfScope', 'tier']);
+  assert.ok(clientEditable.has('pages'), 'pages are the client\'s to edit; the scope note shows both sides when they go past the package');
   for (const id of owned) assert.equal(clientEditable.has(id), false, id);
   assert.ok(clientEditable.has('notes'), 'notes are shared, not private');
-  const { answers, dropped } = mergeClientAnswers({ tier: 'starter', pages: ['Home'] }, { tier: 'growth', pages: ['A', 'B'], services: 'Drains\nHeaters', outOfScope: 'free logo' });
+  const { answers, dropped } = mergeClientAnswers({ tier: 'starter', pages: ['Home'] }, { tier: 'growth', pages: ['Home', 'Gallery'], services: 'Drains\nHeaters', outOfScope: 'free logo', editor: true });
   assert.equal(answers.tier, 'starter');
-  assert.deepEqual(answers.pages, ['Home']);
+  assert.deepEqual(answers.pages, ['Home', 'Gallery']);
   assert.deepEqual(answers.services, ['Drains', 'Heaters']);
-  assert.deepEqual(dropped.sort(), ['outOfScope', 'pages', 'tier']);
+  assert.deepEqual(dropped.sort(), ['editor', 'outOfScope', 'tier']);
 });
 
-test('every question and help line has client wording, or wording that already works for them', () => {
+test('every question, help line and dropdown answer has client wording, or wording that already works for them', () => {
   // The question and the help line under it, as the client reads them (Daniel caught the help lines, 2026-11-01).
   for (const f of intakeSections.flatMap((s) => s.fields)) {
-    for (const text of [f.you || f.label, f.youHelp || f.help].filter(Boolean)) assert.doesNotMatch(text, /\b(they|their|them|theirs)\b/i, `${f.id}: "${text}" talks about the client in the third person`);
+    const answers = (f.options || []).map((o) => o.you || o.value || o);
+    for (const text of [f.you || f.label, f.youHelp || f.help, ...answers].filter(Boolean)) assert.doesNotMatch(text, /\b(they|their|them|theirs)\b/i, `${f.id}: "${text}" talks about the client in the third person`);
   }
 });
 
