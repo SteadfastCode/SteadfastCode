@@ -14,7 +14,8 @@
 // can edit every field except the ones marked `owner: 'daniel'` — the package and everything that
 // sets the scope and price, which they can see but only Daniel changes. Nothing is hidden from them;
 // Daniel's call, to build trust. `you` is the question as the client reads it, where the wording
-// differs from Daniel's ("Who their customers are" → "Who your customers are").
+// differs from Daniel's ("Who their customers are" → "Who your customers are"), and `youHelp` the
+// same for the help line under it.
 
 export const intakeSections = [
   {
@@ -34,8 +35,8 @@ export const intakeSections = [
       { id: 'email', label: 'Email', type: 'email', required: true },
       { id: 'phone', label: 'Phone', type: 'tel' },
       { id: 'currentSite', label: 'Current website', type: 'text', you: 'Your current website, if you have one' },
-      { id: 'domain', label: 'Domain for the new site', type: 'text', help: 'Do they already own it?', you: 'The web address you want' },
-      { id: 'serviceArea', label: 'Where they work', type: 'textarea', required: true, help: 'Towns, a radius, or the address if customers come to them.', you: 'Where you work' },
+      { id: 'domain', label: 'Domain for the new site', type: 'text', help: 'Do they already own it?', you: 'The web address you want', youHelp: 'Do you already own it? If so, where did you buy it?' },
+      { id: 'serviceArea', label: 'Where they work', type: 'textarea', required: true, help: 'Towns, a radius, or the address if customers come to them.', you: 'Where you work', youHelp: 'Towns, a radius, or your address if customers come to you.' },
       { id: 'showAddress', label: 'Customers come to them (show the address)', type: 'bool', you: 'Customers come to you (show your address)' },
       { id: 'hours', label: 'Hours', type: 'hours', help: 'Days open with open and close times, or 24/7, or by appointment.' },
     ],
@@ -46,7 +47,7 @@ export const intakeSections = [
     fields: [
       { id: 'services', label: 'Services or products', type: 'list', required: true, help: 'One per line.', you: 'What you offer' },
       { id: 'mainAction', label: 'The one thing a visitor should do', type: 'choice', options: ['Call', 'Text', 'Fill out a form', 'Book online', 'Buy online', 'Visit in person'], you: 'The one thing you want visitors to do' },
-      { id: 'bookingLink', label: 'Booking or scheduling link', type: 'text', help: 'If they book online: the page people book on.', you: 'Your booking link' },
+      { id: 'bookingLink', label: 'Booking or scheduling link', type: 'text', help: 'If they book online: the page people book on.', you: 'Your booking link', youHelp: 'If customers book with you online, the link to your booking page.' },
       { id: 'customers', label: 'Who their customers are', type: 'textarea', you: 'Who your customers are' },
       { id: 'different', label: 'Why people pick them', type: 'textarea', you: 'Why people pick you' },
     ],
@@ -73,7 +74,7 @@ export const intakeSections = [
     title: 'Content',
     fields: [
       { id: 'copy', label: 'Who writes the words', type: 'choice', options: ['They do', 'I draft, they edit', 'I write it'], you: 'Who writes the words' },
-      { id: 'ownWords', label: 'In their own words', type: 'textarea', help: 'Anything they want the site to say, however rough: about them, how they work, what to promise.', you: 'Anything you want the site to say' },
+      { id: 'ownWords', label: 'In their own words', type: 'textarea', help: 'Anything they want the site to say, however rough: about them, how they work, what to promise.', you: 'Anything you want the site to say', youHelp: 'However rough: about you, how you work, what you promise.' },
       { id: 'photos', label: 'Photos', type: 'choice', options: ['They have good ones', 'Some, need more', 'None yet'], you: 'Your photos' },
       { id: 'reviews', label: 'Where their reviews are', type: 'text', help: 'Google, Facebook, Yelp…', you: 'Where your reviews are' },
     ],

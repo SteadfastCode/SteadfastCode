@@ -66,7 +66,7 @@ export async function mountProject(o) {
     const v = P.answers[f.id];
     const editable = canEdit(f);
     const dis = editable ? '' : ' disabled';
-    const help = [f.help, editable ? null : 'Daniel sets this'].filter(Boolean).map((h) => `<span class="help">${esc(h)}</span>`).join('');
+    const help = [(!admin && f.youHelp) || f.help, editable ? null : 'Daniel sets this'].filter(Boolean).map((h) => `<span class="help">${esc(h)}</span>`).join('');
     const id = 'f-' + f.id;
     const who = `<span class="who" data-who="${f.id}" hidden></span>`;
     const req = f.required ? ' *' : '';

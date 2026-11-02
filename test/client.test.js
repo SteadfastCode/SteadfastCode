@@ -21,8 +21,11 @@ test('a client can change everything except the package and what sets the scope'
   assert.deepEqual(dropped.sort(), ['outOfScope', 'pages', 'tier']);
 });
 
-test('every question has client wording or wording that already works for them', () => {
-  for (const f of intakeSections.flatMap((s) => s.fields)) assert.doesNotMatch(f.you || f.label, /\b(their|they)\b/i, `${f.id}: "${f.you || f.label}" talks about the client in the third person`);
+test('every question and help line has client wording, or wording that already works for them', () => {
+  // The question and the help line under it, as the client reads them (Daniel caught the help lines, 2026-11-01).
+  for (const f of intakeSections.flatMap((s) => s.fields)) {
+    for (const text of [f.you || f.label, f.youHelp || f.help].filter(Boolean)) assert.doesNotMatch(text, /\b(they|their|them|theirs)\b/i, `${f.id}: "${text}" talks about the client in the third person`);
+  }
 });
 
 test('uploads are typed from their bytes; SVG and anything else are refused', () => {
