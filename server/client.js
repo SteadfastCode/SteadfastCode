@@ -67,3 +67,30 @@ export function clientStatus(p) {
     failed: p.status === 'intake' && /^(Build failed|The box restarted)/.test(p.build_note || ''),
   };
 }
+
+// A link kept so Daniel can copy it again (2026-11-02): AES-GCM under env.LINK_KEY (32 random
+// bytes, base64). Without the key there's no copy to keep, and the page says to make a new link.
+async function linkKey(env) {
+  if (!env.LINK_KEY) return null;
+  const raw = Uint8Array.from(atob(env.LINK_KEY), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+const b64 = (u8) => btoa(String.fromCharCode(...u8));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+export async function sealToken(env, token) {
+  const key = await linkKey(env);
+  if (!key) return null;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(token)));
+  return `${b64(iv)}.${b64(ct)}`;
+}
+
+export async function openToken(env, sealed) {
+  const key = await linkKey(env);
+  if (!key || !sealed) return null;
+  try {
+    const [iv, ct] = sealed.split('.').map(unb64);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct));
+  } catch { return null; }
+}

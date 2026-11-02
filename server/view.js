@@ -3,10 +3,16 @@
 // and who is editing what. Only Daniel's view adds the client-link status. Nothing else differs.
 
 import { check } from './intake.js';
-import { clientStatus, clientEditable } from './client.js';
+import { clientStatus, clientEditable, openToken } from './client.js';
 import { agreementState } from './agreement.js';
 
 export const PRESENCE_SECONDS = 12;
+
+// Daniel's copy of the client link, from its encrypted copy; null for links made before there was one.
+async function linkUrl(env, sealed) {
+  const token = await openToken(env, sealed);
+  return token ? `https://steadfastcode.tech/client#${token}` : null;
+}
 
 export async function projectView(env, p, { mode }) {
   const answers = JSON.parse(p.answers);
@@ -17,7 +23,7 @@ export async function projectView(env, p, { mode }) {
     db.prepare('SELECT at, who, what FROM project_events WHERE project_id = ? ORDER BY id DESC LIMIT 20').bind(p.id).all(),
     db.prepare('SELECT who, name, field FROM presence WHERE project_id = ? AND at > ? AND who != ?').bind(p.id, since, mode === 'admin' ? 'daniel' : 'client').all(),
     db.prepare('SELECT finished_at FROM builds WHERE project_id = ? AND ok = 1 ORDER BY finished_at DESC LIMIT 1').bind(p.id).first(),
-    mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
+    mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at, token_enc FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
     agreementState(env, p),
   ]);
   return {
@@ -39,7 +45,9 @@ export async function projectView(env, p, { mode }) {
     events: events.results,
     others: presence.results.map((r) => ({ who: r.who, name: r.name, field: r.field })),
     changedSinceBuild: !!(p.preview_url && lastBuild && p.updated_at > lastBuild.finished_at),
-    clientLink: link ? { createdAt: link.created_at, expiresAt: link.expires_at, lastUsedAt: link.last_used_at } : null,
+    clientLink: link ? { createdAt: link.created_at, expiresAt: link.expires_at, lastUsedAt: link.last_used_at, url: await linkUrl(env, link.token_enc) } : null,
+    // Without the LINK_KEY secret a link can't be kept to copy later; the page says so.
+    linkKeySet: mode === 'admin' ? !!env.LINK_KEY : undefined,
     failed: clientStatus(p).failed,
     agreement,
   };

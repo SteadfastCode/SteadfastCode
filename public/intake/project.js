@@ -44,8 +44,9 @@ export async function mountProject(o) {
   let pollTimer = null;
   let lastUploads = '';
   let lastEvents = '';
-  let newLink = null;
   let stopped = false;
+  // The link just made, for this visit: what the page can show when the site has no LINK_KEY to keep a copy.
+  let madeUrl = null;
 
   const api = async (path, init = {}) => {
     const isForm = init.body instanceof FormData;
@@ -330,17 +331,29 @@ export async function mountProject(o) {
   function paintLink() {
     const el = root.querySelector('#linkcard');
     const l = P.clientLink;
+    // Only redraw when the link itself changes, so a copy in progress isn't wiped by the 2 s refresh.
+    const key = JSON.stringify([l, madeUrl, P.linkKeySet]);
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    const url = l?.url || (l && madeUrl) || null;
     el.innerHTML = `<h2>Client link</h2>
-      ${newLink ? `<p class="muted">Send this to them. It's shown only now; if it gets lost, make a new one (the old one stops working).</p><input type="text" readonly value="${esc(newLink)}" id="linkurl"><p><button type="button" id="copylink">Copy</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : ''}
       ${l ? `<p class="muted">On · made ${esc(ago(l.createdAt))} · ${l.lastUsedAt ? `last opened ${esc(ago(l.lastUsedAt))}` : 'not opened yet'} · works until ${esc(new Date(l.expiresAt).toLocaleDateString())}</p>` : '<p class="muted">No link yet. A link lets them see and fill in this same page, upload photos, and watch the build.</p>'}
+      ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
+      ${url && !l?.url ? '<p class="help">Copy it now: without the LINK_KEY secret it won’t be shown again after you leave this page.</p>' : ''}
       <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>`;
-    el.querySelector('#makelink').onclick = async () => { try { newLink = (await api(routes.link, { method: 'POST', body: '{}' })).url; await refresh(); } catch (e) { alert(e.message); } };
+    el.querySelector('#makelink').onclick = async () => {
+      if (l && !confirm('Make a new link? The current one stops working.')) return;
+      try { madeUrl = (await api(routes.link, { method: 'POST', body: '{}' })).url; await refresh(); } catch (e) { alert(e.message); }
+    };
     const kill = el.querySelector('#killlink');
-    if (kill) kill.onclick = async () => { if (!confirm('Turn the client link off? Their page stops working until you make a new one.')) return; newLink = null; await api(routes.link, { method: 'DELETE' }); await refresh(); };
+    if (kill) kill.onclick = async () => { if (!confirm('Turn the client link off? Their page stops working until you make a new one.')) return; madeUrl = null; await api(routes.link, { method: 'DELETE' }); await refresh(); };
     const copy = el.querySelector('#copylink');
-    if (copy) copy.onclick = async () => { await navigator.clipboard.writeText(newLink); copy.textContent = 'Copied'; };
+    if (copy) copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(url); } catch { const f = el.querySelector('#linkurl'); f.select(); document.execCommand('copy'); }
+      copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy'; }, 2000);
+    };
     const share = el.querySelector('#sharelink');
-    if (share) share.onclick = () => navigator.share({ title: 'Your website', text: 'Here’s the page for your new website.', url: newLink }).catch(() => {});
+    if (share) share.onclick = () => navigator.share({ title: 'Your website', text: 'Here’s the page for your new website.', url }).catch(() => {});
   }
 
   function paintFiles() {
