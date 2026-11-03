@@ -25,7 +25,18 @@ under `docs/research/` and `docs/hosting.md`.
 - **One web font** (Roboto Slab variable, latin subset, self-hosted and preloaded from the layout);
   body text is the system font. The look — navy-to-black gradient, blue-glow cards, orange buttons,
   cyan accents — lives in `src/styles/global.css` and carries over from the original site.
-- **`functions/api/contact.js`** is the only server code: a Cloudflare Pages Function that forwards the
+- **The leads board, `/admin/leads`** (2026-11-03): every lead in the `leads` table, three kinds on one
+  board: `inbound` (came to us: the contact form, later Front Desk), `prospect` (a business, church
+  or nonprofit Daniel goes to) and `partner` (a chamber, network or referral source). Pipeline
+  status, what their site is like today, next step and date, and a log in `lead_touches`
+  (`migrations/0011_outreach.sql`). The rules are pure in `server/leads.js`, the routes under
+  `functions/api/admin/leads/`, the page `src/pages/admin/leads.astro`. Start a project from an
+  inbound lead or a prospect (`POST /api/admin/projects { leadId }`) fills the intake from the
+  board and marks the lead Won; a partner never becomes a project. `POST /api/leads/inbound`
+  (bearer `LEADS_INBOUND_SECRET`) is where Front Desk, once hosted, will hand leads in.
+  `server/leads-seed.js` is the research list the import page offers, facts only from
+  `docs/research/` here and `docs/ideas/` in steadfast-ai.
+- **`functions/api/contact.js`** is the only public server code: a Cloudflare Pages Function that forwards the
   form to a lead intake if `CONTACT_FORWARD_URL` is set, else emails through Resend, else redirects
   with `?sent=0`. On GitHub Pages it does not run; the contact page's inline script sees the 404/405
   and opens the visitor's mail app with the message filled in. Bindings are listed in `.env.example`
@@ -96,6 +107,32 @@ yarn gate
 Visual check: `yarn preview --port 4322` and Playwright from the box (`NODE_PATH=$(npm root -g)`), as in
 the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
 
+## Cloud branches and go-live
+
+A branch built in a cloud session (named `claude/<words>`) cannot finish the job: the cloud has no
+Cloudflare token for D1 or the Pages project, and must not push to `main`, which deploys. Since
+2026-11-03 this repo is in the Steadfast routine (steadfast-ai `orchestrator/repos/SteadfastCode.json`,
+the workqueue is `FEATURES.md` here, the routine's rules for this repo are `ops/routine/RUNBOOK.md`),
+so the normal way home is over the bridge: the cloud session files a merge item (`queue.add` with the
+branch and its checklist as the body), promotes it (`queue.promote`, the id said again) and marks it
+priority (`queue.prioritize`), and the next fire merges it, migration first. A branch that touches
+`.github/**` or `ops/routine/**`, or needs the Cloudflare dashboard, is a box session's job instead.
+
+Either way, every cloud branch that needs anything beyond a merge carries its checklist at
+`docs/go-live/<YYYY-MM-DD>-<topic>.md` on that branch: what the branch is, the steps before the
+merge (a migration, a secret on the Pages project), the merge itself, the checks after the deploy,
+how to roll back, and, last, deleting the checklist on `main`. Steps are commands with the check
+that proves each one worked, and a step only the box can do says so. A box session finds them with:
+
+```bash
+git fetch origin
+git branch -r --list 'origin/claude/*'                       # the cloud branches waiting
+git show origin/<branch>:docs/go-live/<file>.md               # its checklist, or `git ls-tree -r --name-only origin/<branch> docs/go-live/`
+```
+
+The order matters here more than in most repos: a migration that adds columns goes in before the
+merge, because the merge deploys code that reads them.
+
 ## Decision Log
 
 - **2026-10-27 — Astro static, not Vue + Vuetify.** Daniel asked to keep the look and feel and make it
@@ -128,6 +165,13 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   sold, and this does neither; honoring them would only undercount. Only counts once the site is on
   Cloudflare Pages with the `ANALYTICS` service binding and `ANALYTICS_KEY` set; until then
   `/api/hit` doesn't exist and the beacon's posts go nowhere.
+- **2026-11-03 — The leads board lives at /admin, not in Front Desk and not in steadfast-ai.** Daniel
+  asked where outreach tracking belongs. Front Desk is capture (missed-call text-back, a grounded
+  SMS assistant) for a trades shop's phone and is not hosted yet; outreach is email, video audits and
+  rooms, since Pennsylvania's SB 992 rules out cold texting; and `/admin` already had the back half
+  of the pipeline (a project starts from a lead). So the board sits beside the intake on the same
+  durable database, and Front Desk feeds it through `/api/leads/inbound` rather than hosting it.
+  The first version lived a day in steadfast-ai's gateway dashboard as a JSON file on the box.
 - **2026-10-30 — 100 across the board on mobile.** First live Lighthouse: performance 98 (Speed Index
   4.1 s). The hero glows and the desktop logo animated forever, so the screen never settled; they
   are still now, the hero rise is 0.4 s, CSS is inlined, and Cloudflare's email obfuscation is off.
