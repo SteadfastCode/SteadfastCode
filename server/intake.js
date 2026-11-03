@@ -89,8 +89,19 @@ export function mergeAnswers(saved, patch) {
   return { answers: next, dropped };
 }
 
-/** The answers a contact-form lead already gives us. */
-export function answersFromLead(lead) {
+/**
+ * The answers a lead already gives us: a contact-form submission's own fields, and for a lead
+ * from the outreach board (2026-11-03) its town, why Daniel reached out, where it came from and
+ * the last few touches, so the meeting starts with the story in front of him.
+ */
+export function answersFromLead(lead, touches = []) {
+  const outreach = lead.kind && lead.kind !== 'inbound';
+  const notes = [
+    lead.message ? `${outreach ? 'They wrote' : 'From the contact form'}: ${lead.message}` : '',
+    lead.why ? `Why we reached out: ${lead.why}` : '',
+    outreach && lead.source_detail ? `Found through: ${lead.source_detail}` : '',
+    touches.length ? `From the leads board:\n${touches.map((t) => `${String(t.at).slice(0, 10)} ${t.kind}: ${t.text}`).join('\n')}` : '',
+  ].filter(Boolean).join('\n');
   const { answers } = mergeAnswers({}, {
     tier: tierById(lead.plan) ? lead.plan : undefined,
     contactName: lead.name ?? '',
@@ -98,7 +109,8 @@ export function answersFromLead(lead) {
     phone: lead.phone ?? '',
     businessName: lead.business ?? '',
     currentSite: lead.site ?? '',
-    notes: lead.message ? `From the contact form: ${lead.message}` : '',
+    serviceArea: lead.town ?? '',
+    notes,
   });
   return answers;
 }

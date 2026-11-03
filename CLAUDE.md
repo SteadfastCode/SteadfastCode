@@ -25,7 +25,18 @@ under `docs/research/` and `docs/hosting.md`.
 - **One web font** (Roboto Slab variable, latin subset, self-hosted and preloaded from the layout);
   body text is the system font. The look — navy-to-black gradient, blue-glow cards, orange buttons,
   cyan accents — lives in `src/styles/global.css` and carries over from the original site.
-- **`functions/api/contact.js`** is the only server code: a Cloudflare Pages Function that forwards the
+- **The leads board, `/admin/leads`** (2026-11-03): every lead in the `leads` table, three kinds on one
+  board: `inbound` (came to us: the contact form, later Front Desk), `prospect` (a business, church
+  or nonprofit Daniel goes to) and `partner` (a chamber, network or referral source). Pipeline
+  status, what their site is like today, next step and date, and a log in `lead_touches`
+  (`migrations/0011_outreach.sql`). The rules are pure in `server/leads.js`, the routes under
+  `functions/api/admin/leads/`, the page `src/pages/admin/leads.astro`. Start a project from an
+  inbound lead or a prospect (`POST /api/admin/projects { leadId }`) fills the intake from the
+  board and marks the lead Won; a partner never becomes a project. `POST /api/leads/inbound`
+  (bearer `LEADS_INBOUND_SECRET`) is where Front Desk, once hosted, will hand leads in.
+  `server/leads-seed.js` is the research list the import page offers, facts only from
+  `docs/research/` here and `docs/ideas/` in steadfast-ai.
+- **`functions/api/contact.js`** is the only public server code: a Cloudflare Pages Function that forwards the
   form to a lead intake if `CONTACT_FORWARD_URL` is set, else emails through Resend, else redirects
   with `?sent=0`. On GitHub Pages it does not run; the contact page's inline script sees the 404/405
   and opens the visitor's mail app with the message filled in. Bindings are listed in `.env.example`
@@ -128,6 +139,13 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   sold, and this does neither; honoring them would only undercount. Only counts once the site is on
   Cloudflare Pages with the `ANALYTICS` service binding and `ANALYTICS_KEY` set; until then
   `/api/hit` doesn't exist and the beacon's posts go nowhere.
+- **2026-11-03 — The leads board lives at /admin, not in Front Desk and not in steadfast-ai.** Daniel
+  asked where outreach tracking belongs. Front Desk is capture (missed-call text-back, a grounded
+  SMS assistant) for a trades shop's phone and is not hosted yet; outreach is email, video audits and
+  rooms, since Pennsylvania's SB 992 rules out cold texting; and `/admin` already had the back half
+  of the pipeline (a project starts from a lead). So the board sits beside the intake on the same
+  durable database, and Front Desk feeds it through `/api/leads/inbound` rather than hosting it.
+  The first version lived a day in steadfast-ai's gateway dashboard as a JSON file on the box.
 - **2026-10-30 — 100 across the board on mobile.** First live Lighthouse: performance 98 (Speed Index
   4.1 s). The hero glows and the desktop logo animated forever, so the screen never settled; they
   are still now, the hero rise is 0.4 s, CSS is inlined, and Cloudflare's email obfuscation is off.
