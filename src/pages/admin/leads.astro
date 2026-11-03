@@ -25,16 +25,19 @@ const config = {
 <title>Leads — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
 <style is:global>
-  main { max-width: 1100px; }
+  /* The board uses the width: on a wide screen the last touch gets the room, clamped to three lines. */
+  main { max-width: 1440px; }
+  .admin-head .in { max-width: 1440px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
   .toolbar .spacer { flex: 1; }
   .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
   .filters button { padding: 6px 10px; font-size: .9rem; }
   .filters button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
   .filters input[type=search] { flex: 1 1 160px; font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-width: 120px; }
-  .lead { display: grid; grid-template-columns: 2.2fr 1.4fr 1fr 1.6fr 1.3fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: start; }
+  .lead { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) 9.5rem minmax(0, 3.2fr) minmax(0, 1.2fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: start; }
   .lead:first-of-type { border-top: 0; }
   .lead .sub { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+  .lead .touch .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
   .lead select { width: auto; max-width: 100%; padding: 6px 8px; font-size: .9rem; }
   .lead select.s-won { border-color: var(--ok); }
   .lead select.s-lost, .lead select.s-hold { opacity: .7; }
@@ -126,9 +129,9 @@ async function viewBoard() {
   const upNext = leads.filter((l) => l.due).slice(0, 12);
   const row = (l) => `<div class="lead" data-id="${esc(l.id)}" data-status="${esc(l.status)}" data-kind="${esc(l.kind)}" data-search="${esc([l.business, l.town, l.category, l.contact, l.email, l.phone, l.why, l.source, l.nextStep, C.statusLabel[l.status], C.kindLabel[l.kind]].join(' ').toLowerCase())}">
     <div class="main"><a href="#l/${esc(l.id)}"><b>${esc(l.business || l.contact || 'Untitled')}</b></a>${kindBadge(l)}<div class="sub">${[esc(l.town), esc(l.category), l.website ? link(l.website) : '', l.siteState !== 'unknown' ? esc(C.siteStateLabel[l.siteState]) : '', l.fit ? esc(tierName(l.fit)) : ''].filter(Boolean).join(' · ')}</div></div>
-    <div class="who"><span class="head">Contact</span>${esc(l.contact) || '<span class="muted">—</span>'}${l.role ? ` <span class="muted">${esc(l.role)}</span>` : ''}<div class="sub">${[l.phone ? `<a href="tel:${esc(l.phone.replace(/[^\d+]/g, ''))}">${esc(l.phone)}</a>` : '', l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : ''].filter(Boolean).join(' · ')}</div></div>
+    <div class="contact"><span class="head">Contact</span>${esc(l.contact) || '<span class="muted">—</span>'}${l.role ? ` <span class="muted">${esc(l.role)}</span>` : ''}<div class="sub">${[l.phone ? `<a href="tel:${esc(l.phone.replace(/[^\d+]/g, ''))}">${esc(l.phone)}</a>` : '', l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : ''].filter(Boolean).join(' · ')}</div></div>
     <div class="st"><span class="head">Status</span><select class="status s-${esc(l.status)}" data-id="${esc(l.id)}" aria-label="Status of ${esc(l.business)}">${C.statuses.map((s) => `<option value="${s}"${s === l.status ? ' selected' : ''}>${esc(C.statusLabel[s])}</option>`).join('')}</select></div>
-    <div class="touch"><span class="head">Last touch</span>${l.lastTouch ? `${esc(C.touchLabel[l.lastTouch.kind] || l.lastTouch.kind)} <span class="muted">${esc(ago(l.lastTouch.at))}</span><div class="sub">${esc(l.lastTouch.text.slice(0, 140))}</div>` : '<span class="muted">nothing yet</span>'}</div>
+    <div class="touch"><span class="head">Last touch</span>${l.lastTouch ? `${esc(C.touchLabel[l.lastTouch.kind] || l.lastTouch.kind)} <span class="muted">${esc(ago(l.lastTouch.at))}</span><div class="sub">${esc(l.lastTouch.text.slice(0, 400))}</div>` : '<span class="muted">nothing yet</span>'}</div>
     <div class="next"><span class="head">Next</span>${l.nextAt ? `<span class="${l.due ? `due-${l.due}` : ''}">${esc(l.nextAt)}</span>` : !l.nextStep && !l.projects.length ? '<span class="muted">—</span>' : ''}<div class="sub">${esc(l.nextStep)}</div>${l.projects.map((p) => `<div class="sub"><a href="/admin#p/${esc(p.id)}">Project: ${esc(p.status)}</a>${p.previewUrl ? ` · <a href="${esc(p.previewUrl)}" target="_blank" rel="noopener">preview</a>` : ''}</div>`).join('')}</div>
   </div>`;
   app.innerHTML = `
