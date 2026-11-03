@@ -107,6 +107,51 @@ yarn gate
 Visual check: `yarn preview --port 4322` and Playwright from the box (`NODE_PATH=$(npm root -g)`), as in
 the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
 
+## Cloud branches and go-live
+
+A branch built in a cloud session (named `claude/<words>`) cannot finish the job: the cloud has no
+Cloudflare token, no `sudo`, no box services, and must not push to `main`. So every cloud branch
+that needs anything beyond a merge carries its own checklist at `docs/go-live/<YYYY-MM-DD>-<topic>.md`
+on that branch: what the branch is, the steps before the merge (migrations, secrets), the merge
+itself, the steps after it (deploys, restarts, checks), how to roll back, and, last, deleting the
+checklist in the same change. Steps are commands with the check that proves each one worked, and a
+step only the box can do says so.
+
+A box session asked to merge a cloud branch or to go live starts with:
+
+```bash
+git fetch origin
+git branch -r --list 'origin/claude/*'                       # the cloud branches waiting
+git show origin/<branch>:docs/go-live/<file>.md               # its checklist, or `git ls-tree -r --name-only origin/<branch> docs/go-live/`
+```
+
+Then it follows the checklist top to bottom, runs each check, and reports what it could not verify.
+This is not routine work: the routine (`FEATURES.md`) implements items in its own worktrees and
+never merges a branch it did not make, and go-live steps need credentials and approvals it does not
+hold. A box session is Daniel's own, so it may.
+
+## Cloud branches and go-live
+
+A branch built in a cloud session (named `claude/<words>`) cannot finish the job: the cloud has no
+Cloudflare token for D1 or the Pages project, and must not push to `main`, which deploys. So every
+cloud branch that needs anything beyond a merge carries its own checklist at
+`docs/go-live/<YYYY-MM-DD>-<topic>.md` on that branch: what the branch is, the steps before the
+merge (a migration, a secret on the Pages project), the merge itself, the checks after the deploy,
+how to roll back, and, last, deleting the checklist in the same change. Steps are commands with the
+check that proves each one worked, and a step only the box can do says so.
+
+A box session asked to merge a cloud branch or to go live starts with:
+
+```bash
+git fetch origin
+git branch -r --list 'origin/claude/*'                       # the cloud branches waiting
+git show origin/<branch>:docs/go-live/<file>.md               # its checklist, or `git ls-tree -r --name-only origin/<branch> docs/go-live/`
+```
+
+Then it follows the checklist top to bottom, runs each check, and reports what it could not verify.
+The order matters here more than in most repos: a migration that adds columns goes in before the
+merge, because the merge deploys code that reads them.
+
 ## Decision Log
 
 - **2026-10-27 — Astro static, not Vue + Vuetify.** Daniel asked to keep the look and feel and make it
