@@ -72,6 +72,12 @@
   ul.events { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: .9rem; }
   #linkurl { font-size: .85rem; }
   .hours { display: grid; gap: 8px; }
+  /* The price control on the admin intake (2026-11-03). */
+  .pricebtns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pricebtns button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .pricecustom { display: flex; gap: 6px; margin-top: 8px; }
+  .pricecustom input { flex: 0 1 220px; min-width: 0; }
+  #priceresult { margin: 8px 0 0; }
   .hmode { display: flex; flex-wrap: wrap; gap: 4px 16px; }
   .hmode .check, .hday .check { font-weight: 500; margin: 0; }
   .hdays { display: grid; gap: 6px; }

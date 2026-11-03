@@ -28,6 +28,8 @@ export const intakeSections = [
     fields: [
       { id: 'tier', label: 'Package', type: 'tier', required: true, owner: 'daniel' },
       { id: 'editor', label: 'Add the content editor', type: 'bool', help: 'One-time add-on for Starter and Business. Growth and Store include it.', tiers: ['starter', 'business'], owner: 'daniel' },
+      // The control is Daniel's only; the client sees the price it makes, in the status line and the contract.
+      { id: 'pricing', label: 'Price', type: 'pricing', help: 'A discount off the package price, or a price you set. The contract shows it, and a signed contract asks to be signed again when it changes.', owner: 'daniel', clientHidden: true },
     ],
   },
   {

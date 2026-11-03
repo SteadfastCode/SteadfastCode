@@ -79,3 +79,25 @@ test('the admin API refuses anyone Access did not sign in, and cross-site writes
   assert.equal((await call('http://localhost/api/admin/projects', { method: 'POST', headers: { origin: 'http://localhost' } })).status, 200);
   assert.equal((await call('http://localhost/api/admin/leads', {}, { ...env, INTAKE: undefined })).status, 503);
 });
+
+test('the price: standard or custom discounts and set prices are kept, anything else is dropped, and the check carries the result', async () => {
+  const { mergeAnswers, check, cleanPricing } = await import('../server/intake.js');
+  assert.deepEqual(cleanPricing({ discountPct: 15 }), { discountPct: 15 });
+  assert.deepEqual(cleanPricing({ discountPct: 12.55 }), { discountPct: 12.6 });
+  assert.deepEqual(cleanPricing({ price: 1199.6 }), { price: 1200 });
+  for (const bad of [{ discountPct: 0 }, { discountPct: 100 }, { discountPct: 'ten' }, { price: 0 }, { price: -5 }, 'cheap', 7]) assert.equal(cleanPricing(bad), undefined, JSON.stringify(bad));
+  let { answers, dropped } = mergeAnswers({ tier: 'business' }, { pricing: { discountPct: 25 } });
+  assert.deepEqual(dropped, []);
+  assert.deepEqual(check(answers).pricing, { base: 3900, price: 2925, custom: false, pct: 25 });
+  assert.equal(check(answers).price, 2925);
+  ({ answers } = mergeAnswers(answers, { pricing: null }));
+  assert.equal(answers.pricing, undefined);
+  assert.equal(check(answers).price, 3900);
+});
+
+test('the client cannot set the price', async () => {
+  const { mergeClientAnswers } = await import('../server/client.js');
+  const { answers, dropped } = mergeClientAnswers({ tier: 'starter' }, { pricing: { price: 1 } });
+  assert.deepEqual(dropped, ['pricing']);
+  assert.equal(answers.pricing, undefined);
+});

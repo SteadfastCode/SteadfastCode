@@ -100,6 +100,13 @@ export async function mountProject(o) {
         ctl = `<label class="check"><input type="checkbox" id="${id}" data-f="${f.id}" ${v ? 'checked' : ''}${dis}> ${esc(label(f))}${f.id === 'editor' && C.editorPrice ? ` (+${money(C.editorPrice)})` : ''}</label>`;
         after = help;
         break;
+      case 'pricing':
+        // Daniel's only (clientHidden). The buttons and the result line are painted from P.check, so they follow each save.
+        lab = `<label for="pricecustom">${esc(label(f))}${help}</label>`;
+        ctl = `<div class="pricing"><div class="pricebtns">${[0, ...C.discounts].map((d) => `<button type="button" data-discount="${d}">${d ? `${d}% off` : 'List price'}</button>`).join('')}</div>
+          <div class="pricecustom"><input type="text" id="pricecustom" placeholder="12% or $1,200" autocomplete="off" inputmode="decimal"><button type="button" id="priceapply">Apply</button></div>
+          <p class="muted" id="priceresult" role="status"></p></div>`;
+        break;
       case 'hours':
         lab = `<label>${esc(label(f))}${req}${help}</label>`;
         ctl = `<div class="hours" data-f="${f.id}" data-kind="hours">${hoursInner(normHours(v), editable)}</div>`;
@@ -204,6 +211,7 @@ export async function mountProject(o) {
       ${C.sections.filter(applies).map((s) => `<section class="card"><h2>${esc((!admin && s.you) || s.title)}</h2>${s.fields.filter(applies).map(fieldHtml).join('')}</section>`).join('')}
       <section class="card" id="activity"></section>`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
+    wirePricing();
     root.querySelectorAll('[data-f]').forEach((el) => {
       if (el.dataset.kind === 'hours') wireHours(el);
       else {
@@ -234,11 +242,38 @@ export async function mountProject(o) {
     paint();
   }
 
+  // ---- price: a standard discount, or a custom one ("12%") or price ("$1,200") ----
+  function wirePricing() {
+    const input = root.querySelector('#pricecustom');
+    if (!input) return;
+    root.querySelectorAll('[data-discount]').forEach((b) => b.addEventListener('click', () => { input.value = ''; queue('pricing', +b.dataset.discount ? { discountPct: +b.dataset.discount } : null, true); }));
+    const apply = () => {
+      const s = input.value.trim(), out = root.querySelector('#priceresult');
+      const pct = s.match(/^(\d+(?:\.\d+)?)\s*%(?:\s*off)?$/i), dollars = s.match(/^\$?\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{0,2})?$/);
+      if (pct && +pct[1] > 0 && +pct[1] < 100) queue('pricing', { discountPct: +pct[1] }, true);
+      else if (dollars && +dollars[1].replace(/,/g, '') >= 1) queue('pricing', { price: +dollars[1].replace(/,/g, '') }, true);
+      else { out.textContent = 'Type a discount like 12% or a price like $1,200.'; out.className = 'error'; return; }
+      input.value = '';
+    };
+    root.querySelector('#priceapply').addEventListener('click', apply);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
+  }
+  function paintPricing() {
+    const out = root.querySelector('#priceresult');
+    if (!out) return;
+    const p = P.answers.pricing, c = P.check, pr = c.pricing;
+    root.querySelectorAll('[data-discount]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.discount ? p?.discountPct === +b.dataset.discount : !p)));
+    out.className = 'muted';
+    out.textContent = !pr ? 'Pick a package first.' : pr.custom ? `${money(pr.price)}, a price you set (list ${money(pr.base)}).` : pr.pct ? `${money(pr.price)}: ${pr.pct}% off ${money(pr.base)}, ${money(pr.base - pr.price)} less.` : `${money(pr.price)}, the list price.`;
+  }
+  const priceNote = (pr) => (!pr || pr.price === pr.base ? '' : ` <span class="muted">(${pr.custom ? 'special price' : `${pr.pct}% off`}, list ${money(pr.base)})</span>`);
+
   function paint() {
+    paintPricing();
     const a = P.answers, c = P.check, t = c.tier;
     root.querySelector('#title').textContent = a.businessName || (admin ? 'New project' : 'Your website');
     root.querySelector('#status').innerHTML = `
-      <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
+      <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}${priceNote(c.pricing)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}

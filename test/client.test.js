@@ -11,7 +11,7 @@ import { onRequest as clientMiddleware } from '../functions/api/client/_middlewa
 
 test('a client can change everything except the package and what sets the scope', () => {
   const owned = intakeSections.flatMap((s) => s.fields).filter((f) => f.owner === 'daniel').map((f) => f.id).sort();
-  assert.deepEqual(owned, ['editor', 'outOfScope', 'tier']);
+  assert.deepEqual(owned, ['editor', 'outOfScope', 'pricing', 'tier']);
   assert.ok(clientEditable.has('pages'), 'pages are the client\'s to edit; the scope note shows both sides when they go past the package');
   for (const id of owned) assert.equal(clientEditable.has(id), false, id);
   assert.ok(clientEditable.has('notes'), 'notes are shared, not private');
