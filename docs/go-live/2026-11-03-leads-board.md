@@ -5,7 +5,10 @@ of `main` plus this checklist. Open the PR from
 https://github.com/SteadfastCode/steadfastcode/pull/new/claude/amazing-cerf-iwy9bb if it is not
 open yet. What it ships: the outreach board (`CLAUDE.md` → "The leads board"), a migration that
 widens `leads`, a Leads tab in the admin header, Start a project from a lead marking it Won, and
-`POST /api/leads/inbound` for Front Desk. Every step below is a box step unless it says otherwise.
+`POST /api/leads/inbound` for Front Desk. Every step below is a box step unless it says otherwise. This branch also carries `FEATURES.md`
+and `ops/routine/RUNBOOK.md`, which put this repo in the Steadfast routine; the steadfast-ai branch
+of the same name registers it on that side and goes after this one (its checklist says why).
+This first go-live is by hand; from the next cloud branch on, the bridge files the merge item.
 
 ## 1. Before the merge: the migration (box only, needs the Cloudflare token)
 

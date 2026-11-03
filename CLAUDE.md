@@ -110,14 +110,19 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
 ## Cloud branches and go-live
 
 A branch built in a cloud session (named `claude/<words>`) cannot finish the job: the cloud has no
-Cloudflare token for D1 or the Pages project, and must not push to `main`, which deploys. So every
-cloud branch that needs anything beyond a merge carries its own checklist at
+Cloudflare token for D1 or the Pages project, and must not push to `main`, which deploys. Since
+2026-11-03 this repo is in the Steadfast routine (steadfast-ai `orchestrator/repos/SteadfastCode.json`,
+the workqueue is `FEATURES.md` here, the routine's rules for this repo are `ops/routine/RUNBOOK.md`),
+so the normal way home is over the bridge: the cloud session files a merge item (`queue.add` with the
+branch and its checklist as the body), promotes it (`queue.promote`, the id said again) and marks it
+priority (`queue.prioritize`), and the next fire merges it, migration first. A branch that touches
+`.github/**` or `ops/routine/**`, or needs the Cloudflare dashboard, is a box session's job instead.
+
+Either way, every cloud branch that needs anything beyond a merge carries its checklist at
 `docs/go-live/<YYYY-MM-DD>-<topic>.md` on that branch: what the branch is, the steps before the
 merge (a migration, a secret on the Pages project), the merge itself, the checks after the deploy,
-how to roll back, and, last, deleting the checklist in the same change. Steps are commands with the
-check that proves each one worked, and a step only the box can do says so.
-
-A box session asked to merge a cloud branch or to go live starts with:
+how to roll back, and, last, deleting the checklist on `main`. Steps are commands with the check
+that proves each one worked, and a step only the box can do says so. A box session finds them with:
 
 ```bash
 git fetch origin
@@ -125,7 +130,6 @@ git branch -r --list 'origin/claude/*'                       # the cloud branche
 git show origin/<branch>:docs/go-live/<file>.md               # its checklist, or `git ls-tree -r --name-only origin/<branch> docs/go-live/`
 ```
 
-Then it follows the checklist top to bottom, runs each check, and reports what it could not verify.
 The order matters here more than in most repos: a migration that adds columns goes in before the
 merge, because the merge deploys code that reads them.
 
