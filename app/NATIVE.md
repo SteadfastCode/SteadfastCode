@@ -5,7 +5,8 @@ same pattern as Tethered (`~/repos/tethered/web/app/NATIVE.md`). The web pages a
 **web changes reach the app with no new build**. A new APK is only needed when this folder changes
 (plugins, the config, the Android project).
 
-What the shell adds: push notifications (Firebase Cloud Messaging) and an app icon. The pages detect
+What the shell adds: push notifications (Firebase Cloud Messaging) and an app icon (the logo from
+`public/logo.svg` on the site's dark background, rendered into `android/app/src/main/res`). The pages detect
 the app (`public/admin/app.js`), register the phone for push, and open a tapped notification's page.
 Sign-in is the same Cloudflare Access one-time code as the browser (never Google sign-in).
 
@@ -29,16 +30,15 @@ is registered, so Signal pings end on their own once push works.
    (`chmod 600`). Then `systemctl --user restart client-builds.service`.
 3. **Stay signed in:** Cloudflare Zero Trust → Access → Applications → Steadfast Code admin →
    Session duration: 1 month, so the app doesn't ask for a code every day.
-4. **Build and install**, on the machine with Android Studio:
-   ```
-   cd app
-   yarn install
-   npx cap sync android
-   npx cap open android
-   ```
-   Run ▶ onto the phone over USB, or Build → Build APK(s) and install it. Firebase App
-   Distribution works too, as for Tethered (`android/DISTRIBUTION.md` there), if it should update
-   itself later.
+4. **Build and install, on the box** (no Android Studio needed): `app/build-on-box.sh` builds the
+   APK with the box's Android SDK and a JDK 21 in `~/.local/jdk` (Gradle 8.14 can't run on the
+   system's Java 25), then serves it on the tailnet only for an hour at
+   `http://100.88.32.7:8790/steadfast-code.apk`. Open that on the phone with Tailscale on, and allow
+   the browser to install apps the first time. Builds are signed with the box's debug key
+   (`~/.android/debug.keystore`), so each one installs over the last; keep that file. For push,
+   `google-services.json` goes at `app/android/app/google-services.json` on the box first.
+   Android Studio on another machine still works (`npx cap open android`), but that machine's
+   debug key is different: uninstall the box's build before installing one from there.
 5. **Check:** open the app, sign in, allow notifications. The Inbox shows "Notifications are on for
    this phone"; press **Send a test**.
 
