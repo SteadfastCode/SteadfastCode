@@ -39,6 +39,7 @@ export const intakeSections = [
     fields: [
       { id: 'businessName', label: 'Business name', type: 'text', required: true },
       { id: 'contactName', label: 'Contact name', type: 'text', required: true, you: 'Your name' },
+      { id: 'people', label: 'Who’s behind the business', type: 'list', help: 'Everyone to name on the site, one per line, the contact included; a role after a comma if they want one (Nicole Cesavice, co-owner). Empty means just the contact.', you: 'Who’s behind the business', youHelp: 'Everyone you’d like named on the site, one per line, yourself included. Add a role after a comma if you like.' },
       { id: 'email', label: 'Email', type: 'email', required: true },
       { id: 'phone', label: 'Phone', type: 'tel' },
       { id: 'currentSite', label: 'Current website', type: 'text', you: 'Your current website, if you have one' },
