@@ -1,45 +1,142 @@
 ---
-// /admin/inbox (2026-11-04): every conversation with a client, the ones waiting on Daniel first.
-// A conversation opens on its project (/admin#p/<id>), where the Messages card is, beside
-// everything else about that client. Behind the same Cloudflare Access app as /admin.
+// /admin/inbox (2026-11-04): Daniel's messages with every client, laid out like any messages app.
+// Conversations on the left (the ones waiting on him first, then the newest, then every other
+// client so he can start one), the open conversation on the right with the message box pinned at
+// the bottom: Enter sends, Shift+Enter is a new line. On a phone it's one pane at a time. The client
+// gets an email with their link when he writes (server/messages.js). Behind Cloudflare Access.
 const v = Date.now().toString(36);
 ---
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <meta name="robots" content="noindex, nofollow">
 <title>Inbox — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
 <style is:global>
-  .thread { display: block; padding: 12px 0; border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; }
-  .thread:first-of-type { border-top: 0; }
-  .thread:hover b { color: var(--accent); }
-  .thread .last { color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-  .thread.unread b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: middle; }
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  .admin-head .in { max-width: 1440px; }
+  /* A full-height app, not a page: none of form.css's page padding under it. */
+  main.inbox { padding: 0; }
+  .inbox { flex: 1; min-height: 0; width: 100%; max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--card); }
+  .convos { border-right: 1px solid var(--line); overflow-y: auto; min-height: 0; }
+  .convos h1 { font-size: 1.15rem; margin: 0; padding: 14px 16px 10px; position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--line); z-index: 1; }
+  .convos .group { padding: 10px 16px 4px; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .convo { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; color: var(--ink); padding: 10px 16px; border-bottom: 1px solid var(--line); cursor: pointer; font: inherit; }
+  .convo:hover { background: var(--hover); }
+  .convo[aria-current="true"] { background: var(--hover); box-shadow: inset 3px 0 0 var(--accent); }
+  .convo .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .convo b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .convo .when { color: var(--muted); font-size: .8rem; flex: none; }
+  .convo .last { color: var(--muted); font-size: .9rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .convo.unread b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: middle; }
+  .convo.unread .last { color: var(--ink); font-weight: 600; }
+  .pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .pane-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .pane-head .peer { flex: 1; min-width: 0; }
+  .pane-head .peer b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pane-head .back { display: none; }
+  .thread { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; }
+  .thread ol.msgs { margin: 0; }
+  .empty { margin: auto; color: var(--muted); padding: 24px; text-align: center; }
+  .pane .composer { position: static; margin: 0; border-radius: 0; }
+  @media (max-width: 760px) {
+    .inbox { grid-template-columns: minmax(0, 1fr); border: 0; }
+    .inbox.open .convos { display: none; }
+    .inbox:not(.open) .pane { display: none; }
+    .pane-head .back { display: inline-flex; }
+  }
 </style>
 </head>
 <body>
-<header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox" aria-current="page">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
-<main id="app"><p class="muted">Loading…</p></main>
+<header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox" aria-current="page">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
+<main class="inbox" id="inbox">
+  <section class="convos" aria-label="Conversations"><h1>Inbox</h1><div id="list"><p class="muted" style="padding:16px">Loading…</p></div></section>
+  <section class="pane" aria-label="Conversation" id="pane"><div class="empty">Pick a conversation.</div></section>
+</main>
 <script is:inline>
-(async () => {
-  const app = document.getElementById('app');
+(() => {
+  const listEl = document.getElementById('list'), pane = document.getElementById('pane'), box = document.getElementById('inbox');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const ago = (t) => { const s = (Date.now() - Date.parse(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : new Date(t).toLocaleDateString(); };
-  async function load() {
-    try {
-      const r = await fetch('/api/admin/inbox');
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || `Error ${r.status}`);
-      app.innerHTML = `<h1>Inbox</h1><section class="card">${d.unread ? `<p><b>${d.unread} unread</b></p>` : ''}${d.rows.length ? d.rows.map((t) => `
-        <a class="thread${t.unread ? ' unread' : ''}" href="/admin#p/${esc(t.id)}"><b>${esc(t.business || 'Untitled')}</b> <span class="muted">${esc(t.contact || '')}${t.unread ? ` · ${t.unread} new` : ''} · ${esc(ago(t.last.at))}</span>
-          <div class="last">${t.last.sender === 'daniel' ? 'You: ' : ''}${esc(t.last.body)}</div></a>`).join('') : '<p class="muted">No messages yet. Clients write from the Messages tab on their portal; you can start one from a project’s Messages card.</p>'}</section>`;
-    } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+  const ago = (t) => { const s = (Date.now() - Date.parse(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${Math.round(s / 3600)} h` : new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+  async function api(path, opts = {}) {
+    const r = await fetch('/api/admin' + path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(/no such table/.test(j.error || '') ? 'Messages are being switched on (the database migration hasn’t run yet).' : j.error || `Error ${r.status}`);
+    return j;
   }
-  await load();
-  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 15000);
+  let rows = [], open = null, lastThread = '', lastList = '';
+
+  async function loadList() {
+    try { rows = (await api('/inbox')).rows; } catch (e) { listEl.innerHTML = `<p class="error" style="padding:16px">${esc(e.message)}</p>`; return; }
+    // Only redraw when something changed, so a click isn't lost to a list replaced under the pointer.
+    const key = JSON.stringify([rows, open, Math.floor(Date.now() / 60000)]);
+    if (key === lastList) return;
+    lastList = key;
+    const talked = rows.filter((r) => r.last), others = rows.filter((r) => !r.last);
+    const item = (r) => `<button type="button" class="convo${r.unread ? ' unread' : ''}" data-id="${esc(r.id)}" aria-current="${r.id === open}"><span class="top"><b>${esc(r.business || 'Untitled')}</b>${r.last ? `<span class="when">${esc(ago(r.last.at))}</span>` : ''}</span><span class="last">${r.last ? `${r.last.sender === 'daniel' ? 'You: ' : ''}${esc(r.last.body)}` : esc(r.contact || '')}</span></button>`;
+    listEl.innerHTML = (talked.length ? talked.map(item).join('') : '<p class="muted" style="padding:16px">No messages yet.</p>') + (others.length ? `<div class="group">Start a conversation</div>${others.map(item).join('')}` : '');
+    listEl.querySelectorAll('.convo').forEach((b) => b.addEventListener('click', () => { location.hash = 'p/' + b.dataset.id; }));
+  }
+
+  function openPane(id) {
+    open = id;
+    lastThread = '';
+    const r = rows.find((x) => x.id === id) || {};
+    box.classList.add('open');
+    pane.innerHTML = `<div class="pane-head"><button type="button" class="back" id="back" aria-label="All conversations">‹</button><div class="peer"><b>${esc(r.business || 'Client')}</b><span class="muted">${esc(r.contact || '')}</span></div><a href="/admin#p/${esc(id)}">Project</a></div>
+      <div class="thread" id="thread"><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol></div>
+      <div class="composer" id="composer"><div class="in"><label for="msgbody" class="sr">Reply</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message ${esc((r.contact || 'them').split(' ')[0])}" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
+    document.getElementById('back').addEventListener('click', () => { history.pushState(null, '', '#'); route(); });
+    const body = document.getElementById('msgbody'), btn = document.getElementById('msgsend'), note = document.getElementById('msgnote');
+    const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 160) + 'px'; };
+    body.addEventListener('input', grow);
+    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); btn.click(); } });
+    btn.addEventListener('pointerdown', (e) => { if (document.activeElement === body) e.preventDefault(); });
+    btn.addEventListener('click', async () => {
+      if (!body.value.trim()) { note.textContent = 'Write a message first.'; return; }
+      btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
+      try { const d = await api(`/projects/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: body.value }) }); body.value = ''; grow(); show(d.messages, true); note.textContent = d.emailed ? 'Sent · emailed' : 'Sent · no email went out'; loadList(); }
+      catch (e) { note.className = 'error'; note.textContent = e.message; }
+      btn.disabled = false;
+    });
+    listEl.querySelectorAll('.convo').forEach((b) => b.setAttribute('aria-current', String(b.dataset.id === id)));
+    lastList = '';
+    loadThread(true);
+    if (matchMedia('(min-width: 761px)').matches) body.focus();
+  }
+
+  function show(ms, toEnd) {
+    const t = document.getElementById('thread'), list = document.getElementById('msglist');
+    if (!list) return;
+    const key = JSON.stringify(ms.map((m) => [m.id, m.read_at]));
+    if (key === lastThread) return;
+    lastThread = key;
+    const atEnd = toEnd || t.scrollHeight - t.scrollTop - t.clientHeight < 40;
+    list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === 'daniel' ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === 'daniel' ? 'You' : esc(m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === 'daniel' && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : '<li class="muted">No messages yet. Say hello; they’ll get an email with their link.</li>';
+    if (atEnd) t.scrollTop = t.scrollHeight;
+  }
+  async function loadThread(toEnd) {
+    if (!open) return;
+    const id = open;
+    try { const d = await api(`/projects/${id}/messages`); if (open === id) show(d.messages, toEnd); } catch (e) { const l = document.getElementById('msglist'); if (l) l.innerHTML = `<li class="error">${esc(e.message)}</li>`; }
+  }
+
+  async function route() {
+    const m = location.hash.match(/^#p\/([\w-]+)$/);
+    if (!rows.length) await loadList();
+    if (m) { openPane(m[1]); setTimeout(loadList, 600); }
+    else { open = null; box.classList.remove('open'); pane.innerHTML = '<div class="empty">Pick a conversation.</div>'; loadList(); }
+  }
+  // iPhones don't resize the page for the keyboard: size it to what's visible, so the box rides up.
+  const fit = () => { const vv = window.visualViewport; document.body.style.height = vv ? `${vv.height}px` : ''; };
+  window.visualViewport?.addEventListener('resize', fit);
+  fit();
+  addEventListener('hashchange', route);
+  route();
+  setInterval(() => { if (document.visibilityState !== 'visible') return; loadList(); loadThread(false); }, 5000);
 })();
 </script>
 </body>
