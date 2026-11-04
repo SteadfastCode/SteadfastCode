@@ -215,7 +215,9 @@ export async function mountProject(o) {
     paintTabs();
     if (gated() && (tab === 'contract' || !tabbed())) return renderAgreement();
     const show = parts();
+    // A redraw makes fresh, empty cards: everything that skips repainting when nothing changed starts over.
     docsLoaded = false;
+    careKey = null;
     const notesField = C.sections.flatMap((x) => x.fields).find((f) => f.id === 'notes');
     if (admin) bar.hidden = false; // the client's bar shows only with a build or preview (paintBar)
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
