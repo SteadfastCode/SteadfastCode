@@ -5,6 +5,7 @@
 import { check } from './intake.js';
 import { clientStatus, clientEditable, openToken } from './client.js';
 import { agreementState } from './agreement.js';
+import { careState } from './care.js';
 
 export const PRESENCE_SECONDS = 12;
 
@@ -45,13 +46,14 @@ export async function projectView(env, p, { mode }) {
   const answers = JSON.parse(p.answers);
   const db = env.INTAKE;
   const since = new Date(Date.now() - PRESENCE_SECONDS * 1000).toISOString();
-  const [uploads, events, presence, lastBuild, link, agreement] = await Promise.all([
+  const [uploads, events, presence, lastBuild, link, agreement, care] = await Promise.all([
     db.prepare('SELECT id, kind, filename, content_type, bytes, caption, source, uploaded_at FROM uploads WHERE project_id = ? AND deleted_at IS NULL ORDER BY uploaded_at').bind(p.id).all(),
     db.prepare('SELECT at, who, what FROM project_events WHERE project_id = ? ORDER BY id DESC LIMIT 20').bind(p.id).all(),
     db.prepare('SELECT who, name, field FROM presence WHERE project_id = ? AND at > ? AND who != ?').bind(p.id, since, mode === 'admin' ? 'daniel' : 'client').all(),
     db.prepare('SELECT finished_at FROM builds WHERE project_id = ? AND ok = 1 ORDER BY finished_at DESC LIMIT 1').bind(p.id).first(),
     mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at, token_enc FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
     agreementState(env, p),
+    careState(env, p, mode),
   ]);
   if (mode !== 'admin') events.results = events.results.map(forClient).filter(Boolean);
   return {
@@ -78,6 +80,8 @@ export async function projectView(env, p, { mode }) {
     linkKeySet: mode === 'admin' ? !!env.LINK_KEY : undefined,
     failed: clientStatus(p).failed,
     agreement,
+    // The care plan after launch (2026-11-03): the client sees it once Daniel offers it.
+    care,
     // What the client changed that hasn't gone into a preview yet, and what's waiting on Daniel.
     pendingChanges: !!p.client_changed_at,
     // Daniel sees every flag; the client only learns that a bigger ask of theirs went to him.

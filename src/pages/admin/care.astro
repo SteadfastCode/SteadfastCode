@@ -1,0 +1,153 @@
+---
+// /admin/care (2026-11-03): moving clients onto care plans after launch. The list shows every
+// client with a preview and where their plan stands, and what the signed plans bring in a month;
+// a client's page sets the plan and price, the launch date, the hosting-move checklist, and offers
+// the plan for them to sign on their portal. Billing is Stripe's (server/care.js). Behind the same
+// Cloudflare Access app as /admin.
+import { carePlans } from '../../data/site';
+import { careChecklist, CHANGE_WINDOW_DAYS } from '../../data/care';
+
+const v = Date.now().toString(36);
+const config = {
+  plans: carePlans.map((p) => ({ id: p.id, name: p.name, price: p.price, who: p.who })),
+  checklist: careChecklist.map((c) => ({ id: c.id, label: c.label })),
+  windowDays: CHANGE_WINDOW_DAYS,
+};
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Care plans — Steadfast Code admin</title>
+<link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<style is:global>
+  .crow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
+  .crow:first-child { border-top: 0; }
+  .crow.cols { font-size: .85rem; color: var(--muted); font-weight: 600; padding: 4px 0; }
+  .crow .sub { color: var(--muted); font-size: .85rem; }
+  @media (max-width: 700px) { .crow { grid-template-columns: 1fr 1fr; } .crow > :first-child { grid-column: 1 / -1; } .crow.cols { display: none; } }
+  .badge.st-active { color: var(--ok); border-color: var(--ok); }
+  .badge.st-past_due { color: var(--bad); border-color: var(--bad); }
+  .badge.st-offered, .badge.st-signed { color: var(--warn); border-color: var(--warn); }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .plans button { text-align: left; display: grid; gap: 2px; padding: 10px 12px; }
+  .plans button span { color: var(--muted); font-size: .85rem; font-weight: 500; }
+  .plans button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 16px; margin: 0; }
+  .dates dt { font-size: .8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .dates dd { margin: 0 0 6px; font-weight: 600; }
+  .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .checks label { font-weight: 500; }
+  .checks .when { color: var(--muted); font-size: .85rem; margin-left: 6px; }
+  .inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .inline input[type=number], .inline input[type=date] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .inline input[type=number] { width: 7rem; }
+  .terms h3 { font-size: 1rem; margin: 14px 0 4px; }
+  .terms p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/care" aria-current="page">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
+<main id="app"><p class="muted">Loading…</p></main>
+<script type="application/json" id="care-config" set:html={JSON.stringify(config)}></script>
+<script is:inline>
+(() => {
+  const C = JSON.parse(document.getElementById('care-config').textContent);
+  const app = document.getElementById('app');
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const money = (n) => '$' + Number(n).toLocaleString('en-US');
+  const date = (s) => (s ? new Date(s.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
+  const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const STATUS = { draft: 'Draft', offered: 'Offered, not signed', signed: 'Signed, no card yet', active: 'Active', past_due: 'Payment past due', canceled: 'Canceled' };
+  async function api(path, opts = {}) {
+    const r = await fetch('/api/admin' + path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+    return j;
+  }
+
+  async function list() {
+    app.innerHTML = '<p class="muted">Loading…</p>';
+    let d;
+    try { d = await api('/care'); } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+    app.innerHTML = `
+      <h1>Care plans</h1>
+      <section class="card"><div><b>${money(d.monthly)} a month</b> <span class="muted">from ${d.count} signed plan${d.count === 1 ? '' : 's'}</span></div>
+        ${d.stripeReady ? '' : '<p class="muted">Stripe isn’t connected yet: clients can sign, and the card step waits for the <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_WEBHOOK_SECRET</code> Pages secrets.</p>'}</section>
+      <section class="card">${d.rows.length ? `<div class="crow cols"><div>Client</div><div>Plan</div><div>First bill</div><div>Hosting move</div></div>` + d.rows.map((r) => `
+        <div class="crow"><div><a href="#p/${esc(r.id)}"><b>${esc(r.business || 'Untitled')}</b></a><div class="sub">${esc(r.contact || '')}${r.firstPreview ? ` · first preview ${date(r.firstPreview)}` : ''}</div></div>
+          <div>${r.care ? `${esc(r.care.planName)} · ${money(r.care.price)}/mo <span class="badge st-${esc(r.care.status)}">${esc(STATUS[r.care.status] || r.care.status)}</span>` : '<span class="muted">No plan yet</span>'}</div>
+          <div>${r.care?.firstBill ? date(r.care.firstBill) : '<span class="muted">—</span>'}${r.care?.paidThrough ? `<div class="sub">paid through ${date(r.care.paidThrough)}</div>` : ''}</div>
+          <div>${r.care ? `${r.care.done} of ${C.checklist.length}` : '<span class="muted">—</span>'}</div></div>`).join('') : '<p class="muted">No clients with a preview yet.</p>'}</section>`;
+  }
+
+  let current = null;
+  async function detail(id) {
+    app.innerHTML = '<p class="muted">Loading…</p>';
+    let d, rows;
+    try { [d, rows] = await Promise.all([api(`/projects/${id}/care`), api('/care')]); } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+    current = { id, care: d.care, row: rows.rows.find((r) => r.id === id) };
+    paint();
+  }
+  async function save(patch) {
+    const note = document.getElementById('savenote');
+    if (note) { note.textContent = 'Saving…'; note.className = 'muted'; }
+    try { const d = await api(`/projects/${current.id}/care`, { method: 'PUT', body: JSON.stringify(patch) }); current.care = d.care; paint(); const n = document.getElementById('savenote'); if (n) n.textContent = 'Saved'; }
+    catch (e) { const n = document.getElementById('savenote'); if (n) { n.textContent = e.message; n.className = 'error'; } }
+  }
+  function paint() {
+    const c = current.care, r = current.row || {};
+    const signed = !!c.signed, plan = c.exists ? c.plan : null;
+    const checks = c.checklist || {};
+    app.innerHTML = `
+      <p><a class="back" href="#"><span aria-hidden="true">‹</span> All care plans</a></p>
+      <h1>${esc(r.business || 'Client')}</h1>
+      <section class="card"><h2>Plan</h2>
+        <div class="plans">${C.plans.map((p) => `<button type="button" data-plan="${p.id}" aria-pressed="${plan === p.id}"${signed ? ' disabled' : ''}><b>${esc(p.name)}</b><span>${money(p.price)} a month</span></button>`).join('')}</div>
+        ${c.exists ? `<p class="inline" style="margin-top:12px"><label for="price">Price a month</label> $<input type="number" id="price" min="1" step="1" value="${esc(c.price)}"${signed ? ' disabled' : ''}> ${signed ? '' : '<button type="button" id="pricesave">Set price</button>'} <span class="muted">${(() => { const p = C.plans.find((x) => x.id === plan); return p && p.price !== c.price ? `list ${money(p.price)}` : ''; })()}</span></p>` : '<p class="muted">Pick a plan to start. It stays a draft until you offer it.</p>'}
+        <p class="muted" id="savenote" role="status"></p>
+      </section>
+      ${c.exists ? `
+      <section class="card"><h2>Dates</h2>
+        <p class="inline"><label for="launched">Launch day</label><input type="date" id="launched" value="${esc(c.launchedAt || '')}"${signed ? ' disabled' : ''}>${signed ? '' : ' <button type="button" id="launchtoday">Today</button>'}</p>
+        <dl class="dates">
+          <div><dt>First preview</dt><dd>${date(c.firstPreview)}</dd></div>
+          <div><dt>Changes window ends</dt><dd>${c.windowEnds ? date(c.windowEnds) : signed ? '—' : 'after the first preview'}</dd></div>
+          <div><dt>First bill</dt><dd>${c.firstBill ? date(c.firstBill) : '—'}</dd></div>
+          <div><dt>Paid through</dt><dd>${date(c.billing?.paidThrough)}</dd></div>
+        </dl>
+        <p class="muted">Billing starts the 1st on or after the later of launch and ${C.windowDays} days from the first preview; nothing before.</p>
+      </section>
+      <section class="card"><h2>Status <span class="badge st-${esc(c.status)}">${esc(STATUS[c.status] || c.status)}</span></h2>
+        ${c.status === 'draft' ? `<p>Offer it when you launch: it shows on ${esc(r.contact || 'the client')}’s portal to read and sign, then add a card.</p><p><button type="button" class="primary" id="offer">Offer this plan to sign</button></p>` : ''}
+        ${c.status === 'offered' ? `<p>Waiting on their signature on the portal.</p><p><button type="button" id="withdraw">Take the offer back</button></p>` : ''}
+        ${c.signed ? `<p>Signed by ${esc(c.signed.name)}, ${esc(new Date(c.signed.at).toLocaleString())} (terms ${esc(c.signed.version)}).</p>` : ''}
+        ${c.status === 'signed' ? `<p class="muted">They still need to add a card on the portal.${c.stripeReady ? '' : ' Stripe isn’t connected yet.'}</p>` : ''}
+        ${c.stripeSubscription ? `<p><a href="https://dashboard.stripe.com/subscriptions/${esc(c.stripeSubscription)}" target="_blank" rel="noopener">Open in Stripe</a> <span class="muted">Stripe status: ${esc(c.billing?.stripeStatus || '—')}</span></p>` : ''}
+        ${c.terms ? `<details><summary>Preview what they’ll sign</summary><div class="terms">${c.terms.sections.map((s) => `<h3>${esc(s.h)}</h3>${s.p.map((t) => `<p>${esc(t)}</p>`).join('')}`).join('')}</div></details>` : ''}
+      </section>
+      <section class="card"><h2>Hosting move</h2>
+        <ul class="checks">${C.checklist.map((x) => `<li><label class="check"><input type="checkbox" data-check="${x.id}"${checks[x.id] ? ' checked' : ''}> ${esc(x.label)}</label>${checks[x.id] ? `<span class="when">${date(checks[x.id])}</span>` : ''}</li>`).join('')}</ul>
+        <label for="notes" style="margin-top:12px">Notes</label><textarea id="notes" placeholder="Registrar, who has access, records to watch (email), anything to remember">${esc(c.notes || '')}</textarea>
+      </section>` : ''}`;
+    app.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => save({ plan: b.dataset.plan })));
+    const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+    on('pricesave', 'click', () => save({ price: Number(document.getElementById('price').value) }));
+    on('price', 'keydown', (e) => { if (e.key === 'Enter') save({ price: Number(e.target.value) }); });
+    on('launched', 'change', (e) => save({ launchedAt: e.target.value || null }));
+    on('launchtoday', 'click', () => save({ launchedAt: today() }));
+    on('offer', 'click', () => save({ offer: true }));
+    on('withdraw', 'click', () => save({ offer: false }));
+    on('notes', 'change', (e) => save({ notes: e.target.value }));
+    app.querySelectorAll('[data-check]').forEach((b) => b.addEventListener('change', () => save({ checklist: { ...(current.care.checklist || {}), [b.dataset.check]: b.checked ? today() : null } })));
+  }
+
+  const route = () => { const m = location.hash.match(/^#p\/([\w-]+)$/); m ? detail(m[1]) : list(); };
+  addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>

@@ -62,3 +62,26 @@ test('signing needs a full typed name, the ticked box, and the exact text that w
 test('the agreement makes no claim of a track record', () => {
   for (const t of websiteTiers) assert.doesNotMatch(agreementFor({ ...base, tier: t.id }).text, /\b(often|usually build|always|every client|most clients)\b/i);
 });
+
+test('a discount or a set price changes the contract, the halves and the signature; list price reads as before', () => {
+  const list = agreementFor(base);
+  assert.doesNotMatch(list.text, /discount|normally/);
+  assert.equal(termsKey(base), termsKey({ ...base, pricing: null }));
+
+  const off = agreementFor({ ...base, pricing: { discountPct: 10 } });
+  assert.equal(off.price, 1350);
+  assert.match(off.text, /The price is \$1,350 \(\$1,500 for Starter, less a 10% discount\), plus any sales tax/);
+  assert.match(off.text, /Half \(\$675\) is due when you sign/);
+  assert.notEqual(termsKey(base), termsKey({ ...base, pricing: { discountPct: 10 } }));
+
+  const both = agreementFor({ ...base, editor: true, pricing: { discountPct: 20 } });
+  assert.equal(both.price, 1600);
+  assert.match(both.text, /\$1,600 \(\$1,500 for Starter, plus \$500 for the content editor, less a 20% discount\)/);
+
+  const set = agreementFor({ ...base, pricing: { price: 1200 } });
+  assert.equal(set.price, 1200);
+  assert.match(set.text, /The price is \$1,200 \(a price we agreed on; Starter is normally \$1,500\)/);
+
+  const store = agreementFor({ ...base, tier: 'store', pricing: { price: 7000 } });
+  assert.match(store.text, /The price is \$7,000 \(a price we agreed on; Online store is normally/);
+});

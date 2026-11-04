@@ -3,7 +3,7 @@
 // The questions themselves live in src/data/intake.ts; the packages in src/data/site.ts.
 
 import { intakeSections, defaultPages } from '../src/data/intake.ts';
-import { websiteTiers, addOns } from '../src/data/site.ts';
+import { websiteTiers, addOns, priceFor } from '../src/data/site.ts';
 
 const MAX_TEXT = 2000;
 const MAX_LIST = 60;
@@ -25,8 +25,18 @@ export function cleanValue(field, value) {
       return items.map((v) => String(v).trim().slice(0, 300)).filter(Boolean).slice(0, MAX_LIST);
     }
     case 'hours': return cleanHours(value);
+    case 'pricing': return cleanPricing(value);
     default: return typeof value === 'string' ? value.trim().slice(0, MAX_TEXT) : undefined;
   }
+}
+
+/** A discount (a percent, 0 < p < 100) or a set price in whole dollars; anything else isn't a price. */
+export function cleanPricing(value) {
+  if (!value || typeof value !== 'object') return undefined;
+  const pct = Number(value.discountPct), price = Number(value.price);
+  if (value.price != null) return Number.isFinite(price) && price >= 1 && price <= 1_000_000 ? { price: Math.round(price) } : undefined;
+  if (value.discountPct != null) return Number.isFinite(pct) && pct > 0 && pct < 100 ? { discountPct: Math.round(pct * 10) / 10 } : undefined;
+  return null;
 }
 
 export const DAYS = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
@@ -89,8 +99,19 @@ export function mergeAnswers(saved, patch) {
   return { answers: next, dropped };
 }
 
-/** The answers a contact-form lead already gives us. */
-export function answersFromLead(lead) {
+/**
+ * The answers a lead already gives us: a contact-form submission's own fields, and for a lead
+ * from the outreach board (2026-11-03) its town, why Daniel reached out, where it came from and
+ * the last few touches, so the meeting starts with the story in front of him.
+ */
+export function answersFromLead(lead, touches = []) {
+  const outreach = lead.kind && lead.kind !== 'inbound';
+  const notes = [
+    lead.message ? `${outreach ? 'They wrote' : 'From the contact form'}: ${lead.message}` : '',
+    lead.why ? `Why we reached out: ${lead.why}` : '',
+    outreach && lead.source_detail ? `Found through: ${lead.source_detail}` : '',
+    touches.length ? `From the leads board:\n${touches.map((t) => `${String(t.at).slice(0, 10)} ${t.kind}: ${t.text}`).join('\n')}` : '',
+  ].filter(Boolean).join('\n');
   const { answers } = mergeAnswers({}, {
     tier: tierById(lead.plan) ? lead.plan : undefined,
     contactName: lead.name ?? '',
@@ -98,7 +119,8 @@ export function answersFromLead(lead) {
     phone: lead.phone ?? '',
     businessName: lead.business ?? '',
     currentSite: lead.site ?? '',
-    notes: lead.message ? `From the contact form: ${lead.message}` : '',
+    serviceArea: lead.town ?? '',
+    notes,
   });
   return answers;
 }
@@ -138,8 +160,9 @@ export function check(answers) {
     }
   }
   for (const item of answers.outOfScope ?? []) scope.push(`Extra, quoted separately: ${item}`);
-  const price = tier ? tier.price + (answers.editor && tier.scope.editor === 'add-on' ? addOns.find((a) => a.id === 'editor').price : 0) : null;
-  return { ready: missing.length === 0, missing, scope, price, tier: tier ? { id: tier.id, name: tier.name, price: tier.price, from: !!tier.from, scope: tier.scope } : null };
+  const priced = tier ? priceFor(tier, !!answers.editor && tier.scope.editor === 'add-on', answers.pricing) : null;
+  const price = priced ? priced.price : null;
+  return { ready: missing.length === 0, missing, scope, price, pricing: priced, tier: tier ? { id: tier.id, name: tier.name, price: tier.price, from: !!tier.from, scope: tier.scope } : null };
 }
 
 /** A repo-safe slug from the business name: `client-<slug>` is the repo the build makes. */

@@ -13,7 +13,7 @@
 // can start in the first meeting). "Daniel Ecker (Steadfast Code)" rather than "doing business as"
 // until the fictitious name is registered.
 
-import { business, money, websiteTiers, addOns, launchNote, domainNote } from './site.ts';
+import { business, money, websiteTiers, addOns, launchNote, domainNote, priceFor, type Pricing } from './site.ts';
 
 export const AGREEMENT_VERSION = '2026-11-02f';
 
@@ -24,24 +24,34 @@ export type AgreementInput = {
   businessName?: string;
   contactName?: string;
   email?: string;
+  pricing?: Pricing;
 };
 
 /** What makes a signature stale: the package, the add-on, the price, the wording. */
 export function termsKey(a: AgreementInput) {
   const tier = websiteTiers.find((t) => t.id === a.tier);
   const editor = !!a.editor && tier?.scope.editor === 'add-on';
-  return [AGREEMENT_VERSION, a.tier, editor ? 'editor' : '', tier ? total(tier, editor) : ''].join('|');
+  return [AGREEMENT_VERSION, a.tier, editor ? 'editor' : '', tier ? priceFor(tier, editor, a.pricing).price : ''].join('|');
 }
 
 const editorAddOn = addOns.find((x) => x.id === 'editor')!;
-const total = (tier: Tier, editor: boolean) => tier.price + (editor ? editorAddOn.price : 0);
+
+const listParts = (tier: Tier, editor: boolean) => (editor ? `${money(tier.price)} for ${tier.name}, plus ${money(editorAddOn.price)} for the content editor` : `${money(tier.price)} for ${tier.name}`);
+function priceDetail(tier: Tier, editor: boolean, p: ReturnType<typeof priceFor>) {
+  if (p.custom) return ` (a price we agreed on; ${tier.name}${editor ? ' with the content editor' : ''} is normally ${money(p.base)})`;
+  if (p.pct) return ` (${listParts(tier, editor)}, less a ${p.pct}% discount)`;
+  return editor ? ` (${listParts(tier, editor)})` : '';
+}
 
 /** The agreement as sections of plain paragraphs, and the same as one plain text block. */
 export function agreementFor(a: AgreementInput, date = new Date()) {
   const tier = websiteTiers.find((t) => t.id === a.tier);
   if (!tier) return null;
   const editor = !!a.editor && tier.scope.editor === 'add-on';
-  const price = total(tier, editor);
+  // A changed price (2026-11-03) adds a line saying what it was; without one the wording is as before,
+  // so contracts already signed at list price stay valid without a version bump.
+  const priced = priceFor(tier, editor, a.pricing);
+  const price = priced.price;
   const half = Math.round(price / 2);
   const from = 'from' in tier && tier.from;
   const client = [a.contactName, a.businessName].filter(Boolean).join(', for ') || 'the client';
@@ -70,7 +80,7 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
     {
       h: 'Price and payment',
       p: [
-        `${from ? 'The price for your store, as we agreed it, starts at' : 'The price is'} ${money(price)}${editor ? ` (${money(tier.price)} for ${tier.name}, plus ${money(editorAddOn.price)} for the content editor)` : ''}, plus any sales tax that applies.`,
+        `${from && !priced.custom ? 'The price for your store, as we agreed it, starts at' : 'The price is'} ${money(price)}${priceDetail(tier, editor, priced)}, plus any sales tax that applies.`,
         `Half (${money(half)}) is due when you sign, to start. The other half (${money(price - half)}) is due at launch.`,
         'Hosting and care plans are separate, month to month, and optional. Nothing in this contract signs you up for one.',
       ],

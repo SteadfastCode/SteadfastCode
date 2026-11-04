@@ -72,6 +72,12 @@
   ul.events { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: .9rem; }
   #linkurl { font-size: .85rem; }
   .hours { display: grid; gap: 8px; }
+  /* The price control on the admin intake (2026-11-03). */
+  .pricebtns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pricebtns button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .pricecustom { display: flex; gap: 6px; margin-top: 8px; }
+  .pricecustom input { flex: 0 1 220px; min-width: 0; }
+  #priceresult { margin: 8px 0 0; }
   .hmode { display: flex; flex-wrap: wrap; gap: 4px 16px; }
   .hmode .check, .hday .check { font-weight: 500; margin: 0; }
   .hdays { display: grid; gap: 6px; }
@@ -97,11 +103,17 @@
   /* Admin header and nav (2026-11-02): a real header instead of bare links between the admin pages. */
   .admin-head { background: var(--card); border-bottom: 1px solid var(--line); }
   .admin-head .in { max-width: 760px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
+  /* Sticky where nothing else holds the top (the usage page); /admin keeps its sticky progress bar there. */
+  .admin-head.stick { position: sticky; top: 0; z-index: 5; }
   .admin-head .mark { font-weight: 700; }
   .admin-head nav { display: flex; gap: 4px; }
   .admin-head nav a { text-decoration: none; color: var(--muted); font-weight: 600; padding: 8px 12px; border-radius: 8px; }
   .admin-head nav a:hover { color: var(--ink); background: var(--hover); }
   .admin-head nav a[aria-current="page"] { color: var(--ink); background: var(--hover); box-shadow: inset 0 -2px 0 var(--accent); }
+  /* Four tabs on a phone (2026-11-03): the nav wraps under the name instead of pushing the page sideways. */
+  .admin-head .in { flex-wrap: wrap; }
+  .admin-head nav { flex-wrap: wrap; }
+  @media (max-width: 480px) { .admin-head .in { padding-top: 6px; padding-bottom: 6px; } .admin-head nav a { padding: 6px 8px; } }
   a.back { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--muted); font-weight: 600; padding: 6px 12px 6px 8px; border: 1px solid var(--line); border-radius: 999px; }
   a.back:hover { color: var(--ink); border-color: var(--accent); background: var(--hover); }
   .review { border: 1px solid var(--warn); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }

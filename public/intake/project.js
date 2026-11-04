@@ -72,7 +72,8 @@ export async function mountProject(o) {
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
   // Before signing, the client's page has two tabs: the contract, and planning for a head start.
-  let tab = 'contract';
+  // Remembered for this browser tab, so a reload on Planning stays on Planning.
+  let tab = (() => { try { return sessionStorage.getItem('clientTab') === 'planning' ? 'planning' : 'contract'; } catch { return 'contract'; } })();
   const tabbed = () => gated() && P.agreement.reason !== 'no-package';
   const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + ':' + tab + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
 
@@ -98,6 +99,13 @@ export async function mountProject(o) {
       case 'bool':
         ctl = `<label class="check"><input type="checkbox" id="${id}" data-f="${f.id}" ${v ? 'checked' : ''}${dis}> ${esc(label(f))}${f.id === 'editor' && C.editorPrice ? ` (+${money(C.editorPrice)})` : ''}</label>`;
         after = help;
+        break;
+      case 'pricing':
+        // Daniel's only (clientHidden). The buttons and the result line are painted from P.check, so they follow each save.
+        lab = `<label for="pricecustom">${esc(label(f))}${help}</label>`;
+        ctl = `<div class="pricing"><div class="pricebtns">${[0, ...C.discounts].map((d) => `<button type="button" data-discount="${d}">${d ? `${d}% off` : 'List price'}</button>`).join('')}</div>
+          <div class="pricecustom"><input type="text" id="pricecustom" placeholder="12% or $1,200" autocomplete="off" inputmode="decimal"><button type="button" id="priceapply">Apply</button></div>
+          <p class="muted" id="priceresult" role="status"></p></div>`;
         break;
       case 'hours':
         lab = `<label>${esc(label(f))}${req}${help}</label>`;
@@ -197,12 +205,14 @@ export async function mountProject(o) {
       <h1 id="title"></h1>
       ${admin ? '' : '<p class="muted">This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.</p>'}
       <section class="card" id="status"></section>
+      ${!admin && P.care ? '<section class="card" id="care"></section>' : ''}
       <section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>
       ${admin ? '<section class="card" id="linkcard"></section>' : ''}
       <section class="card" id="files"></section>
       ${C.sections.filter(applies).map((s) => `<section class="card"><h2>${esc((!admin && s.you) || s.title)}</h2>${s.fields.filter(applies).map(fieldHtml).join('')}</section>`).join('')}
       <section class="card" id="activity"></section>`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
+    wirePricing();
     root.querySelectorAll('[data-f]').forEach((el) => {
       if (el.dataset.kind === 'hours') wireHours(el);
       else {
@@ -233,15 +243,84 @@ export async function mountProject(o) {
     paint();
   }
 
+  // ---- price: a standard discount, or a custom one ("12%") or price ("$1,200") ----
+  function wirePricing() {
+    const input = root.querySelector('#pricecustom');
+    if (!input) return;
+    root.querySelectorAll('[data-discount]').forEach((b) => b.addEventListener('click', () => { input.value = ''; queue('pricing', +b.dataset.discount ? { discountPct: +b.dataset.discount } : null, true); }));
+    const apply = () => {
+      const s = input.value.trim(), out = root.querySelector('#priceresult');
+      const pct = s.match(/^(\d+(?:\.\d+)?)\s*%(?:\s*off)?$/i), dollars = s.match(/^\$?\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{0,2})?$/);
+      if (pct && +pct[1] > 0 && +pct[1] < 100) queue('pricing', { discountPct: +pct[1] }, true);
+      else if (dollars && +dollars[1].replace(/,/g, '') >= 1) queue('pricing', { price: +dollars[1].replace(/,/g, '') }, true);
+      else { out.textContent = 'Type a discount like 12% or a price like $1,200.'; out.className = 'error'; return; }
+      input.value = '';
+    };
+    root.querySelector('#priceapply').addEventListener('click', apply);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
+  }
+  function paintPricing() {
+    const out = root.querySelector('#priceresult');
+    if (!out) return;
+    const p = P.answers.pricing, c = P.check, pr = c.pricing;
+    root.querySelectorAll('[data-discount]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.discount ? p?.discountPct === +b.dataset.discount : !p)));
+    out.className = 'muted';
+    out.textContent = !pr ? 'Pick a package first.' : pr.custom ? `${money(pr.price)}, a price you set (list ${money(pr.base)}).` : pr.pct ? `${money(pr.price)}: ${pr.pct}% off ${money(pr.base)}, ${money(pr.base - pr.price)} less.` : `${money(pr.price)}, the list price.`;
+  }
+  const priceNote = (pr) => (!pr || pr.price === pr.base ? '' : ` <span class="muted">(${pr.custom ? 'special price' : `${pr.pct}% off`}, list ${money(pr.base)})</span>`);
+
+  // ---- the care plan on the client's portal (2026-11-03): read and sign, add a card, then billing ----
+  let careKey = null;
+  const careNote = (() => { const q = new URLSearchParams(location.search).get('care'); if (q) history.replaceState(null, '', location.pathname + location.hash); return q; })();
+  const longDate = (s) => (s ? new Date(s.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '');
+  function paintCare() {
+    const box = root.querySelector('#care'), c = P.care;
+    if (!box || !c) return;
+    const key = [c.status, c.terms?.sha256, c.billing?.hasCard, c.billing?.paidThrough].join('|');
+    if (key === careKey) return;
+    careKey = key;
+    const head = `<h2>Your care plan</h2><p><b>${esc(c.planName)}</b> · ${money(c.price)} a month, billed on the 1st${c.firstBill ? `, starting ${esc(longDate(c.firstBill))}` : ''}.</p>`;
+    if (!c.signed && c.terms) {
+      box.innerHTML = `${head}<p class="muted">Nothing is charged before ${esc(longDate(c.firstBill))}. Read it over, then sign below and add a card.</p>
+        <div class="agreement">${agreementHtml(c.terms)}</div>
+        <label for="carename">Type your full name to sign</label><input type="text" id="carename" autocomplete="name" placeholder="First and last name">
+        <label class="check"><input type="checkbox" id="careagree"> I agree to this care plan, and to signing it electronically.</label>
+        <p><button type="button" class="primary" id="caresign" disabled>Sign the care plan</button> <span id="carenote" class="muted"></span></p>`;
+      const n = box.querySelector('#carename'), a = box.querySelector('#careagree'), b = box.querySelector('#caresign');
+      const ready = () => { b.disabled = !(a.checked && /\S+\s+\S+/.test(n.value.trim())); };
+      n.addEventListener('input', ready); a.addEventListener('change', ready);
+      b.addEventListener('click', async () => {
+        b.disabled = true; box.querySelector('#carenote').textContent = 'Signing…';
+        try { const r = await api(routes.care, { method: 'POST', body: JSON.stringify({ name: n.value, agreed: a.checked, sha256: c.terms.sha256 }) }); P.care = r.care; paintCare(); }
+        catch (e) { box.querySelector('#carenote').textContent = e.message; b.disabled = false; }
+      });
+      return;
+    }
+    const hasCard = c.billing?.hasCard;
+    const lines = [];
+    if (c.signed) lines.push(`<p class="muted">Signed by ${esc(c.signed.name)} on ${esc(new Date(c.signed.at).toLocaleDateString())}.</p>`);
+    if (careNote === 'done' && !hasCard) lines.push('<p>Thanks, your card is set up. It can take a minute to show here.</p>');
+    if (c.status === 'past_due') lines.push('<p class="error">The last payment didn’t go through. Stripe will try again; you can update your card here.</p>');
+    if (!hasCard) lines.push(`<p>Last step: add a card or bank account for the monthly bill. Stripe, the payment company, keeps it; nothing is charged before ${esc(longDate(c.firstBill))}.</p><p><button type="button" class="primary" id="carecard">Add a card</button> <span id="carenote" class="muted"></span></p>`);
+    else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">Change card, see invoices or cancel</button> <span id="carenote" class="muted"></span></p>`);
+    box.innerHTML = head + lines.join('');
+    const go = (id, path) => { const el = box.querySelector(id); if (el) el.addEventListener('click', async () => { el.disabled = true; try { const r = await api(path, { method: 'POST', body: '{}' }); location.href = r.url; } catch (e) { box.querySelector('#carenote').textContent = e.message; el.disabled = false; } }); };
+    go('#carecard', routes.care + '/checkout');
+    go('#carebilling', routes.care + '/billing');
+  }
+
   function paint() {
+    paintPricing();
+    paintCare();
     const a = P.answers, c = P.check, t = c.tier;
     root.querySelector('#title').textContent = a.businessName || (admin ? 'New project' : 'Your website');
     root.querySelector('#status').innerHTML = `
-      <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}` : ' · no package yet'}</div>
+      <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}${priceNote(c.pricing)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
-      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(m.label)).join(', ')}.</p>` : ''}
+      ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
+      ${admin && P.previewUrl ? `<p class="muted">${P.care?.exists ? `Care plan: ${esc(P.care.planName)}, ${money(P.care.price)} a month · ${esc({ draft: 'draft', offered: 'offered, not signed', signed: 'signed, no card yet', active: 'active', past_due: 'payment past due', canceled: 'canceled' }[P.care.status] || P.care.status)}. ` : 'No care plan yet. '}<a href="/admin/care#p/${esc(P.id)}">Care plans</a></p>` : ''}
       ${updateLines()}`;
     const rv = root.querySelector('#markreviewed');
     if (rv) rv.onclick = async () => { rv.disabled = true; try { await api(routes.review, { method: 'POST', body: '{}' }); await refresh(); } catch (e) { alert(e.message); rv.disabled = false; } };
@@ -285,6 +364,7 @@ export async function mountProject(o) {
   function setTab(t) {
     if (tab === t) return;
     tab = t;
+    try { sessionStorage.setItem('clientTab', t); } catch {}
     scrollTo(0, 0);
     render();
   }

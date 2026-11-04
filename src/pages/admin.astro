@@ -5,7 +5,7 @@
 // so the page and the server (server/intake.js) can't disagree. Not a public page: noindex, out of
 // the sitemap, and excluded from the public-page tests (test/admin.test.js covers it instead).
 import { intakeSections, defaultPages } from '../data/intake';
-import { websiteTiers, addOns } from '../data/site';
+import { websiteTiers, addOns, standardDiscounts } from '../data/site';
 
 // One version per build, on the shared script's and stylesheet's addresses, so a deploy is never
 // served from a browser's cached copy of the old ones.
@@ -17,6 +17,7 @@ const config = {
   defaultPages,
   tiers: websiteTiers.map((t) => ({ id: t.id, name: t.name, price: t.price, from: !!('from' in t && t.from), scope: t.scope, who: t.who })),
   editorPrice: addOns.find((a) => a.id === 'editor')?.price ?? null,
+  discounts: [...standardDiscounts],
 };
 ---
 <!doctype html>
@@ -29,7 +30,7 @@ const config = {
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
 </head>
 <body>
-<header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin" aria-current="page">Intake</a><a href="/admin/usage">Usage</a></nav></div></header>
+<header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin" aria-current="page">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
 <div id="progress" role="button" tabindex="0" aria-expanded="true" hidden></div>
 <main id="app"><p class="muted">Loading…</p></main>
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" disabled>Start build</button></div></footer>
@@ -60,6 +61,8 @@ async function home() {
   app.innerHTML = '<h1>Client intake</h1><p class="muted">Loading…</p>';
   let leads = [], projects = [], err = '';
   try { [{ leads }, { projects }] = await Promise.all([api('/leads'), api('/projects')]); } catch (e) { err = e.message; }
+  // The board (/admin/leads) holds every lead; here, only the ones that came to us and aren't started.
+  leads = leads.filter((l) => l.kind === 'inbound' && l.status === 'new');
   app.innerHTML = `
     <h1>Client intake</h1>
     ${err ? `<p class="error">${esc(err)}</p>` : ''}
@@ -67,8 +70,9 @@ async function home() {
       ${C.tiers.map((t) => `<button data-new="${t.id}"><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}
       <button data-new=""><b>Not sure yet</b><span>Pick the package as you talk</span></button>
     </div></section>
-    <section class="card"><h2>From a contact form</h2>
-      ${leads.length ? leads.map((l) => `<div class="row"><div><b>${esc(l.name)}</b>${l.business ? ' · ' + esc(l.business) : ''}<div class="muted">${esc(tierOf(l.plan)?.name || l.plan || 'no package picked')} · ${esc(new Date(l.received_at).toLocaleDateString())}</div></div><button data-lead="${esc(l.id)}">Start from this</button></div>`).join('') : '<p class="muted">No new contact-form leads.</p>'}
+    <section class="card"><h2>Came to us</h2>
+      ${leads.length ? leads.map((l) => `<div class="row"><div><a href="/admin/leads#l/${esc(l.id)}"><b>${esc(l.contact || l.business)}</b></a>${l.business && l.contact ? ' · ' + esc(l.business) : ''}<div class="muted">${esc(tierOf(l.fit)?.name || 'no package picked')} · ${esc(l.source || 'contact form')} · ${esc(new Date(l.createdAt).toLocaleDateString())}</div></div><button data-lead="${esc(l.id)}">Start from this</button></div>`).join('') : '<p class="muted">No new contact-form leads.</p>'}
+      <p class="muted">Everything else, outreach included, is on the <a href="/admin/leads">Leads board</a>.</p>
     </section>
     <section class="card"><h2>Projects</h2>
       ${projects.length ? projects.map((p) => `<div class="row"><div><a href="#p/${esc(p.id)}"><b>${esc(p.business || 'Untitled')}</b></a><div class="muted">${esc(tierOf(p.tier)?.name || 'no package')} · ${esc(new Date(p.updatedAt).toLocaleString())}</div></div><span>${p.needsReview ? '<span class="badge review">Needs review</span> ' : ''}<span class="badge${p.ready ? ' ready' : ''}">${esc(statusLabel[p.status] || p.status)}${p.status === 'intake' && p.ready ? ' · ready' : ''}</span></span></div>`).join('') : '<p class="muted">None yet.</p>'}

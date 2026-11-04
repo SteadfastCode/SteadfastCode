@@ -28,6 +28,8 @@ export const intakeSections = [
     fields: [
       { id: 'tier', label: 'Package', type: 'tier', required: true, owner: 'daniel' },
       { id: 'editor', label: 'Add the content editor', type: 'bool', help: 'One-time add-on for Starter and Business. Growth and Store include it.', tiers: ['starter', 'business'], owner: 'daniel' },
+      // The control is Daniel's only; the client sees the price it makes, in the status line and the contract.
+      { id: 'pricing', label: 'Price', type: 'pricing', help: 'A discount off the package price, or a price you set. The contract shows it, and a signed contract asks to be signed again when it changes.', owner: 'daniel', clientHidden: true },
     ],
   },
   {
@@ -37,6 +39,7 @@ export const intakeSections = [
     fields: [
       { id: 'businessName', label: 'Business name', type: 'text', required: true },
       { id: 'contactName', label: 'Contact name', type: 'text', required: true, you: 'Your name' },
+      { id: 'people', label: 'Who’s behind the business', type: 'list', help: 'Everyone to name on the site, one per line, the contact included; a role after a comma if they want one (Nicole Cesavice, co-owner). Empty means just the contact.', you: 'Who’s behind the business', youHelp: 'Everyone you’d like named on the site, one per line, yourself included. Add a role after a comma if you like.' },
       { id: 'email', label: 'Email', type: 'email', required: true },
       { id: 'phone', label: 'Phone', type: 'tel' },
       { id: 'currentSite', label: 'Current website', type: 'text', you: 'Your current website, if you have one' },

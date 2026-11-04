@@ -144,6 +144,19 @@ export const addOns = [
   },
 ] as const;
 
+// A project's price, when Daniel changes it from the admin intake (2026-11-03): a discount off the
+// package (and add-on) price, or a price he sets outright. Kept on the project as answers.pricing;
+// the intake, the contract and its signature all read the price from here, so they can't disagree.
+// Never shown on a public page: the list prices above are what the site says.
+export const standardDiscounts = [10, 15, 20, 25] as const;
+export type Pricing = { discountPct?: number; price?: number } | null | undefined;
+export function priceFor(tier: { price: number }, editor: boolean, pricing?: Pricing) {
+  const base = tier.price + (editor ? addOns[0].price : 0);
+  if (pricing?.price) return { base, price: pricing.price, custom: true as const, pct: null };
+  if (pricing?.discountPct) return { base, price: Math.round(base * (1 - pricing.discountPct / 100)), custom: false as const, pct: pricing.discountPct };
+  return { base, price: base, custom: false as const, pct: null };
+}
+
 // What every build has in common. Rendered once on /websites; the tiers above list only what
 // changes between them.
 // Shown with the launch windows: the quick end of each range depends on the client, not on us.
