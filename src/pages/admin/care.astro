@@ -75,7 +75,7 @@ const config = {
     app.innerHTML = `
       <h1>Care plans</h1>
       <section class="card"><div><b>${money(d.monthly)} a month</b> <span class="muted">from ${d.count} signed plan${d.count === 1 ? '' : 's'}</span></div>
-        ${d.stripeReady ? '' : '<p class="muted">Stripe isn’t connected yet: clients can sign, and the card step waits for the <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_WEBHOOK_SECRET</code> Pages secrets.</p>'}</section>
+        ${d.stripeReady ? '' : '<p class="muted">Stripe isn’t connected yet: clients can sign, and the card step waits for the <code>STRIPE_SECRET_KEY</code> (or <code>STRIPE_TEST_KEY</code>) and <code>STRIPE_WEBHOOK_SECRET</code> Pages secrets.</p>'}</section>
       <section class="card">${d.rows.length ? `<div class="crow cols"><div>Client</div><div>Plan</div><div>First bill</div><div>Hosting move</div></div>` + d.rows.map((r) => `
         <div class="crow"><div><a href="#p/${esc(r.id)}"><b>${esc(r.business || 'Untitled')}</b></a><div class="sub">${esc(r.contact || '')}${r.firstPreview ? ` · first preview ${date(r.firstPreview)}` : ''}</div></div>
           <div>${r.care ? `${esc(r.care.planName)} · ${money(r.care.price)}/mo <span class="badge st-${esc(r.care.status)}">${esc(STATUS[r.care.status] || r.care.status)}</span>` : '<span class="muted">No plan yet</span>'}</div>

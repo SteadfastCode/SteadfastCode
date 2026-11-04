@@ -95,3 +95,10 @@ test('each Stripe event becomes one update: card added, paid, failed, cancelled'
   assert.equal(statusFromStripe('unpaid'), 'past_due');
   assert.equal(updateFromEvent({ type: 'customer.created', data: { object: {} } }), null);
 });
+
+test('the live key wins; the sandbox key works until there is one', async () => {
+  const { stripeKey } = await import('../server/care.js');
+  assert.equal(stripeKey({ STRIPE_TEST_KEY: 'rk_test_1' }), 'rk_test_1');
+  assert.equal(stripeKey({ STRIPE_TEST_KEY: 'rk_test_1', STRIPE_SECRET_KEY: 'rk_live_1' }), 'rk_live_1');
+  assert.equal(stripeKey({}), null);
+});

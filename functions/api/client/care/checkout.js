@@ -1,10 +1,10 @@
 // POST /api/client/care/checkout: a Stripe Checkout link to add a card for the signed care plan.
 // Nothing is charged until the first bill date (the subscription's trial end), always a 1st.
 import { json } from '../_middleware.js';
-import { stripe, checkoutParams, stripeProducts } from '../../../../server/care.js';
+import { stripe, checkoutParams, stripeProducts, stripeKey } from '../../../../server/care.js';
 
 export async function onRequestPost({ request, env, data }) {
-  if (!env.STRIPE_SECRET_KEY) return json({ error: 'Card setup isn’t switched on yet. Daniel will let you know when it is.' }, 503);
+  if (!stripeKey(env)) return json({ error: 'Card setup isn’t switched on yet. Daniel will let you know when it is.' }, 503);
   const p = data.project;
   const care = await env.INTAKE.prepare('SELECT * FROM care_plans WHERE project_id = ?').bind(p.id).first();
   if (!care || !care.signed_at || !care.first_bill_at) return json({ error: 'Sign the care plan first.' }, 400);

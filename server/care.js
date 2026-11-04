@@ -46,7 +46,7 @@ export async function careState(env, project, mode) {
     terms: care.signed_at ? null : now?.terms ? { ...now.terms, sha256: await sha256(now.terms.text) } : null,
     signed: care.signed_at ? { name: care.signer_name, at: care.signed_at, version: care.terms_version } : null,
     billing: { hasCard: !!care.stripe_subscription, stripeStatus: care.stripe_status, paidThrough: care.paid_through },
-    ...(mode === 'admin' ? { checklist: JSON.parse(care.checklist || '{}'), notes: care.notes || '', stripeCustomer: care.stripe_customer, stripeSubscription: care.stripe_subscription, stripeReady: !!env.STRIPE_SECRET_KEY } : {}),
+    ...(mode === 'admin' ? { checklist: JSON.parse(care.checklist || '{}'), notes: care.notes || '', stripeCustomer: care.stripe_customer, stripeSubscription: care.stripe_subscription, stripeReady: !!stripeKey(env) } : {}),
   };
 }
 
@@ -96,6 +96,9 @@ export function stripeForm(obj, prefix = '', out = new URLSearchParams()) {
   return out;
 }
 
+/** The Stripe key: STRIPE_SECRET_KEY (live), else STRIPE_TEST_KEY (the sandbox key Daniel set first, 2026-11-04). */
+export const stripeKey = (env) => env.STRIPE_SECRET_KEY || env.STRIPE_TEST_KEY || null;
+
 /** STRIPE_PRODUCTS, a Pages variable: {"hosted":"prod_…","hands-on":"prod_…","growth":"prod_…"}. Sandbox and live IDs differ. */
 export function stripeProducts(env) {
   try { const p = JSON.parse(env.STRIPE_PRODUCTS || '{}'); return p && typeof p === 'object' ? p : {}; } catch { return {}; }
@@ -104,7 +107,7 @@ export function stripeProducts(env) {
 export async function stripe(env, path, params, method = 'POST') {
   const r = await fetch(`https://api.stripe.com/v1/${path}`, {
     method,
-    headers: { authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, 'content-type': 'application/x-www-form-urlencoded' },
+    headers: { authorization: `Bearer ${stripeKey(env)}`, 'content-type': 'application/x-www-form-urlencoded' },
     body: method === 'GET' ? undefined : stripeForm(params ?? {}),
   });
   const j = await r.json().catch(() => ({}));

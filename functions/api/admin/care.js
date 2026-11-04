@@ -2,6 +2,7 @@
 // for the Care plans tab. Monthly totals count plans that are signed or active.
 import { json } from './_middleware.js';
 import { carePlanById } from '../../../src/data/care.ts';
+import { stripeKey } from '../../../server/care.js';
 
 export async function onRequestGet({ env }) {
   const { results } = await env.INTAKE.prepare(`
@@ -18,5 +19,5 @@ export async function onRequestGet({ env }) {
     };
   });
   const billing = rows.filter((r) => r.care && ['signed', 'active', 'past_due'].includes(r.care.status));
-  return json({ rows, monthly: billing.reduce((s, r) => s + r.care.price, 0), count: billing.length, stripeReady: !!env.STRIPE_SECRET_KEY });
+  return json({ rows, monthly: billing.reduce((s, r) => s + r.care.price, 0), count: billing.length, stripeReady: !!stripeKey(env) });
 }
