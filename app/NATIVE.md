@@ -31,8 +31,10 @@ is registered, so Signal pings end on their own once push works.
 3. **Stay signed in:** Cloudflare Zero Trust → Access → Applications → Steadfast Code admin →
    Session duration: 1 month, so the app doesn't ask for a code every day.
 4. **Build and install, on the box** (no Android Studio needed): `app/build-on-box.sh` builds the
-   APK with the box's Android SDK and a JDK 21 in `~/.local/jdk` (Gradle 8.14 can't run on the
-   system's Java 25), then serves it on the tailnet only for an hour at
+   APK with the box's own Android toolchain, the one the routine builds Tethered and Plumb with
+   (`JAVA_HOME`/`ANDROID_HOME` in `~/.config/orchestrator/env`: `~/opt/jdk-21`,
+   `~/opt/android-sdk`; Capacitor 8 needs JDK 21, and Gradle 8.14 can't run on the system Java 25),
+   then serves it on the tailnet only for an hour at
    `http://100.88.32.7:8790/steadfast-code.apk`. Open that on the phone with Tailscale on, and allow
    the browser to install apps the first time. Builds are signed with the box's debug key
    (`~/.android/debug.keystore`), so each one installs over the last; keep that file. For push,

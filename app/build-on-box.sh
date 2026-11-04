@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Build the admin app's APK on the steadfast-ai box and hand it to the phone over Tailscale
-# (2026-11-04). No Android Studio needed: the box has the Android SDK (~/Android/Sdk) and a JDK 21
-# in ~/.local/jdk (Gradle 8.14 can't run on the system's Java 25). Signed with the box's debug key,
-# so every build installs over the last one.
+# (2026-11-04). No Android Studio needed: it uses the box's own Android toolchain, the same one the
+# routine builds Tethered and Plumb with (JAVA_HOME and ANDROID_HOME in ~/.config/orchestrator/env:
+# ~/opt/jdk-21 and ~/opt/android-sdk). Not the system Java 25, which Gradle 8.14 can't run on, and
+# not JDK 17, which Capacitor 8's plugins won't compile with. Signed with the box's debug key, so
+# every build installs over the last one.
 #   app/build-on-box.sh          build, then serve the APK on the tailnet for an hour
 #   app/build-on-box.sh --build  build only
 set -euo pipefail
 cd "$(dirname "$0")"
-export ANDROID_HOME="$HOME/Android/Sdk"
-export JAVA_HOME="$(ls -d "$HOME"/.local/jdk/jdk-21* | tail -1)"
+set -a; . "$HOME/.config/orchestrator/env"; set +a
+: "${JAVA_HOME:?JAVA_HOME not set in ~/.config/orchestrator/env}" "${ANDROID_HOME:?ANDROID_HOME not set in ~/.config/orchestrator/env}"
 export TMPDIR="${TMPDIR:-$HOME/.cache/tmp}"
 [ -f android/app/google-services.json ] || echo "note: no android/app/google-services.json, so this build has no push notifications"
 corepack yarn install >/dev/null
