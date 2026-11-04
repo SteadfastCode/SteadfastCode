@@ -233,7 +233,7 @@ export async function mountProject(o) {
       ${show.intro ? `<p class="muted">${launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
-      ${show.messages ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${admin ? `Your conversation with ${esc(P.answers.contactName || 'the client')}. They get an email when you write, with their link.` : 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.'}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol><label for="msgbody">${admin ? 'Reply' : 'Message'}</label><textarea id="msgbody" maxlength="4000"></textarea><p><button type="button" class="primary" id="msgsend">Send</button> <span id="msgnote" class="muted" role="status"></span></p></section>` : ''}
+      ${show.messages ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${admin ? `Your conversation with ${esc(P.answers.contactName || 'the client')}. They get an email when you write, with their link.` : 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.'}</p><ol class="msgs${admin ? ' boxed' : ''}" id="msglist"><li class="muted">Loading…</li></ol><div class="composer${admin ? '' : ' fixed'}" id="composer"><div class="in"><label for="msgbody" class="sr">${admin ? 'Reply' : 'Message'}</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="${admin ? 'Reply' : 'Message Daniel'} (Shift+Enter for a new line)" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div></section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
@@ -313,7 +313,7 @@ export async function mountProject(o) {
     careKey = key;
     // Ending or ended (2026-11-04): say when, and that nothing more is charged; the billing button can undo it.
     const ending = c.status !== 'canceled' && c.endsAt;
-    const head = `<h2>Your care plan</h2><p><b>${esc(c.planName)}</b> · ${money(c.price)} a month${c.status === 'canceled' ? `. <b>Ended${c.endsAt ? ` ${esc(longDate(c.endsAt))}` : ''}</b>; nothing more is charged.` : ending ? `. <b>Set to end ${esc(longDate(c.endsAt))}</b>; nothing is charged after that. Changed your mind? Use the button below to keep it.` : `, billed on the 1st${c.firstBill ? `, starting ${esc(longDate(c.firstBill))}` : ''}.`}</p>`;
+    const head = `<h2>Your care plan</h2><p><b>${esc(c.planName)}</b> · ${money(c.price)} a month${c.status === 'canceled' ? `. <b>Ended${c.endsAt ? ` ${esc(longDate(c.endsAt))}` : ''}</b>; nothing more is charged.` : ending ? `. <b>Set to end ${esc(longDate(c.endsAt))}</b>; nothing is charged after that. Changed your mind? Press Renew my plan below to keep it.` : `, billed on the 1st${c.firstBill ? `, starting ${esc(longDate(c.firstBill))}` : ''}.`}</p>`;
     if (!c.signed && c.terms) {
       box.innerHTML = `${head}<p class="muted">Nothing is charged before ${esc(longDate(c.firstBill))}. Read it over, then sign below and add a card.</p>
         <div class="agreement">${agreementHtml(c.terms)}</div>
@@ -336,7 +336,7 @@ export async function mountProject(o) {
     if (careNote === 'done') lines.push(`<p><b>Thanks, your card is set up.</b>${hasCard ? '' : ' It can take a minute to show here.'}</p>`);
     if (c.status === 'past_due') lines.push('<p class="error">The last payment didn’t go through. Stripe will try again; you can update your card here.</p>');
     if (!hasCard) lines.push(`<p>Last step: add a card or bank account for the monthly bill. Stripe, the payment company, keeps it; nothing is charged before ${esc(longDate(c.firstBill))}.</p><p><button type="button" class="primary" id="carecard">Add a card</button> <span id="carenote" class="muted"></span></p>`);
-    else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : c.endsAt || c.status === 'canceled' ? '' : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">Change card, see invoices or cancel</button> <span id="carenote" class="muted"></span></p>`);
+    else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : c.endsAt || c.status === 'canceled' ? '' : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">${c.status === 'canceled' ? 'See past invoices' : ending ? 'Renew my plan' : 'Change card, see invoices or cancel'}</button> <span id="carenote" class="muted"></span></p>`);
     box.innerHTML = head + lines.join('');
     // Back from Stripe: bring the card into view once.
     if (careNote && !box.dataset.shown) { box.dataset.shown = '1'; setTimeout(() => box.scrollIntoView({ block: 'start' }), 0); }
@@ -388,19 +388,50 @@ export async function mountProject(o) {
   function showMessages(ms) {
     const list = root.querySelector('#msglist');
     if (!list) return;
+    const atEnd = !list.dataset.shown || (admin ? list.scrollHeight - list.scrollTop - list.clientHeight < 40 : innerHeight + scrollY >= document.documentElement.scrollHeight - 80);
     const mine = admin ? 'daniel' : 'client';
     list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === mine ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === mine ? 'You' : esc(m.sender === 'daniel' ? 'Daniel' : m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === mine && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : `<li class="muted">No messages yet.${admin ? '' : ' Say hello!'}</li>`;
+    // Like any chat: open on the latest message, and follow new ones if you were already at the end.
+    list.dataset.shown = '1';
+    if (atEnd) requestAnimationFrame(() => { if (admin) list.scrollTop = list.scrollHeight; else scrollTo(0, document.documentElement.scrollHeight); });
+  }
+  // The message box floats at the bottom of the screen, just above whatever else is pinned there (the
+  // tabs, the build bar), and rides up with a phone's keyboard (2026-11-04). Android resizes the page
+  // for the keyboard (interactive-widget in the viewport tag); iOS doesn't, so the gap comes from
+  // visualViewport. While typing on a phone, the tabs and bar step aside to leave room.
+  function placeComposer() {
+    const c = root.querySelector('#composer');
+    if (!c) return;
+    // (offsetParent is always null for position: fixed, so look at display instead.)
+    const h = (el) => (el && !el.hidden && getComputedStyle(el).display !== 'none' ? el.getBoundingClientRect().height : 0);
+    const vv = window.visualViewport;
+    const kb = vv ? Math.max(0, innerHeight - vv.height - vv.offsetTop) : 0;
+    c.style.bottom = `${h(document.getElementById('tabs')) + h(bar) + kb}px`;
+  }
+  if (!window.__composerWired) {
+    window.__composerWired = true;
+    window.visualViewport?.addEventListener('resize', () => placeComposer());
+    window.visualViewport?.addEventListener('scroll', () => placeComposer());
+    addEventListener('resize', () => placeComposer());
   }
   function wireMessages() {
     const btn = root.querySelector('#msgsend');
     if (!btn) return;
     const body = root.querySelector('#msgbody'), note = root.querySelector('#msgnote');
+    const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 160) + 'px'; };
+    body.addEventListener('input', grow);
+    // Enter sends, Shift+Enter is a new line; never mid-composition (an IME's Enter picks a word).
+    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); btn.click(); } });
+    body.addEventListener('focus', () => { document.body.classList.add('composing'); requestAnimationFrame(placeComposer); });
+    body.addEventListener('blur', () => { document.body.classList.remove('composing'); requestAnimationFrame(placeComposer); });
+    // Tapping Send mustn't blur the box first: on a phone that would drop the keyboard and move the button.
+    btn.addEventListener('pointerdown', (e) => { if (document.activeElement === body) e.preventDefault(); });
     btn.addEventListener('click', async () => {
       if (!body.value.trim()) { note.textContent = 'Write a message first.'; return; }
       btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
       try {
         const d = await api(routes.messages, { method: 'POST', body: JSON.stringify({ body: body.value }) });
-        body.value = ''; showMessages(d.messages);
+        body.value = ''; grow(); showMessages(d.messages);
         note.textContent = admin ? (d.emailed ? 'Sent. They got an email about it.' : 'Sent. No email went out (no address, or email is off).') : 'Sent. Daniel will answer here.';
       } catch (e) { note.className = 'error'; note.textContent = e.message; }
       btn.disabled = false;
@@ -410,6 +441,7 @@ export async function mountProject(o) {
   function paint() {
     paintPricing();
     paintMessages();
+    placeComposer();
     if (!admin) paintTabs();
     paintCare();
     const a = P.answers, c = P.check, t = c.tier;

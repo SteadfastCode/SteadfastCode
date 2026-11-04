@@ -95,7 +95,21 @@
   nav.tabs button { border: 0; border-radius: 0; padding: 14px 10px; font-weight: 600; background: var(--card); color: var(--muted); }
   nav.tabs.many button { font-size: .82rem; padding: 12px 4px; }
   /* Messages (2026-11-04): theirs on the left, yours on the right. */
-  ol.msgs { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
+  ol.msgs { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+  /* On Daniel's project page the conversation scrolls in its own box; on the client's tab it's the page. */
+  ol.msgs.boxed { max-height: 55vh; overflow-y: auto; }
+  .composer { position: sticky; bottom: 0; z-index: 4; background: var(--card); margin: 0 -14px -14px; padding: 10px 14px 12px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; }
+  /* The client's Messages tab: fixed to the bottom of the screen, however short the conversation. */
+  .composer.fixed { position: fixed; left: 0; right: 0; margin: 0; border-radius: 0; padding: 10px 16px 12px; box-shadow: 0 -6px 16px -10px rgb(0 0 0 / .3); }
+  .composer.fixed .in { max-width: 728px; margin: 0 auto; }
+  body:has(.composer.fixed) main { padding-bottom: 240px; }
+  .composer-row { display: flex; gap: 8px; align-items: flex-end; }
+  .composer textarea { flex: 1; min-height: 44px; max-height: 160px; resize: none; margin: 0; }
+  .composer button { flex: none; min-height: 44px; }
+  .composer .help { display: inline-block; margin-top: 4px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* Typing on a phone: the tabs and the build bar step aside so the keyboard has room. */
+  @media (max-width: 700px) { body.composing nav.tabs, body.composing footer.bar { display: none; } }
   ol.msgs .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); }
   ol.msgs .msg.mine { justify-self: end; background: var(--hover); border-color: var(--accent); }
   ol.msgs .meta { font-size: .8rem; margin-bottom: 2px; }
