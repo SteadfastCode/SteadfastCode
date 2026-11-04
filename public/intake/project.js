@@ -79,8 +79,10 @@ export async function mountProject(o) {
   const launched = () => !!P?.launched;
   const clientTabs = () => {
     if (admin) return [];
-    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning']] : [];
-    return [['site', 'Your site'], ['planning', launched() ? 'Your details' : 'Planning'], ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
+    // Messages with Daniel from the first day (2026-11-04), with the unread count on the tab.
+    const msgs = ['messages', P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages'];
+    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning'], msgs] : [];
+    return [['site', 'Your site'], ['planning', launched() ? 'Details' : 'Planning'], msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
   };
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
@@ -88,7 +90,8 @@ export async function mountProject(o) {
   const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${!!P.care}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
   // What each tab shows. Daniel's page has everything; so does the client's planning tab before signing.
   const parts = () => {
-    if (admin) return { status: 1, scope: 1, link: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
+    if (admin) return { status: 1, messages: 1, scope: 1, link: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
+    if (tab === 'messages') return { messages: 1 };
     if (gated()) return { status: 1, scope: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
     return ({ site: { status: 1, scope: 1, request: launched(), activity: 1 }, planning: { files: 1, fields: launched() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
@@ -213,8 +216,9 @@ export async function mountProject(o) {
   function render() {
     fixTab();
     paintTabs();
-    if (gated() && (tab === 'contract' || !tabbed())) return renderAgreement();
+    if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) return renderAgreement();
     const show = parts();
+    msgLoaded = false;
     // A redraw makes fresh, empty cards: everything that skips repainting when nothing changed starts over.
     docsLoaded = false;
     careKey = null;
@@ -229,6 +233,7 @@ export async function mountProject(o) {
       ${show.intro ? `<p class="muted">${launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
+      ${show.messages ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${admin ? `Your conversation with ${esc(P.answers.contactName || 'the client')}. They get an email when you write, with their link.` : 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.'}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol><label for="msgbody">${admin ? 'Reply' : 'Message'}</label><textarea id="msgbody" maxlength="4000"></textarea><p><button type="button" class="primary" id="msgsend">Send</button> <span id="msgnote" class="muted" role="status"></span></p></section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
@@ -238,6 +243,7 @@ export async function mountProject(o) {
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
+    wireMessages();
     root.querySelectorAll('[data-f]').forEach((el) => {
       if (el.dataset.kind === 'hours') wireHours(el);
       else {
@@ -302,10 +308,12 @@ export async function mountProject(o) {
   function paintCare() {
     const box = root.querySelector('#care'), c = P.care;
     if (!box || !c) return;
-    const key = [c.status, c.terms?.sha256, c.billing?.hasCard, c.billing?.paidThrough].join('|');
+    const key = [c.status, c.terms?.sha256, c.billing?.hasCard, c.billing?.paidThrough, c.endsAt].join('|');
     if (key === careKey) return;
     careKey = key;
-    const head = `<h2>Your care plan</h2><p><b>${esc(c.planName)}</b> · ${money(c.price)} a month, billed on the 1st${c.firstBill ? `, starting ${esc(longDate(c.firstBill))}` : ''}.</p>`;
+    // Ending or ended (2026-11-04): say when, and that nothing more is charged; the billing button can undo it.
+    const ending = c.status !== 'canceled' && c.endsAt;
+    const head = `<h2>Your care plan</h2><p><b>${esc(c.planName)}</b> · ${money(c.price)} a month${c.status === 'canceled' ? `. <b>Ended${c.endsAt ? ` ${esc(longDate(c.endsAt))}` : ''}</b>; nothing more is charged.` : ending ? `. <b>Set to end ${esc(longDate(c.endsAt))}</b>; nothing is charged after that. Changed your mind? Use the button below to keep it.` : `, billed on the 1st${c.firstBill ? `, starting ${esc(longDate(c.firstBill))}` : ''}.`}</p>`;
     if (!c.signed && c.terms) {
       box.innerHTML = `${head}<p class="muted">Nothing is charged before ${esc(longDate(c.firstBill))}. Read it over, then sign below and add a card.</p>
         <div class="agreement">${agreementHtml(c.terms)}</div>
@@ -328,7 +336,7 @@ export async function mountProject(o) {
     if (careNote === 'done') lines.push(`<p><b>Thanks, your card is set up.</b>${hasCard ? '' : ' It can take a minute to show here.'}</p>`);
     if (c.status === 'past_due') lines.push('<p class="error">The last payment didn’t go through. Stripe will try again; you can update your card here.</p>');
     if (!hasCard) lines.push(`<p>Last step: add a card or bank account for the monthly bill. Stripe, the payment company, keeps it; nothing is charged before ${esc(longDate(c.firstBill))}.</p><p><button type="button" class="primary" id="carecard">Add a card</button> <span id="carenote" class="muted"></span></p>`);
-    else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">Change card, see invoices or cancel</button> <span id="carenote" class="muted"></span></p>`);
+    else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : c.endsAt || c.status === 'canceled' ? '' : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">Change card, see invoices or cancel</button> <span id="carenote" class="muted"></span></p>`);
     box.innerHTML = head + lines.join('');
     // Back from Stripe: bring the card into view once.
     if (careNote && !box.dataset.shown) { box.dataset.shown = '1'; setTimeout(() => box.scrollIntoView({ block: 'start' }), 0); }
@@ -362,8 +370,47 @@ export async function mountProject(o) {
     }));
   }
 
+  // ---- messages (2026-11-04) ----
+  let msgLoaded = false, msgLoading = false;
+  async function paintMessages() {
+    const list = root.querySelector('#msglist');
+    if (!list || msgLoading || (msgLoaded && !P.unreadMessages)) return;
+    msgLoading = true;
+    try {
+      const d = await api(routes.messages);
+      msgLoaded = true;
+      showMessages(d.messages);
+      P.unreadMessages = 0;
+      if (!admin) paintTabs();
+    } catch (e) { list.innerHTML = `<li class="error">${esc(/no such table/.test(e.message) ? 'Messages are being switched on.' : e.message)}</li>`; }
+    msgLoading = false;
+  }
+  function showMessages(ms) {
+    const list = root.querySelector('#msglist');
+    if (!list) return;
+    const mine = admin ? 'daniel' : 'client';
+    list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === mine ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === mine ? 'You' : esc(m.sender === 'daniel' ? 'Daniel' : m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === mine && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : `<li class="muted">No messages yet.${admin ? '' : ' Say hello!'}</li>`;
+  }
+  function wireMessages() {
+    const btn = root.querySelector('#msgsend');
+    if (!btn) return;
+    const body = root.querySelector('#msgbody'), note = root.querySelector('#msgnote');
+    btn.addEventListener('click', async () => {
+      if (!body.value.trim()) { note.textContent = 'Write a message first.'; return; }
+      btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
+      try {
+        const d = await api(routes.messages, { method: 'POST', body: JSON.stringify({ body: body.value }) });
+        body.value = ''; showMessages(d.messages);
+        note.textContent = admin ? (d.emailed ? 'Sent. They got an email about it.' : 'Sent. No email went out (no address, or email is off).') : 'Sent. Daniel will answer here.';
+      } catch (e) { note.className = 'error'; note.textContent = e.message; }
+      btn.disabled = false;
+    });
+  }
+
   function paint() {
     paintPricing();
+    paintMessages();
+    if (!admin) paintTabs();
     paintCare();
     const a = P.answers, c = P.check, t = c.tier;
     root.querySelector('#title').textContent = a.businessName || (admin ? 'New project' : 'Your website');
@@ -436,7 +483,7 @@ export async function mountProject(o) {
       document.body.appendChild(nav);
     }
     const ts = clientTabs(), html = ts.map(([id, name]) => `<button type="button" data-t="${id}">${esc(name)}</button>`).join('');
-    if (nav.dataset.tabs !== html) { nav.innerHTML = html; nav.dataset.tabs = html; nav.style.gridTemplateColumns = `repeat(${ts.length}, 1fr)`; }
+    if (nav.dataset.tabs !== html) { nav.innerHTML = html; nav.dataset.tabs = html; nav.style.gridTemplateColumns = `repeat(${ts.length}, 1fr)`; nav.classList.toggle('many', ts.length > 4); }
     document.body.classList.add('has-tabs');
     nav.querySelectorAll('[data-t]').forEach((b) => { const on = b.dataset.t === tab; b.setAttribute('aria-current', on ? 'page' : 'false'); b.classList.toggle('on', on); });
   }
@@ -663,7 +710,7 @@ export async function mountProject(o) {
     P = { ...r, answers: { ...r.answers, ...pending } };
     if (before !== shape()) return render();
     // On the agreement screen there's nothing else to update, and redrawing would wipe a half-typed name.
-    if (gated() && (tab === 'contract' || !tabbed())) return;
+    if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) return;
     for (const el of root.querySelectorAll('[data-f]')) {
       const f = el.dataset.f;
       if (el.contains(document.activeElement) || f in pending || Date.now() - (localEditAt[f] || 0) < 4000) continue;

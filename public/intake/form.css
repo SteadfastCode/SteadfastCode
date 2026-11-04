@@ -93,6 +93,13 @@
   /* Before signing: a Contract / Planning tab strip at the bottom of the client's screen. */
   nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: grid; grid-template-columns: 1fr 1fr; background: var(--card); border-top: 1px solid var(--line); }
   nav.tabs button { border: 0; border-radius: 0; padding: 14px 10px; font-weight: 600; background: var(--card); color: var(--muted); }
+  nav.tabs.many button { font-size: .82rem; padding: 12px 4px; }
+  /* Messages (2026-11-04): theirs on the left, yours on the right. */
+  ol.msgs { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
+  ol.msgs .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); }
+  ol.msgs .msg.mine { justify-self: end; background: var(--hover); border-color: var(--accent); }
+  ol.msgs .meta { font-size: .8rem; margin-bottom: 2px; }
+  ol.msgs .body { white-space: pre-wrap; overflow-wrap: anywhere; }
   nav.tabs button.on { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
   body.has-tabs footer.bar { bottom: 50px; }
   body.has-tabs main { padding-bottom: 200px; }

@@ -108,7 +108,9 @@ test('a cancel scheduled from Stripe’s billing page says when the plan ends, a
   const set = updateFromEvent({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', status: 'trialing', cancel_at_period_end: true, cancel_at: end }, previous_attributes: { cancel_at_period_end: false, cancel_at: null } } });
   assert.equal(set.event, 'Care plan set to end on 2027-01-01');
   assert.equal(set.set.status, 'active', 'still on until it ends');
+  assert.equal(set.set.ends_at, '2027-01-01');
   const undo = updateFromEvent({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', status: 'trialing', cancel_at_period_end: false, cancel_at: null }, previous_attributes: { cancel_at_period_end: true } } });
   assert.equal(undo.event, 'Care plan no longer set to end');
+  assert.equal(undo.set.ends_at, null, 'undoing the cancel clears the day');
   assert.equal(updateFromEvent({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', status: 'active', cancel_at_period_end: true }, previous_attributes: { status: 'trialing' } } }).event, null);
 });

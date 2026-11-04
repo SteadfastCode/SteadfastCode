@@ -46,6 +46,7 @@ export async function careState(env, project, mode) {
     terms: care.signed_at ? null : now?.terms ? { ...now.terms, sha256: await sha256(now.terms.text) } : null,
     signed: care.signed_at ? { name: care.signer_name, at: care.signed_at, version: care.terms_version } : null,
     billing: { hasCard: !!care.stripe_subscription, stripeStatus: care.stripe_status, paidThrough: care.paid_through },
+    endsAt: care.ends_at ?? null,
     ...(mode === 'admin' ? { checklist: JSON.parse(care.checklist || '{}'), notes: care.notes || '', stripeCustomer: care.stripe_customer, stripeSubscription: care.stripe_subscription, stripeReady: !!stripeKey(env) } : {}),
   };
 }
@@ -169,10 +170,10 @@ export function updateFromEvent(ev) {
       // A cancel from Stripe's billing page usually waits for the end of the paid (or free) period:
       // the plan stays active until then, and the activity says when it ends (2026-11-04).
       const prev = ev.data?.previous_attributes ?? {};
-      const scheduled = ('cancel_at_period_end' in prev || 'cancel_at' in prev) && ours !== 'canceled'
-        ? (o.cancel_at_period_end || o.cancel_at ? `Care plan set to end on ${ymd(o.cancel_at || o.current_period_end || o.trial_end || o.items?.data?.[0]?.current_period_end)}` : 'Care plan no longer set to end')
-        : null;
-      return { find: ['stripe_subscription', o.id], set: { stripe_status: st, ...(ours ? { status: ours } : {}) }, event: ours === 'canceled' ? 'Care plan canceled' : ours === 'past_due' ? 'Care plan payment is past due' : scheduled };
+      const changed = ('cancel_at_period_end' in prev || 'cancel_at' in prev) && ours !== 'canceled';
+      const ends = o.cancel_at_period_end || o.cancel_at ? ymd(o.cancel_at || o.current_period_end || o.trial_end || o.items?.data?.[0]?.current_period_end) : null;
+      const scheduled = changed ? (ends ? `Care plan set to end on ${ends}` : 'Care plan no longer set to end') : null;
+      return { find: ['stripe_subscription', o.id], set: { stripe_status: st, ...(ours ? { status: ours } : {}), ...(changed ? { ends_at: ends } : {}), ...(ours === 'canceled' ? { ends_at: ymd(o.ended_at || o.canceled_at) || new Date().toISOString().slice(0, 10) } : {}) }, event: ours === 'canceled' ? 'Care plan canceled' : ours === 'past_due' ? 'Care plan payment is past due' : scheduled };
     }
     case 'invoice.paid': {
       const sub = o.subscription ?? o.parent?.subscription_details?.subscription;
@@ -190,7 +191,7 @@ export function updateFromEvent(ev) {
   }
 }
 
-export const CARE_COLUMNS = new Set(['plan', 'price', 'status', 'launched_at', 'first_bill_at', 'terms_version', 'terms_text', 'terms_sha256', 'signer_name', 'signed_at', 'signer_ip', 'signer_agent', 'stripe_customer', 'stripe_subscription', 'stripe_status', 'paid_through', 'checklist', 'notes']);
+export const CARE_COLUMNS = new Set(['plan', 'price', 'status', 'launched_at', 'first_bill_at', 'terms_version', 'terms_text', 'terms_sha256', 'signer_name', 'signed_at', 'signer_ip', 'signer_agent', 'stripe_customer', 'stripe_subscription', 'stripe_status', 'paid_through', 'checklist', 'notes', 'ends_at']);
 
 export function updateCare(env, projectId, set) {
   const cols = Object.keys(set).filter((k) => CARE_COLUMNS.has(k));

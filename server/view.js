@@ -6,6 +6,7 @@ import { check } from './intake.js';
 import { clientStatus, clientEditable, openToken } from './client.js';
 import { agreementState } from './agreement.js';
 import { careState } from './care.js';
+import { unreadFor } from './messages.js';
 
 export const PRESENCE_SECONDS = 12;
 
@@ -46,7 +47,7 @@ export async function projectView(env, p, { mode }) {
   const answers = JSON.parse(p.answers);
   const db = env.INTAKE;
   const since = new Date(Date.now() - PRESENCE_SECONDS * 1000).toISOString();
-  const [uploads, events, presence, lastBuild, link, agreement, care] = await Promise.all([
+  const [uploads, events, presence, lastBuild, link, agreement, care, unread] = await Promise.all([
     db.prepare('SELECT id, kind, filename, content_type, bytes, caption, source, uploaded_at FROM uploads WHERE project_id = ? AND deleted_at IS NULL ORDER BY uploaded_at').bind(p.id).all(),
     db.prepare('SELECT at, who, what FROM project_events WHERE project_id = ? ORDER BY id DESC LIMIT 20').bind(p.id).all(),
     db.prepare('SELECT who, name, field FROM presence WHERE project_id = ? AND at > ? AND who != ?').bind(p.id, since, mode === 'admin' ? 'daniel' : 'client').all(),
@@ -54,6 +55,7 @@ export async function projectView(env, p, { mode }) {
     mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at, token_enc FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
     agreementState(env, p),
     careState(env, p, mode),
+    unreadFor(env, p.id, mode === 'admin' ? 'daniel' : 'client'),
   ]);
   if (mode !== 'admin') events.results = events.results.map(forClient).filter(Boolean);
   return {
@@ -84,6 +86,8 @@ export async function projectView(env, p, { mode }) {
     care,
     // Launched (2026-11-04): the project is live, or its care plan's launch day has come. The client's
     // portal then trades the intake for Your details and a Request a change box.
+    // Messages from the other side not opened yet (2026-11-04): the count on the Messages tab.
+    unreadMessages: unread,
     launched: p.status === 'live' || !!(care?.launchedAt && care.launchedAt <= new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })),
     // What the client changed that hasn't gone into a preview yet, and what's waiting on Daniel.
     pendingChanges: !!p.client_changed_at,

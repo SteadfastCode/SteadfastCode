@@ -49,7 +49,7 @@ const config = {
 </style>
 </head>
 <body>
-<header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/care" aria-current="page">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
+<header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care" aria-current="page">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
 <main id="app"><p class="muted">Loading…</p></main>
 <script type="application/json" id="care-config" set:html={JSON.stringify(config)}></script>
 <script is:inline>
@@ -78,7 +78,7 @@ const config = {
         ${d.stripeReady ? '' : '<p class="muted">Stripe isn’t connected yet: clients can sign, and the card step waits for the <code>STRIPE_SECRET_KEY</code> (or <code>STRIPE_TEST_KEY</code>) and <code>STRIPE_WEBHOOK_SECRET</code> Pages secrets.</p>'}</section>
       <section class="card">${d.rows.length ? `<div class="crow cols"><div>Client</div><div>Plan</div><div>First bill</div><div>Hosting move</div></div>` + d.rows.map((r) => `
         <div class="crow"><div><a href="#p/${esc(r.id)}"><b>${esc(r.business || 'Untitled')}</b></a><div class="sub">${esc(r.contact || '')}${r.firstPreview ? ` · first preview ${date(r.firstPreview)}` : ''}</div></div>
-          <div>${r.care ? `${esc(r.care.planName)} · ${money(r.care.price)}/mo <span class="badge st-${esc(r.care.status)}">${esc(STATUS[r.care.status] || r.care.status)}</span>` : '<span class="muted">No plan yet</span>'}</div>
+          <div>${r.care ? `${esc(r.care.planName)} · ${money(r.care.price)}/mo <span class="badge st-${esc(r.care.status)}">${esc(STATUS[r.care.status] || r.care.status)}</span>${r.care.endsAt && r.care.status !== 'canceled' ? ` <span class="badge st-offered">ends ${date(r.care.endsAt)}</span>` : ''}` : '<span class="muted">No plan yet</span>'}</div>
           <div>${r.care?.firstBill ? date(r.care.firstBill) : '<span class="muted">—</span>'}${r.care?.paidThrough ? `<div class="sub">paid through ${date(r.care.paidThrough)}</div>` : ''}</div>
           <div>${r.care ? `${r.care.done} of ${C.checklist.length}` : '<span class="muted">—</span>'}</div></div>`).join('') : '<p class="muted">No clients with a preview yet.</p>'}</section>`;
   }
@@ -117,6 +117,7 @@ const config = {
           <div><dt>Changes window ends</dt><dd>${c.windowEnds ? date(c.windowEnds) : signed ? '—' : 'after the first preview'}</dd></div>
           <div><dt>First bill</dt><dd>${c.firstBill ? date(c.firstBill) : '—'}</dd></div>
           <div><dt>Paid through</dt><dd>${date(c.billing?.paidThrough)}</dd></div>
+          ${c.endsAt ? `<div><dt>${c.status === 'canceled' ? 'Ended' : 'Set to end'}</dt><dd>${date(c.endsAt)}</dd></div>` : ''}
         </dl>
         <p class="muted">Billing starts the 1st on or after the later of launch and ${C.windowDays} days from the first preview; nothing before.</p>
       </section>

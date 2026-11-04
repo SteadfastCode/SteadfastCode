@@ -1,0 +1,46 @@
+---
+// /admin/inbox (2026-11-04): every conversation with a client, the ones waiting on Daniel first.
+// A conversation opens on its project (/admin#p/<id>), where the Messages card is, beside
+// everything else about that client. Behind the same Cloudflare Access app as /admin.
+const v = Date.now().toString(36);
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Inbox — Steadfast Code admin</title>
+<link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<style is:global>
+  .thread { display: block; padding: 12px 0; border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+  .thread:first-of-type { border-top: 0; }
+  .thread:hover b { color: var(--accent); }
+  .thread .last { color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .thread.unread b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox" aria-current="page">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
+<main id="app"><p class="muted">Loading…</p></main>
+<script is:inline>
+(async () => {
+  const app = document.getElementById('app');
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const ago = (t) => { const s = (Date.now() - Date.parse(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : new Date(t).toLocaleDateString(); };
+  async function load() {
+    try {
+      const r = await fetch('/api/admin/inbox');
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || `Error ${r.status}`);
+      app.innerHTML = `<h1>Inbox</h1><section class="card">${d.unread ? `<p><b>${d.unread} unread</b></p>` : ''}${d.rows.length ? d.rows.map((t) => `
+        <a class="thread${t.unread ? ' unread' : ''}" href="/admin#p/${esc(t.id)}"><b>${esc(t.business || 'Untitled')}</b> <span class="muted">${esc(t.contact || '')}${t.unread ? ` · ${t.unread} new` : ''} · ${esc(ago(t.last.at))}</span>
+          <div class="last">${t.last.sender === 'daniel' ? 'You: ' : ''}${esc(t.last.body)}</div></a>`).join('') : '<p class="muted">No messages yet. Clients write from the Messages tab on their portal; you can start one from a project’s Messages card.</p>'}</section>`;
+    } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+  }
+  await load();
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 15000);
+})();
+</script>
+</body>
+</html>

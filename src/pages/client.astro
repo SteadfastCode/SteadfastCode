@@ -77,7 +77,7 @@ if (!valid(token)) {
     root: app, bar: document.getElementById('bar'), progress, config: C, mode: 'client',
     headers: { authorization: 'Bearer ' + token },
     routes: {
-      project: '/api/client/project', presence: '/api/client/presence', uploads: '/api/client/uploads', build: '/api/client/build', agreement: '/api/client/agreement', care: '/api/client/care',
+      project: '/api/client/project', presence: '/api/client/presence', uploads: '/api/client/uploads', build: '/api/client/build', agreement: '/api/client/agreement', care: '/api/client/care', messages: '/api/client/messages',
       // An <img> can't send the header, so a picture's address carries the token; changes don't.
       file: (id, forApi) => '/api/client/uploads/' + encodeURIComponent(id) + (forApi ? '' : q),
     },
