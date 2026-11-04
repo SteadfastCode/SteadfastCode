@@ -56,7 +56,7 @@ I can tell you which one you need after a 30-minute call."
 | Business, up to 6 pages | $3,900 | What most local businesses need; sits with the better local shops and well under the agencies. |
 | Growth, up to 15 pages + editor | $6,900 | For a business with a lot to say or a team that wants to edit. |
 | Online store | from $8,500 | A store is a business system, not a brochure; "from" because products and shipping vary. |
-| Care: Hosted / Cared for / Growing | $59 / $149 / $299 a month | Priced on my time: on call, an hour of changes, three hours plus content. Cancel any month. |
+| Care: Hosted / Hands-on / Growth | $60 / $150 / $300 a month | Priced on my time: on call, an hour of changes, three hours plus content. Cancel any month. |
 | Audit | $500, credited back | A straight picture before anyone spends monthly money. |
 | Local SEO / with GEO | $750 / $1,050 a month | Between the cheap local shops and the agencies; GEO is a $300 line of measurement and fixes. |
 

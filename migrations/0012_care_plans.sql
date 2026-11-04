@@ -8,7 +8,7 @@
 CREATE TABLE care_plans (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL REFERENCES projects (id),
-  plan TEXT NOT NULL,                       -- hosted | cared-for | growing (src/data/site.ts carePlans)
+  plan TEXT NOT NULL,                       -- hosted | hands-on | growth (src/data/site.ts carePlans)
   price INTEGER NOT NULL,                   -- dollars a month, as agreed
   status TEXT NOT NULL DEFAULT 'draft',     -- draft | offered | signed | active | past_due | canceled
   launched_at TEXT,                         -- YYYY-MM-DD

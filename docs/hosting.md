@@ -65,7 +65,7 @@ rates in the business plan, and Workers has its own, separate limit after that.
 | Hostinger agency, Pressable, Flywheel, 20i, Nexcess | not fetched (Hostinger's agency page 404'd) | | | Fill in if a client's budget forces it. |
 
 **Call:** if a client genuinely needs WordPress (an existing plugin ecosystem, a team used to it), put
-them on **xCloud** (one managed 4 GB server for the first ten, $24/mo) and charge the Cared-for plan or
+them on **xCloud** (one managed 4 GB server for the first ten, $24/mo) and charge the Hands-on plan or
 above, because WordPress is where the monthly support time actually goes. Rocket.net is the
 alternative if a client wants a big-name host behind Cloudflare Enterprise and will pay for it. Don't run your own servers for client WordPress at this scale; the 3 a.m.
 problems are yours and the margin isn't there.

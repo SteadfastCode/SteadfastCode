@@ -19,21 +19,21 @@ test('the first bill is the 1st on or after the later of launch and 30 days from
 });
 
 test('the terms spell out the plan, the price, the first charge and how to stop', () => {
-  const t = careTermsFor({ plan: 'hosted', price: 59, firstBill: '2027-01-01', contactName: 'Joshua Cesavice', businessName: 'N & J Fusions Properties' });
+  const t = careTermsFor({ plan: 'hosted', price: 60, firstBill: '2027-01-01', contactName: 'Joshua Cesavice', businessName: 'N & J Fusions Properties' });
   assert.match(t.text, /Joshua Cesavice, for N & J Fusions Properties/);
-  assert.match(t.text, /\$59 a month, plus any sales tax that applies, billed on the 1st of each month/);
+  assert.match(t.text, /\$60 a month, plus any sales tax that applies, billed on the 1st of each month/);
   assert.match(t.text, /Your first charge is on January 1, 2027\. Nothing is charged before then/);
   assert.match(t.text, /cancel any time/);
   for (const x of carePlanById('hosted').includes) assert.ok(t.text.includes(x), x);
   // A higher plan lists everything below it, never "Everything in …".
-  assert.ok(planIncludes(carePlanById('growing')).length > carePlanById('growing').includes.length);
-  assert.doesNotMatch(careTermsFor({ plan: 'growing', price: 299, firstBill: '2027-01-01' }).text, /Everything in /);
-  assert.match(careTermsFor({ plan: 'hosted', price: 49, firstBill: '2027-01-01' }).text, /\$49 \(the Hosted plan is normally \$59\) a month/);
+  assert.ok(planIncludes(carePlanById('growth')).length > carePlanById('growth').includes.length);
+  assert.doesNotMatch(careTermsFor({ plan: 'growth', price: 300, firstBill: '2027-01-01' }).text, /Everything in /);
+  assert.match(careTermsFor({ plan: 'hosted', price: 49, firstBill: '2027-01-01' }).text, /\$49 \(the Hosted plan is normally \$60\) a month/);
   assert.equal(careTermsFor({ plan: 'nope', price: 1, firstBill: '2027-01-01' }), null);
 });
 
 test('Daniel sets plan, price, launch and checklist; offering is a draft↔offered switch; signed terms are fixed', () => {
-  assert.deepEqual(cleanCarePatch({ plan: 'cared-for', price: '140', launchedAt: '2026-11-20' }, { status: 'draft' }).patch, { plan: 'cared-for', price: 140, launched_at: '2026-11-20' });
+  assert.deepEqual(cleanCarePatch({ plan: 'hands-on', price: '140', launchedAt: '2026-11-20' }, { status: 'draft' }).patch, { plan: 'hands-on', price: 140, launched_at: '2026-11-20' });
   assert.equal(cleanCarePatch({ offer: true }, { status: 'draft' }).patch.status, 'offered');
   assert.equal(cleanCarePatch({ offer: false }, { status: 'offered' }).patch.status, 'draft');
   assert.ok(cleanCarePatch({ offer: false }, { status: 'active', signed_at: 'x' }).problems.length);
@@ -52,17 +52,22 @@ test('signing the care plan needs a full name, the box, and the exact terms show
 });
 
 test("Stripe Checkout: a monthly price for the agreed amount, free until the first bill, tied to the project", () => {
-  const care = { id: 'c1', project_id: 'p1', plan: 'hosted', price: 59, first_bill_at: '2027-01-01' };
+  const care = { id: 'c1', project_id: 'p1', plan: 'hosted', price: 60, first_bill_at: '2027-01-01' };
   const p = checkoutParams({ care, answers: { email: 'j@example.com', businessName: 'N & J' }, origin: 'https://steadfastcode.tech' });
   const f = stripeForm(p);
   assert.equal(f.get('mode'), 'subscription');
-  assert.equal(f.get('line_items[0][price_data][unit_amount]'), '5900');
+  assert.equal(f.get('line_items[0][price_data][unit_amount]'), '6000');
   assert.equal(f.get('line_items[0][price_data][recurring][interval]'), 'month');
   assert.equal(f.get('subscription_data[metadata][project_id]'), 'p1');
   assert.equal(f.get('customer_email'), 'j@example.com');
   // Jan 1, 2027 at 9am Eastern: the first charge lands on the 1st, and every one after it.
   assert.equal(new Date(Number(f.get('subscription_data[trial_end]')) * 1000).toISOString(), '2027-01-01T14:00:00.000Z');
   assert.equal(stripeForm(checkoutParams({ care, answers: {}, origin: 'x', customer: 'cus_1' })).get('customer'), 'cus_1');
+  // With STRIPE_PRODUCTS set, the price hangs off Daniel's own Product for the plan (its name and description).
+  const withProduct = stripeForm(checkoutParams({ care, answers: {}, origin: 'x', products: { hosted: 'prod_H' } }));
+  assert.equal(withProduct.get('line_items[0][price_data][product]'), 'prod_H');
+  assert.equal(withProduct.get('line_items[0][price_data][product_data][name]'), null);
+  assert.equal(withProduct.get('line_items[0][price_data][unit_amount]'), '6000', 'the agreed price, whatever the Product lists');
 });
 
 test("the webhook trusts only Stripe's signature, and only a fresh one", async () => {

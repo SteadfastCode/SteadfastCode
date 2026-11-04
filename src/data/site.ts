@@ -195,8 +195,8 @@ export const carePlans = [
     ],
   },
   {
-    id: 'cared-for',
-    name: 'Cared for',
+    id: 'hands-on',
+    name: 'Hands-on',
     price: 150,
     featured: true,
     who: 'For a business that changes a little every month and wants someone on call.',
@@ -209,12 +209,12 @@ export const carePlans = [
     ],
   },
   {
-    id: 'growing',
-    name: 'Growing',
+    id: 'growth',
+    name: 'Growth',
     price: 300,
     who: 'For a business that wants the site working for it, not just sitting there.',
     includes: [
-      'Everything in Cared for',
+      'Everything in Hands-on',
       'Up to three hours of changes a month, including new pages',
       'One new piece of content a month, written with you, about a real job or question',
       'Quarterly review call: what is ranking, what is converting, what to do next',

@@ -88,12 +88,12 @@ the client's name. Anything past the tier's scope is quoted before it is built.
 | Plan | Price | What it is | Your time |
 |---|---|---|---|
 | Hosted | **$60** | Cloudflare edge hosting, SSL, backups, uptime monitoring, DNS and renewal reminders, form delivery, Steadfast Analytics dashboard, security updates, small fixes by email | ~15 min/mo |
-| Cared for | **$150** | + up to 1 hour of changes, monthly report, GBP kept current with one post, two-business-day turnaround | ~1.25 h/mo |
-| Growing | **$300** | + up to 3 hours including new pages, one content piece a month, quarterly review call, local SEO upkeep | ~3.5 h/mo |
+| Hands-on | **$150** | + up to 1 hour of changes, monthly report, GBP kept current with one post, two-business-day turnaround | ~1.25 h/mo |
+| Growth | **$300** | + up to 3 hours including new pages, one content piece a month, quarterly review call, local SEO upkeep | ~3.5 h/mo |
 
 Hosting cost is roughly zero (see `docs/hosting.md`), so these are priced on time and on the local
 cluster: $50–$55 basic plans (Keystone, Seva) and $150–$260 with labor (WebTek, Seva, Rachel Kline).
-Hosted at $59 is above the "free hosting with unlimited edits" floor on purpose: unlimited edits for
+Hosted at $60 is above the "free hosting with unlimited edits" floor on purpose: unlimited edits for
 $55 is how a solo shop drowns. A client can decline all three and get free hosting set up at launch;
 the FAQ says so, because it's true and it sells trust.
 
@@ -125,7 +125,7 @@ labels.
 - **Pay-monthly option (not on the site yet).** Three local competitors sell websites as
   subscriptions, and cash flow is the most common reason a small business doesn't start this quarter.
   If you want it: Business as **$329/mo for 12 months** with the Hosted plan included, ownership
-  transfers at month 12, then $59/mo. Total $3,948, so the client pays about the same as the one-time
+  transfers at month 12, then $60/mo. Total $3,948, so the client pays about the same as the one-time
   price and you carry the financing. Risks: you front ~$3,900 of work per client; needs a signed
   12-month agreement, card on file, and an early-exit clause (remaining months due). Keep the one-time
   price as the default so WebTek's "hostage" attack never lands on you.
@@ -310,7 +310,7 @@ watch: at 20 care plans averaging $120 that's $2,400 a month before any new buil
   Function, Sveltia config, the schema module), first real version within days on a preview URL,
   revisions on the live preview, launch on the client's domain, GBP and Search Console verified,
   forms tested end to end, handoff call recorded.
-- **Care:** a shared inbox or Front Desk source for requests; a monthly 30-minute block per Cared-for
+- **Care:** a shared inbox or Front Desk source for requests; a monthly 30-minute block per Hands-on
   client; the Looker Studio report sent on the first business day; renewals and DNS in a calendar.
 - **SEO:** the four-week rhythm on the SEO page (profile, content, citations, technical + report).
 - **Offboarding:** a written checklist that transfers the repo, the Pages project (or a static export),

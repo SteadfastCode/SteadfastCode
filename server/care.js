@@ -96,6 +96,11 @@ export function stripeForm(obj, prefix = '', out = new URLSearchParams()) {
   return out;
 }
 
+/** STRIPE_PRODUCTS, a Pages variable: {"hosted":"prod_…","hands-on":"prod_…","growth":"prod_…"}. Sandbox and live IDs differ. */
+export function stripeProducts(env) {
+  try { const p = JSON.parse(env.STRIPE_PRODUCTS || '{}'); return p && typeof p === 'object' ? p : {}; } catch { return {}; }
+}
+
 export async function stripe(env, path, params, method = 'POST') {
   const r = await fetch(`https://api.stripe.com/v1/${path}`, {
     method,
@@ -110,13 +115,16 @@ export async function stripe(env, path, params, method = 'POST') {
 const unixAt = (ymd) => Math.floor(Date.parse(ymd + 'T09:00:00-05:00') / 1000);
 
 /** The Checkout Session that collects a card and starts the subscription, free until the first bill. */
-export function checkoutParams({ care, answers, origin, customer }) {
+export function checkoutParams({ care, answers, origin, customer, products = {} }) {
   const plan = carePlanById(care.plan);
+  // Daniel's own Product for the plan when STRIPE_PRODUCTS names one (its name and description show
+  // on Checkout and invoices); otherwise a product made inline. The amount is always the agreed price.
+  const product = typeof products[care.plan] === 'string' && /^prod_\w+$/.test(products[care.plan]) ? { product: products[care.plan] } : null;
   return {
     mode: 'subscription',
     ...(customer ? { customer } : answers.email ? { customer_email: answers.email } : {}),
     client_reference_id: care.project_id,
-    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: care.price * 100, recurring: { interval: 'month' }, product_data: { name: `${plan?.name ?? 'Care'} care plan${answers.businessName ? ` — ${answers.businessName}` : ''}` } } }],
+    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: care.price * 100, recurring: { interval: 'month' }, ...(product ?? { product_data: { name: `${plan?.name ?? 'Care'} Care Plan${answers.businessName ? ` — ${answers.businessName}` : ''}` } }) } }],
     subscription_data: { trial_end: unixAt(care.first_bill_at), description: `Steadfast Code ${plan?.name ?? ''} care plan, billed on the 1st`, metadata: { project_id: care.project_id, care_plan: care.id } },
     metadata: { project_id: care.project_id, care_plan: care.id },
     success_url: `${origin}/client?care=done#care`,
