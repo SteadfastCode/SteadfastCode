@@ -32,7 +32,7 @@ const config = {
 <div id="progress" role="button" tabindex="0" hidden></div>
 <main id="app"><p class="muted">Loading…</p></main>
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" hidden></button></div></footer>
-<p class="muted" style="text-align:center;padding:0 16px 120px">Questions? Email <a href={`mailto:${business.email}`}>{business.email}</a>. Steadfast Code.</p>
+<p class="muted" id="questions" style="text-align:center;padding:0 16px 120px">Questions? Email <a href={`mailto:${business.email}`}>{business.email}</a>.</p>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
 <script type="module" is:inline>
 

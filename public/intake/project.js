@@ -77,12 +77,15 @@ export async function mountProject(o) {
   // Care plan once Daniel offers one (before or after launch), and Documents (everything signed).
   // The tab is remembered for this browser tab, so a reload stays where it was.
   const launched = () => !!P?.launched;
+  const WIDE = matchMedia('(min-width: 900px)');
+  const wide = () => !admin && WIDE.matches;
   const clientTabs = () => {
     if (admin) return [];
     // Messages with Daniel from the first day (2026-11-04), with the unread count on the tab.
-    const msgs = ['messages', P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages'];
-    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning'], msgs] : [];
-    return [['site', 'Your site'], ['planning', launched() ? 'Details' : 'Planning'], msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
+    // On a wide screen Messages is a drawer on the right instead (2026-11-04), open from any tab.
+    const msgs = wide() ? [] : [['messages', P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages']];
+    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning'], ...msgs] : [];
+    return [['site', 'Your site'], ['planning', launched() ? 'Details' : 'Planning'], ...msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
   };
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
@@ -217,6 +220,8 @@ export async function mountProject(o) {
   function render() {
     fixTab();
     paintTabs();
+    ensureDrawer();
+    paintQuestions();
     if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) return renderAgreement();
     const show = parts();
     msgLoaded = false;
@@ -234,7 +239,7 @@ export async function mountProject(o) {
       ${show.intro ? `<p class="muted">${launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
-      ${show.messages ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${admin ? `Your conversation with ${esc(P.answers.contactName || 'the client')}. They get an email when you write, with their link.` : 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.'}</p><ol class="msgs${admin ? ' boxed' : ''}" id="msglist"><li class="muted">Loading…</li></ol><div class="composer${admin ? '' : ' fixed'}" id="composer"><div class="in"><label for="msgbody" class="sr">${admin ? 'Reply' : 'Message'}</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="${admin ? 'Reply' : 'Message Daniel'}" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div></section>` : ''}
+      ${show.messages && !wide() ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${MSG_INTRO}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol>${composerHtml(true)}</section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
@@ -244,7 +249,7 @@ export async function mountProject(o) {
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
-    wireMessages();
+    if (!wide()) wireMessages();
     root.querySelectorAll('[data-f]').forEach((el) => {
       if (el.dataset.kind === 'hours') wireHours(el);
       else {
@@ -373,8 +378,53 @@ export async function mountProject(o) {
 
   // ---- messages (2026-11-04) ----
   let msgLoaded = false, msgLoading = false;
+  const MSG_INTRO = 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.';
+  const composerHtml = (fixed) => `<div class="composer${fixed ? ' fixed' : ''}" id="composer"><div class="in"><label for="msgbody" class="sr">Message</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message Daniel" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
+  // The drawer (wide screens): made once and kept across tab switches, so a half-typed message stays.
+  let drawer = null;
+  const drawerOpen = () => document.body.classList.contains('drawer-open');
+  function setDrawer(open) {
+    document.body.classList.toggle('drawer-open', open);
+    try { sessionStorage.setItem('drawer', open ? '1' : ''); } catch {}
+    const fab = document.getElementById('msgfab');
+    if (fab) fab.setAttribute('aria-expanded', String(open));
+    if (open) { msgLoaded = false; paintMessages(); setTimeout(() => document.getElementById('msgbody')?.focus(), 50); }
+    placeComposer();
+  }
+  function ensureDrawer() {
+    if (admin) return;
+    if (!wide()) {
+      if (drawer) { drawer.remove(); drawer = null; document.getElementById('msgfab')?.remove(); document.body.classList.remove('drawer-open'); }
+      return;
+    }
+    if (!drawer) {
+      drawer = document.createElement('aside');
+      drawer.id = 'drawer';
+      drawer.className = 'drawer';
+      drawer.setAttribute('aria-label', 'Messages');
+      drawer.innerHTML = `<div class="drawer-head"><h2>Messages</h2><button type="button" id="drawerclose" aria-label="Close messages">×</button></div><p class="muted drawer-intro">${MSG_INTRO}</p><div class="drawer-thread"><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol></div>${composerHtml(false)}`;
+      document.body.appendChild(drawer);
+      const fab = document.createElement('button');
+      fab.type = 'button'; fab.id = 'msgfab'; fab.className = 'msgfab'; fab.setAttribute('aria-controls', 'drawer');
+      fab.addEventListener('click', () => setDrawer(!drawerOpen()));
+      document.body.appendChild(fab);
+      drawer.querySelector('#drawerclose').addEventListener('click', () => setDrawer(false));
+      addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawerOpen()) setDrawer(false); });
+      wireMessages(drawer);
+      let was = false; try { was = sessionStorage.getItem('drawer') === '1'; } catch {}
+      setDrawer(was);
+    }
+    const fab = document.getElementById('msgfab');
+    const label = P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages';
+    if (fab.textContent !== label) fab.textContent = label;
+    fab.classList.toggle('unread', !!P.unreadMessages);
+  }
+  /** Open Messages wherever it lives: the drawer on a wide screen, the tab on a phone. */
+  function openMessages() { if (wide()) setDrawer(true); else setTab('messages'); }
   async function paintMessages() {
-    const list = root.querySelector('#msglist');
+    const list = document.getElementById('msglist');
+    // Opening the conversation marks Daniel's messages read, so only when it's actually showing.
+    if (drawer && !drawerOpen()) return;
     if (!list || msgLoading || (msgLoaded && !P.unreadMessages)) return;
     msgLoading = true;
     try {
@@ -382,27 +432,29 @@ export async function mountProject(o) {
       msgLoaded = true;
       showMessages(d.messages);
       P.unreadMessages = 0;
-      if (!admin) paintTabs();
+      if (!admin) { paintTabs(); ensureDrawer(); }
     } catch (e) { list.innerHTML = `<li class="error">${esc(/no such table/.test(e.message) ? 'Messages are being switched on.' : e.message)}</li>`; }
     msgLoading = false;
   }
   function showMessages(ms) {
-    const list = root.querySelector('#msglist');
+    const list = document.getElementById('msglist');
     if (!list) return;
-    const atEnd = !list.dataset.shown || (admin ? list.scrollHeight - list.scrollTop - list.clientHeight < 40 : innerHeight + scrollY >= document.documentElement.scrollHeight - 80);
+    // What scrolls: the drawer's thread, Daniel's boxed list, or (the phone tab) the page itself.
+    const box = list.closest('.drawer-thread') || (admin ? list : null);
+    const atEnd = !list.dataset.shown || (box ? box.scrollHeight - box.scrollTop - box.clientHeight < 40 : innerHeight + scrollY >= document.documentElement.scrollHeight - 80);
     const mine = admin ? 'daniel' : 'client';
     list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === mine ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === mine ? 'You' : esc(m.sender === 'daniel' ? 'Daniel' : m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === mine && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : `<li class="muted">No messages yet.${admin ? '' : ' Say hello!'}</li>`;
     // Like any chat: open on the latest message, and follow new ones if you were already at the end.
     list.dataset.shown = '1';
-    if (atEnd) requestAnimationFrame(() => { if (admin) list.scrollTop = list.scrollHeight; else scrollTo(0, document.documentElement.scrollHeight); });
+    if (atEnd) requestAnimationFrame(() => { if (box) box.scrollTop = box.scrollHeight; else scrollTo(0, document.documentElement.scrollHeight); });
   }
   // The message box floats at the bottom of the screen, just above whatever else is pinned there (the
   // tabs, the build bar), and rides up with a phone's keyboard (2026-11-04). Android resizes the page
   // for the keyboard (interactive-widget in the viewport tag); iOS doesn't, so the gap comes from
   // visualViewport. While typing on a phone, the tabs and bar step aside to leave room.
   function placeComposer() {
-    const c = root.querySelector('#composer');
-    if (!c) return;
+    const c = document.getElementById('composer');
+    if (!c || !c.classList.contains('fixed')) return;
     // (offsetParent is always null for position: fixed, so look at display instead.)
     const h = (el) => (el && !el.hidden && getComputedStyle(el).display !== 'none' ? el.getBoundingClientRect().height : 0);
     const vv = window.visualViewport;
@@ -415,10 +467,10 @@ export async function mountProject(o) {
     window.visualViewport?.addEventListener('scroll', () => placeComposer());
     addEventListener('resize', () => placeComposer());
   }
-  function wireMessages() {
-    const btn = root.querySelector('#msgsend');
+  function wireMessages(scope = root) {
+    const btn = scope.querySelector('#msgsend');
     if (!btn) return;
-    const body = root.querySelector('#msgbody'), note = root.querySelector('#msgnote');
+    const body = scope.querySelector('#msgbody'), note = scope.querySelector('#msgnote');
     const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 160) + 'px'; };
     body.addEventListener('input', grow);
     // Enter sends, Shift+Enter is a new line; never mid-composition (an IME's Enter picks a word).
@@ -439,8 +491,19 @@ export async function mountProject(o) {
     });
   }
 
+  // The line under the page (2026-11-04): Messages first, then email; gone on the Messages tab itself.
+  function paintQuestions() {
+    const q = document.getElementById('questions');
+    if (!q || admin) return;
+    q.hidden = !wide() && tab === 'messages';
+    const html = `Questions? Talk to Daniel <a href="#" data-open-messages>${wide() ? 'in Messages' : 'on the Messages tab'}</a> or email <a href="mailto:support@steadfastcode.tech">support@steadfastcode.tech</a>.`;
+    if (q.dataset.html !== html) { q.innerHTML = html; q.dataset.html = html; q.querySelector('[data-open-messages]').addEventListener('click', (e) => { e.preventDefault(); openMessages(); }); }
+  }
+
   function paint() {
     paintPricing();
+    ensureDrawer();
+    paintQuestions();
     paintMessages();
     placeComposer();
     if (!admin) paintTabs();
@@ -744,7 +807,7 @@ export async function mountProject(o) {
     P = { ...r, answers: { ...r.answers, ...pending } };
     if (before !== shape()) return render();
     // On the agreement screen there's nothing else to update, and redrawing would wipe a half-typed name.
-    if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) return;
+    if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) { ensureDrawer(); paintMessages(); return; }
     for (const el of root.querySelectorAll('[data-f]')) {
       const f = el.dataset.f;
       if (el.contains(document.activeElement) || f in pending || Date.now() - (localEditAt[f] || 0) < 4000) continue;
@@ -784,6 +847,9 @@ export async function mountProject(o) {
     clearInterval(pollTimer); clearInterval(heartbeat); clearInterval(tick);
   }
   const tick = setInterval(() => { const el = progress.querySelector('#elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
+
+  // Crossing the wide-screen line moves Messages between the drawer and a tab.
+  WIDE.addEventListener('change', () => { if (P) { ensureDrawer(); render(); } });
 
   // ---- start ----
   root.innerHTML = '<p class="muted">Loading…</p>';
