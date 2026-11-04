@@ -23,6 +23,8 @@ const v = Date.now().toString(36);
   .inbox { flex: 1; min-height: 0; width: 100%; max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--card); }
   .convos { border-right: 1px solid var(--line); overflow-y: auto; min-height: 0; }
   .convos h1 { font-size: 1.15rem; margin: 0; padding: 14px 16px 10px; position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--line); z-index: 1; }
+  .pushline { margin: 0; padding: 8px 16px; font-size: .85rem; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+  .pushline button { font-size: .8rem; padding: 4px 10px; }
   .convos .group { padding: 10px 16px 4px; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
   .convo { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: none; color: var(--ink); padding: 10px 16px; border-bottom: 1px solid var(--line); cursor: pointer; font: inherit; }
   .convo:hover { background: var(--hover); }
@@ -49,11 +51,12 @@ const v = Date.now().toString(36);
     .pane-head .back { display: inline-flex; }
   }
 </style>
+<script src={`/admin/app.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox" aria-current="page">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
 <main class="inbox" id="inbox">
-  <section class="convos" aria-label="Conversations"><h1>Inbox</h1><div id="list"><p class="muted" style="padding:16px">Loading…</p></div></section>
+  <section class="convos" aria-label="Conversations"><h1>Inbox</h1><p class="pushline" id="pushline" hidden><span id="pushstate">Checking notifications…</span> <button type="button" id="pushtest">Send a test</button></p><div id="list"><p class="muted" style="padding:16px">Loading…</p></div></section>
   <section class="pane" aria-label="Conversation" id="pane"><div class="empty">Pick a conversation.</div></section>
 </main>
 <script is:inline>
@@ -129,6 +132,19 @@ const v = Date.now().toString(36);
     if (!rows.length) await loadList();
     if (m) { openPane(m[1]); setTimeout(loadList, 600); }
     else { open = null; box.classList.remove('open'); pane.innerHTML = '<div class="empty">Pick a conversation.</div>'; loadList(); }
+  }
+  // In the app (public/admin/app.js): whether this phone gets notifications, and a test.
+  if (window.Capacitor?.isNativePlatform?.()) {
+    const line = document.getElementById('pushline'), state = document.getElementById('pushstate');
+    line.hidden = false;
+    const show = (t) => { state.textContent = t; };
+    if (window.__pushStatus) show(window.__pushStatus);
+    document.addEventListener('pushstatus', (e) => show(e.detail));
+    document.getElementById('pushtest').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try { await api('/devices/test', { method: 'POST', body: '{}' }); show('Test sent: it should arrive in a few seconds.'); } catch (err) { show(err.message); }
+      e.target.disabled = false;
+    });
   }
   // iPhones don't resize the page for the keyboard: size it to what's visible, so the box rides up.
   const fit = () => { const vv = window.visualViewport; document.body.style.height = vv ? `${vv.height}px` : ''; };

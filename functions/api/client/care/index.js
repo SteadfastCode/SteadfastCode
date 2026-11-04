@@ -4,6 +4,7 @@ import { json } from '../_middleware.js';
 import { careState, checkCareSignature, updateCare } from '../../../../server/care.js';
 import { emailSignedCopy } from '../../../../server/agreement.js';
 import { logEvent } from '../../../../server/view.js';
+import { notifyDaniel } from '../../../../server/notify.js';
 
 // GET /api/client/care?signed=1: the signed care plan, word for word, for the Documents tab.
 export async function onRequestGet({ env, data }) {
@@ -27,6 +28,7 @@ export async function onRequestPost({ request, env, data }) {
   });
   await logEvent(env, p.id, 'client', `${c.name} signed the ${care.planName} care plan`);
   const answers = JSON.parse(p.answers);
+  await notifyDaniel(env, { kind: 'care', title: `${c.name} signed the ${care.planName} care plan`, body: `${answers.businessName || 'A client'} · $${care.price} a month from ${care.terms.firstBill}`, url: `https://steadfastcode.tech/admin/care#p/${p.id}` });
   await emailSignedCopy(env, { to: answers.email, name: c.name, signedAt: now, text: care.terms.text, sha: care.terms.sha256, ip, business: answers.businessName, what: 'care plan' });
   return json({ ok: true, care: await careState(env, p, 'client') });
 }

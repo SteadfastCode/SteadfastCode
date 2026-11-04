@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Steadfast Code</string>
+    <string name="title_activity_main">Steadfast Code</string>
+    <string name="package_name">tech.steadfastcode.admin</string>
+    <string name="custom_url_scheme">tech.steadfastcode.admin</string>
+</resources>

@@ -43,6 +43,7 @@ const v = Date.now().toString(36);
   .plan { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .plan input { width: 8rem; }
 </style>
+<script src={`/admin/app.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage" aria-current="page">Usage</a></nav></div></header>

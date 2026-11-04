@@ -26,9 +26,14 @@ test('a submission is saved to INTAKE and still emailed', async (t) => {
   const INTAKE = fakeD1();
   const r = await onRequestPost({ request: post(lead), env: { INTAKE, RESEND_API_KEY: 'k' } });
   assert.match(r.headers.get('location'), /sent=1/);
-  assert.equal(INTAKE.rows.length, 1);
-  assert.match(INTAKE.rows[0].sql, /INSERT INTO leads/);
-  assert.deepEqual(INTAKE.rows[0].args.slice(2, 7), ['Pat', 'pat@example.com', null, 'Pat Plumbing', 'business']);
+  const leads = INTAKE.rows.filter((r) => /INSERT INTO leads/.test(r.sql));
+  assert.equal(leads.length, 1);
+  assert.deepEqual(leads[0].args.slice(2, 7), ['Pat', 'pat@example.com', null, 'Pat Plumbing', 'business']);
+  // And a note queued for Daniel's phone (2026-11-04); the email is still the delivery.
+  const note = INTAKE.rows.find((r) => /INSERT INTO notifications/.test(r.sql));
+  assert.ok(note);
+  assert.equal(note.args[1], 'lead');
+  assert.match(note.args[2], /New lead: Pat/);
   assert.equal(sent.length, 1);
 });
 
@@ -39,7 +44,7 @@ test('a failed save never stops the email, and a saved row alone is not "sent"',
   const INTAKE = fakeD1();
   const noMail = await onRequestPost({ request: post(lead), env: { INTAKE } });
   assert.match(noMail.headers.get('location'), /sent=0/);
-  assert.equal(INTAKE.rows.length, 1);
+  assert.equal(INTAKE.rows.filter((r) => /INSERT INTO leads/.test(r.sql)).length, 1);
 });
 
 test('the honeypot saves nothing', async () => {

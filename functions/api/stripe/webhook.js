@@ -4,6 +4,7 @@
 // invoice.paid, invoice.payment_failed (choose those when adding the endpoint in Stripe).
 import { verifyStripeSignature, updateFromEvent, updateCare } from '../../../server/care.js';
 import { logEvent } from '../../../server/view.js';
+import { notifyDaniel } from '../../../server/notify.js';
 
 const text = (body, status = 200) => new Response(body, { status, headers: { 'content-type': 'text/plain' } });
 
@@ -21,6 +22,11 @@ export async function onRequestPost({ request, env }) {
   // Not one of ours (yet): a 200 so Stripe doesn't retry forever, but say so in the dashboard log.
   if (!row) return text('no matching care plan');
   await updateCare(env, row.project_id, u.set);
-  if (u.event) await logEvent(env, row.project_id, 'box', u.event);
+  if (u.event) {
+    await logEvent(env, row.project_id, 'box', u.event);
+    const p = await env.INTAKE.prepare('SELECT answers FROM projects WHERE id = ?').bind(row.project_id).first();
+    const business = p ? JSON.parse(p.answers).businessName : null;
+    await notifyDaniel(env, { kind: 'care', title: u.event, body: business || 'A client', url: `https://steadfastcode.tech/admin/care#p/${row.project_id}` });
+  }
   return text('ok');
 }

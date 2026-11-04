@@ -1,0 +1,13 @@
+{
+  "appId": "tech.steadfastcode.admin",
+  "appName": "Steadfast Code",
+  "webDir": "www",
+  "server": {
+    "url": "https://steadfastcode.tech/admin/inbox",
+    "androidScheme": "https",
+    "allowNavigation": ["steadfastcode.tech", "*.cloudflareaccess.com"]
+  },
+  "plugins": {
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}

@@ -17,6 +17,8 @@
 // On GitHub Pages this file does not run at all; the page's inline script notices the 404/405 and
 // opens the visitor's mail app with the message filled in instead.
 
+import { notifyDaniel } from '../../server/notify.js';
+
 const FIELDS = ['name', 'email', 'phone', 'business', 'plan', 'site', 'message'];
 const MAX = { name: 120, email: 200, phone: 40, business: 160, plan: 40, site: 300, message: 5000 };
 
@@ -44,6 +46,8 @@ export async function onRequestPost({ request, env }) {
     } catch {
       // the email below is the delivery; the table is a convenience
     }
+    // To Daniel's phone (2026-11-04); the email below is still the delivery.
+    await notifyDaniel(env, { kind: 'lead', title: `New lead: ${data.name}`, body: `${data.business ? data.business + ' · ' : ''}${data.plan ? data.plan + ' · ' : ''}${data.message}`, url: 'https://steadfastcode.tech/admin/leads' });
   }
 
   try {

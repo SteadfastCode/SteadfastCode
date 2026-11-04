@@ -3,6 +3,7 @@
 import { json } from './_middleware.js';
 import { agreementState, checkSignature, emailSignedCopy } from '../../../server/agreement.js';
 import { logEvent } from '../../../server/view.js';
+import { notifyDaniel, projectUrl } from '../../../server/notify.js';
 
 export async function onRequestGet({ request, env, data }) {
   if (new URL(request.url).searchParams.get('signed')) {
@@ -28,6 +29,7 @@ export async function onRequestPost({ request, env, data }) {
   await env.INTAKE.prepare('INSERT INTO agreements (id, project_id, version, terms_key, text, sha256, signer_name, signed_at, ip, user_agent, link_id, portfolio_ok) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(id, p.id, state.current.version, state.current.key, state.current.text, state.current.sha256, c.name, now, ip, ua, data.link.id, c.portfolioOk).run();
   await logEvent(env, p.id, 'client', `${c.name} signed the website contract${c.portfolioOk === 1 ? ' (and said yes to showing the site on the Work page)' : ''}`);
+  await notifyDaniel(env, { kind: 'contract', title: `${c.name} signed the contract`, body: `${answers.businessName || 'A client'} · ${state.current.title} · $${state.current.price.toLocaleString('en-US')}`, url: projectUrl(p.id) });
   // The copy goes out after the signature is recorded; a mail failure never undoes a signing.
   const mailed = await emailSignedCopy(env, { to: answers.email, name: c.name, signedAt: now, text: state.current.text, sha: state.current.sha256, ip, business: answers.businessName });
   if (mailed.length) await env.INTAKE.prepare('UPDATE agreements SET emailed_to = ? WHERE id = ?').bind(mailed.join(', '), id).run();
