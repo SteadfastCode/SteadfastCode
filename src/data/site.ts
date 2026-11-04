@@ -170,7 +170,7 @@ export const carePlans = [
   {
     id: 'hosted',
     name: 'Hosted',
-    price: 59,
+    price: 60,
     who: 'Your site, kept online and safe, with nothing for you to think about.',
     includes: [
       'Edge hosting on Cloudflare: fast everywhere, essentially unlimited traffic',
@@ -184,7 +184,7 @@ export const carePlans = [
   {
     id: 'cared-for',
     name: 'Cared for',
-    price: 149,
+    price: 150,
     featured: true,
     who: 'For a business that changes a little every month and wants someone on call.',
     includes: [
@@ -198,7 +198,7 @@ export const carePlans = [
   {
     id: 'growing',
     name: 'Growing',
-    price: 299,
+    price: 300,
     who: 'For a business that wants the site working for it, not just sitting there.',
     includes: [
       'Everything in Cared for',

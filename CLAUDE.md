@@ -103,7 +103,7 @@ the Mr Dandyman repo. Port 4321 is usually held by that site's preview.
   over; Vuetify was ~300 KB of JavaScript for a page with no interactivity. Pages now ship under 60 KB
   including the font, with zero script bundles.
 - **2026-10-27 — Prices posted, from the pricing research.** Starter $1,500, Business $3,900, Growth
-  $6,900, Store from $8,500; care $59/$149/$299; audit $500, Local SEO $750, +GEO $1,050. Rationale and
+  $6,900, Store from $8,500; care $60/$150/$300; audit $500, Local SEO $750, +GEO $1,050. Rationale and
   the local competitor ladder in `docs/business-plan.md` §2 and `docs/research/pricing-benchmarks.md`.
 - **2026-10-27 — GitHub Pages stays until the Cloudflare cutover** (done 2026-10-29). Pushing to `main` keeps the site
   live without a credential only Daniel holds; the Function and the mail-app fallback mean the form

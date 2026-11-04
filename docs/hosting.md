@@ -123,8 +123,8 @@ The box stays what it is: your own AI gateway, build machine and routine runner.
 | WordPress exceptions | xCloud managed server (Rocket.net if a client insists on a big name) | $12–$24/mo if any | $24–$100/mo |
 | **Total** | | **$0–$55/mo** | **$0–$220/mo** |
 
-Against that, the care plans in `src/data/site.ts` are $59, $149 and $299 a month. Ten clients on the
-cheapest plan is $590/mo against roughly nothing in hosting cost; the margin is entirely your time,
+Against that, the care plans in `src/data/site.ts` are $60, $150 and $300 a month. Ten clients on the
+cheapest plan is $600/mo against roughly nothing in hosting cost; the margin is entirely your time,
 which is why Hosted includes only small fixes and the plans above it meter hours. Keep the hosting
 line itemized on invoices (Pennsylvania treats hosting as nontaxable; see the business plan).
 

@@ -87,9 +87,9 @@ the client's name. Anything past the tier's scope is quoted before it is built.
 
 | Plan | Price | What it is | Your time |
 |---|---|---|---|
-| Hosted | **$59** | Cloudflare edge hosting, SSL, backups, uptime monitoring, DNS and renewal reminders, form delivery, Steadfast Analytics dashboard, security updates, small fixes by email | ~15 min/mo |
-| Cared for | **$149** | + up to 1 hour of changes, monthly report, GBP kept current with one post, two-business-day turnaround | ~1.25 h/mo |
-| Growing | **$299** | + up to 3 hours including new pages, one content piece a month, quarterly review call, local SEO upkeep | ~3.5 h/mo |
+| Hosted | **$60** | Cloudflare edge hosting, SSL, backups, uptime monitoring, DNS and renewal reminders, form delivery, Steadfast Analytics dashboard, security updates, small fixes by email | ~15 min/mo |
+| Cared for | **$150** | + up to 1 hour of changes, monthly report, GBP kept current with one post, two-business-day turnaround | ~1.25 h/mo |
+| Growing | **$300** | + up to 3 hours including new pages, one content piece a month, quarterly review call, local SEO upkeep | ~3.5 h/mo |
 
 Hosting cost is roughly zero (see `docs/hosting.md`), so these are priced on time and on the local
 cluster: $50–$55 basic plans (Keystone, Seva) and $150–$260 with labor (WebTek, Seva, Rachel Kline).
