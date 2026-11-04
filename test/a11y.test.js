@@ -20,7 +20,7 @@ let playwright = null;
 try { playwright = require(path.join(execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim(), 'playwright')); } catch { /* none here */ }
 
 // Tools, not public pages: their own tests cover them.
-const SKIP = new Set(['admin.html', 'client.html', 'admin/usage.html', 'admin/leads.html']);
+const SKIP = new Set(['admin.html', 'client.html', 'admin/usage.html', 'admin/leads.html', 'admin/care.html']);
 const pages = fs.existsSync(dist) ? fs.readdirSync(dist, { recursive: true }).filter((f) => f.endsWith('.html') && !SKIP.has(f)).sort() : [];
 const route = (f) => '/' + f.replace(/index\.html$/, '').replace(/\.html$/, '');
 

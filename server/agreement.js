@@ -39,14 +39,14 @@ export function checkSignature(body, current) {
 }
 
 /** The signed copy, by email to the client and to Daniel (Resend, the contact form's sender). */
-export async function emailSignedCopy(env, { to, name, signedAt, text, sha, ip, business }) {
+export async function emailSignedCopy(env, { to, name, signedAt, text, sha, ip, business, what = 'website contract' }) {
   if (!env.RESEND_API_KEY) return [];
   const recipients = [...new Set([to, env.CONTACT_TO || 'support@steadfastcode.tech'].filter((x) => x && x.includes('@')))];
   const body = `${text}\n\nSIGNED\nSigned electronically by ${name} on ${new Date(signedAt).toUTCString()} from ${ip || 'an unknown address'}.\nDocument fingerprint (SHA-256): ${sha}\n\nThis is your copy. Reply to this email with any questions.`;
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${env.RESEND_API_KEY}` },
-    body: JSON.stringify({ from: env.CONTACT_FROM || 'Steadfast Code <site@steadfastcode.tech>', to: recipients, reply_to: env.CONTACT_TO || 'support@steadfastcode.tech', subject: `Your signed website contract — ${business || 'Steadfast Code'}`, text: body }),
+    body: JSON.stringify({ from: env.CONTACT_FROM || 'Steadfast Code <site@steadfastcode.tech>', to: recipients, reply_to: env.CONTACT_TO || 'support@steadfastcode.tech', subject: `Your signed ${what} — ${business || 'Steadfast Code'}`, text: body }),
   }).catch(() => null);
   return r?.ok ? recipients : [];
 }

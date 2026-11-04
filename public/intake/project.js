@@ -205,6 +205,7 @@ export async function mountProject(o) {
       <h1 id="title"></h1>
       ${admin ? '' : '<p class="muted">This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.</p>'}
       <section class="card" id="status"></section>
+      ${!admin && P.care ? '<section class="card" id="care"></section>' : ''}
       <section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>
       ${admin ? '<section class="card" id="linkcard"></section>' : ''}
       <section class="card" id="files"></section>
@@ -268,8 +269,49 @@ export async function mountProject(o) {
   }
   const priceNote = (pr) => (!pr || pr.price === pr.base ? '' : ` <span class="muted">(${pr.custom ? 'special price' : `${pr.pct}% off`}, list ${money(pr.base)})</span>`);
 
+  // ---- the care plan on the client's portal (2026-11-03): read and sign, add a card, then billing ----
+  let careKey = null;
+  const careNote = (() => { const q = new URLSearchParams(location.search).get('care'); if (q) history.replaceState(null, '', location.pathname + location.hash); return q; })();
+  const longDate = (s) => (s ? new Date(s.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '');
+  function paintCare() {
+    const box = root.querySelector('#care'), c = P.care;
+    if (!box || !c) return;
+    const key = [c.status, c.terms?.sha256, c.billing?.hasCard, c.billing?.paidThrough].join('|');
+    if (key === careKey) return;
+    careKey = key;
+    const head = `<h2>Your care plan</h2><p><b>${esc(c.planName)}</b> · ${money(c.price)} a month, billed on the 1st${c.firstBill ? `, starting ${esc(longDate(c.firstBill))}` : ''}.</p>`;
+    if (!c.signed && c.terms) {
+      box.innerHTML = `${head}<p class="muted">Nothing is charged before ${esc(longDate(c.firstBill))}. Read it over, then sign below and add a card.</p>
+        <div class="agreement">${agreementHtml(c.terms)}</div>
+        <label for="carename">Type your full name to sign</label><input type="text" id="carename" autocomplete="name" placeholder="First and last name">
+        <label class="check"><input type="checkbox" id="careagree"> I agree to this care plan, and to signing it electronically.</label>
+        <p><button type="button" class="primary" id="caresign" disabled>Sign the care plan</button> <span id="carenote" class="muted"></span></p>`;
+      const n = box.querySelector('#carename'), a = box.querySelector('#careagree'), b = box.querySelector('#caresign');
+      const ready = () => { b.disabled = !(a.checked && /\S+\s+\S+/.test(n.value.trim())); };
+      n.addEventListener('input', ready); a.addEventListener('change', ready);
+      b.addEventListener('click', async () => {
+        b.disabled = true; box.querySelector('#carenote').textContent = 'Signing…';
+        try { const r = await api(routes.care, { method: 'POST', body: JSON.stringify({ name: n.value, agreed: a.checked, sha256: c.terms.sha256 }) }); P.care = r.care; paintCare(); }
+        catch (e) { box.querySelector('#carenote').textContent = e.message; b.disabled = false; }
+      });
+      return;
+    }
+    const hasCard = c.billing?.hasCard;
+    const lines = [];
+    if (c.signed) lines.push(`<p class="muted">Signed by ${esc(c.signed.name)} on ${esc(new Date(c.signed.at).toLocaleDateString())}.</p>`);
+    if (careNote === 'done' && !hasCard) lines.push('<p>Thanks, your card is set up. It can take a minute to show here.</p>');
+    if (c.status === 'past_due') lines.push('<p class="error">The last payment didn’t go through. Stripe will try again; you can update your card here.</p>');
+    if (!hasCard) lines.push(`<p>Last step: add a card or bank account for the monthly bill. Stripe, the payment company, keeps it; nothing is charged before ${esc(longDate(c.firstBill))}.</p><p><button type="button" class="primary" id="carecard">Add a card</button> <span id="carenote" class="muted"></span></p>`);
+    else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">Change card, see invoices or cancel</button> <span id="carenote" class="muted"></span></p>`);
+    box.innerHTML = head + lines.join('');
+    const go = (id, path) => { const el = box.querySelector(id); if (el) el.addEventListener('click', async () => { el.disabled = true; try { const r = await api(path, { method: 'POST', body: '{}' }); location.href = r.url; } catch (e) { box.querySelector('#carenote').textContent = e.message; el.disabled = false; } }); };
+    go('#carecard', routes.care + '/checkout');
+    go('#carebilling', routes.care + '/billing');
+  }
+
   function paint() {
     paintPricing();
+    paintCare();
     const a = P.answers, c = P.check, t = c.tier;
     root.querySelector('#title').textContent = a.businessName || (admin ? 'New project' : 'Your website');
     root.querySelector('#status').innerHTML = `
@@ -278,6 +320,7 @@ export async function mountProject(o) {
       ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
+      ${admin && P.previewUrl ? `<p class="muted">${P.care?.exists ? `Care plan: ${esc(P.care.planName)}, ${money(P.care.price)} a month · ${esc({ draft: 'draft', offered: 'offered, not signed', signed: 'signed, no card yet', active: 'active', past_due: 'payment past due', canceled: 'canceled' }[P.care.status] || P.care.status)}. ` : 'No care plan yet. '}<a href="/admin/care#p/${esc(P.id)}">Care plans</a></p>` : ''}
       ${updateLines()}`;
     const rv = root.querySelector('#markreviewed');
     if (rv) rv.onclick = async () => { rv.disabled = true; try { await api(routes.review, { method: 'POST', body: '{}' }); await refresh(); } catch (e) { alert(e.message); rv.disabled = false; } };
