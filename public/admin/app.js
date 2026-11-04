@@ -8,6 +8,13 @@
   document.documentElement.classList.add('in-app');
   const { PushNotifications, LocalNotifications } = C.Plugins || {};
   if (!PushNotifications) return;
+  // Only a build with Firebase in it can register (app/build-on-box.sh marks the user agent): in one
+  // without, PushNotifications.register() crashes the app instead of failing (2026-11-04).
+  if (!/SteadfastCodeApp\/\d+ push\b/.test(navigator.userAgent)) {
+    window.__pushStatus = 'This build of the app has no notifications yet.';
+    document.dispatchEvent(new CustomEvent('pushstatus', { detail: window.__pushStatus }));
+    return;
+  }
   const go = (url) => { if (url && /^https:\/\/steadfastcode\.tech\//.test(url)) location.href = url; };
   const status = (text) => { window.__pushStatus = text; document.dispatchEvent(new CustomEvent('pushstatus', { detail: text })); };
 

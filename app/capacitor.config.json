@@ -5,9 +5,19 @@
   "server": {
     "url": "https://steadfastcode.tech/admin/inbox",
     "androidScheme": "https",
-    "allowNavigation": ["steadfastcode.tech", "*.cloudflareaccess.com"]
+    "allowNavigation": [
+      "steadfastcode.tech",
+      "*.cloudflareaccess.com"
+    ]
   },
   "plugins": {
-    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
-  }
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  },
+  "appendUserAgent": "SteadfastCodeApp/1"
 }

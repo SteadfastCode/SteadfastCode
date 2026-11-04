@@ -15,6 +15,11 @@ export TMPDIR="${TMPDIR:-$HOME/.cache/tmp}"
 [ -f android/app/google-services.json ] || echo "note: no android/app/google-services.json, so this build has no push notifications"
 corepack yarn install >/dev/null
 npx cap sync android >/dev/null
+# The page registers for push only when the user agent says this build has Firebase in it: without
+# google-services.json, PushNotifications.register() crashes the app ("Default FirebaseApp is not
+# initialized"). The synced config is generated (gitignored), so marking it leaves the repo clean.
+push=nopush; [ -f android/app/google-services.json ] && push=push
+node -e 'const f=process.argv[1],c=JSON.parse(require("fs").readFileSync(f));c.appendUserAgent=`SteadfastCodeApp/1 ${process.argv[2]}`;require("fs").writeFileSync(f,JSON.stringify(c,null,2))' android/app/src/main/assets/capacitor.config.json "$push"
 echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 (cd android && ./gradlew --no-daemon -q assembleDebug)
 out="$HOME/.cache/apk"; mkdir -p "$out"
