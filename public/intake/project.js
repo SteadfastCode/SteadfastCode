@@ -71,11 +71,28 @@ export async function mountProject(o) {
   const label = (f) => (!admin && f.you) || f.label;
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
-  // Before signing, the client's page has two tabs: the contract, and planning for a head start.
-  // Remembered for this browser tab, so a reload on Planning stays on Planning.
-  let tab = (() => { try { return sessionStorage.getItem('clientTab') === 'planning' ? 'planning' : 'contract'; } catch { return 'contract'; } })();
-  const tabbed = () => gated() && P.agreement.reason !== 'no-package';
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + ':' + tab + '|' : '') + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  // The client's page is tabs (2026-11-04). Before signing: the contract, and planning for a head
+  // start. After: Your site (preview or live site, progress, activity), Planning (the intake; after
+  // launch, Your details: only the facts that change, and a Request a change box on Your site), the
+  // Care plan once Daniel offers one (before or after launch), and Documents (everything signed).
+  // The tab is remembered for this browser tab, so a reload stays where it was.
+  const launched = () => !!P?.launched;
+  const clientTabs = () => {
+    if (admin) return [];
+    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning']] : [];
+    return [['site', 'Your site'], ['planning', launched() ? 'Your details' : 'Planning'], ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
+  };
+  let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
+  const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
+  const tabbed = () => clientTabs().length > 0;
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${!!P.care}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  // What each tab shows. Daniel's page has everything; so does the client's planning tab before signing.
+  const parts = () => {
+    if (admin) return { status: 1, scope: 1, link: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
+    if (gated()) return { status: 1, scope: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
+    return ({ site: { status: 1, scope: 1, request: launched(), activity: 1 }, planning: { files: 1, fields: launched() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
+  };
+  const fieldShown = (mode) => (f) => applies(f) && (mode === 'all' || (f.live && f.id !== 'notes'));
 
   // ---- fields ----
   function fieldHtml(f) {
@@ -194,8 +211,12 @@ export async function mountProject(o) {
 
   // ---- render: the whole form; repaint: the parts that change without touching what's typed ----
   function render() {
+    fixTab();
     paintTabs();
     if (gated() && (tab === 'contract' || !tabbed())) return renderAgreement();
+    const show = parts();
+    docsLoaded = false;
+    const notesField = C.sections.flatMap((x) => x.fields).find((f) => f.id === 'notes');
     if (admin) bar.hidden = false; // the client's bar shows only with a build or preview (paintBar)
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
     const sel = focus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
@@ -203,14 +224,16 @@ export async function mountProject(o) {
     root.innerHTML = `
       ${o.backHref ? `<p><a class="back" href="${o.backHref}"><span aria-hidden="true">‹</span> All projects</a></p>` : ''}
       <h1 id="title"></h1>
-      ${admin ? '' : '<p class="muted">This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.</p>'}
-      <section class="card" id="status"></section>
-      ${!admin && P.care ? '<section class="card" id="care"></section>' : ''}
-      <section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>
-      ${admin ? '<section class="card" id="linkcard"></section>' : ''}
-      <section class="card" id="files"></section>
-      ${C.sections.filter(applies).map((s) => `<section class="card"><h2>${esc((!admin && s.you) || s.title)}</h2>${s.fields.filter(applies).map(fieldHtml).join('')}</section>`).join('')}
-      <section class="card" id="activity"></section>`;
+      ${show.intro ? `<p class="muted">${launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
+      ${show.status ? '<section class="card" id="status"></section>' : ''}
+      ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
+      ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
+      ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
+      ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
+      ${show.link ? '<section class="card" id="linkcard"></section>' : ''}
+      ${show.files ? '<section class="card" id="files"></section>' : ''}
+      ${show.fields ? C.sections.filter(applies).map((s) => { const fs = s.fields.filter(fieldShown(show.fields)); return fs.length ? `<section class="card"><h2>${esc((!admin && s.you) || s.title)}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; }).join('') : ''}
+      ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
     root.querySelectorAll('[data-f]').forEach((el) => {
@@ -271,7 +294,8 @@ export async function mountProject(o) {
 
   // ---- the care plan on the client's portal (2026-11-03): read and sign, add a card, then billing ----
   let careKey = null;
-  const careNote = (() => { const q = new URLSearchParams(location.search).get('care'); if (q) history.replaceState(null, '', location.pathname + location.hash); return q; })();
+  // Back from Stripe (?care=…): straight to the Care plan tab.
+  const careNote = (() => { const q = new URLSearchParams(location.search).get('care'); if (q) { history.replaceState(null, '', location.pathname + location.hash); if (!admin) tab = 'care'; } return q; })();
   const longDate = (s) => (s ? new Date(s.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '');
   function paintCare() {
     const box = root.querySelector('#care'), c = P.care;
@@ -311,15 +335,42 @@ export async function mountProject(o) {
     go('#carebilling', routes.care + '/billing');
   }
 
+  // After launch the button opens the client's own domain (2026-11-04).
+  const liveUrl = () => (launched() && P.answers.domain ? 'https://' + String(P.answers.domain).trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '') : null);
+
+  // ---- Documents: everything they've signed, word for word, any time (2026-11-04) ----
+  let docsLoaded = false;
+  async function paintDocs() {
+    const box = root.querySelector('#docs');
+    if (!box || docsLoaded) return;
+    docsLoaded = true;
+    const copy = async (path, title) => {
+      try {
+        const d = await api(path);
+        return `<details><summary><b>${esc(title)}</b> <span class="muted">signed by ${esc(d.name || d.signer_name)}, ${esc(new Date(d.signedAt || d.signed_at).toLocaleDateString())}</span></summary><pre class="signed">${esc(d.text)}\n\nSigned electronically by ${esc(d.name || d.signer_name)} on ${esc(new Date(d.signedAt || d.signed_at).toLocaleString())}.\nFingerprint (SHA-256): ${esc(d.sha256)}</pre><p><button type="button" class="printdoc">Print or save as PDF</button></p></details>`;
+      } catch { return ''; }
+    };
+    const parts = [await copy(routes.agreement + '?signed=1', 'Website contract'), P.care?.signed ? await copy(routes.care + '?signed=1', `${P.care.planName} care plan`) : ''].filter(Boolean);
+    box.innerHTML = `<h2>Documents</h2>${parts.length ? parts.join('') : '<p class="muted">Nothing signed yet.</p>'}`;
+    box.querySelectorAll('.printdoc').forEach((b) => b.addEventListener('click', () => {
+      const w = open('', '_blank');
+      if (!w) return;
+      w.document.write(`<!doctype html><title>${esc(P.answers.businessName || 'Document')}</title><pre style="white-space:pre-wrap;font:14px/1.5 system-ui">${b.closest('details').querySelector('pre').innerHTML}</pre>`);
+      w.document.close(); w.focus(); w.print();
+    }));
+  }
+
   function paint() {
     paintPricing();
     paintCare();
     const a = P.answers, c = P.check, t = c.tier;
     root.querySelector('#title').textContent = a.businessName || (admin ? 'New project' : 'Your website');
-    root.querySelector('#status').innerHTML = `
+    paintDocs();
+    const statusEl = root.querySelector('#status');
+    if (statusEl) statusEl.innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}${priceNote(c.pricing)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
-      ${P.previewUrl ? `<p><a class="btn" href="${esc(P.previewUrl)}" target="_blank" rel="noopener">Open the preview</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
+      ${P.previewUrl ? `<p><a class="btn" href="${esc(liveUrl() || P.previewUrl)}" target="_blank" rel="noopener">${liveUrl() ? 'Open your site' : 'Open the preview'}</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
       ${admin && P.previewUrl ? `<p class="muted">${P.care?.exists ? `Care plan: ${esc(P.care.planName)}, ${money(P.care.price)} a month · ${esc({ draft: 'draft', offered: 'offered, not signed', signed: 'signed, no card yet', active: 'active', past_due: 'payment past due', canceled: 'canceled' }[P.care.status] || P.care.status)}. ` : 'No care plan yet. '}<a href="/admin/care#p/${esc(P.id)}">Care plans</a></p>` : ''}
@@ -342,8 +393,7 @@ export async function mountProject(o) {
       try { const a = await api(routes.agreement + '?signed=1'); box.innerHTML = `<pre class="signed">${esc(a.text)}\n\nSigned electronically by ${esc(a.signer_name || a.name)} on ${esc(new Date(a.signed_at || a.signedAt).toLocaleString())}.\nFingerprint (SHA-256): ${esc(a.sha256)}</pre>`; } catch (err) { box.textContent = err.message; }
     };
     const sc = root.querySelector('#scope');
-    sc.hidden = !c.scope.length;
-    root.querySelector('#scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join('');
+    if (sc) { sc.hidden = !c.scope.length; root.querySelector('#scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join(''); }
     const pc = root.querySelector('#pagecount');
     if (pc && t) { const n = (a.pages || []).length; pc.textContent = `${n} of ${t.scope.pages} in ${t.name}`; pc.classList.toggle('over', n > t.scope.pages); }
     // Who's in which field on the other side.
@@ -366,6 +416,7 @@ export async function mountProject(o) {
   function setTab(t) {
     if (tab === t) return;
     tab = t;
+    docsLoaded = false;
     try { sessionStorage.setItem('clientTab', t); } catch {}
     scrollTo(0, 0);
     render();
@@ -378,11 +429,12 @@ export async function mountProject(o) {
       nav = document.createElement('nav');
       nav.id = 'tabs';
       nav.className = 'tabs';
-      nav.setAttribute('aria-label', 'Contract or planning');
-      nav.innerHTML = '<button type="button" data-t="contract">Contract</button><button type="button" data-t="planning">Planning</button>';
+      nav.setAttribute('aria-label', 'Your project');
       nav.addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) setTab(b.dataset.t); });
       document.body.appendChild(nav);
     }
+    const ts = clientTabs(), html = ts.map(([id, name]) => `<button type="button" data-t="${id}">${esc(name)}</button>`).join('');
+    if (nav.dataset.tabs !== html) { nav.innerHTML = html; nav.dataset.tabs = html; nav.style.gridTemplateColumns = `repeat(${ts.length}, 1fr)`; }
     document.body.classList.add('has-tabs');
     nav.querySelectorAll('[data-t]').forEach((b) => { const on = b.dataset.t === tab; b.setAttribute('aria-current', on ? 'page' : 'false'); b.classList.toggle('on', on); });
   }
@@ -475,12 +527,14 @@ export async function mountProject(o) {
 
   function paintProgress() {
     let html = '';
-    if (building() || P.status === 'preview') {
-      const step = P.status === 'preview' ? LAST : P.status === 'build-requested' ? 0 : Math.min(P.buildStep || 1, LAST);
+    // Only while a build runs (2026-11-04): a finished preview has its button on the status card (Your
+    // site), and a link inside this clickable strip was a control inside a control.
+    if (building()) {
+      const step = P.status === 'build-requested' ? 0 : Math.min(P.buildStep || 1, LAST);
       const steps = `<div class="steps" role="progressbar" aria-valuemin="0" aria-valuemax="${LAST}" aria-valuenow="${step}" aria-label="Build progress">${STEPS.map((_, i) => `<span class="${i + 1 < step || step === LAST ? 'done' : i + 1 === step ? 'now' : ''}"></span>`).join('')}</div>`;
       const details = building()
         ? `<div class="muted">${step === 0 ? 'Waiting for the build to start' : `Step ${step} of ${LAST}: ${STEPS[step - 1]}`}${P.buildStartedAt ? ` · <span id="elapsed">${since(P.buildStartedAt)}</span>` : ''}</div>${P.buildNote ? `<div class="muted">${esc(P.buildNote)}</div>` : ''}${P.buildActivity ? `<div class="activity">${esc(P.buildActivity)}</div>` : ''}`
-        : `<div class="muted">Preview ready · <a href="${esc(P.previewUrl || '#')}" target="_blank" rel="noopener">open it</a></div>`;
+        : '';
       html = `${steps}<div class="in"><div class="details">${details}</div></div>`;
     }
     progress.hidden = !html;
@@ -516,10 +570,11 @@ export async function mountProject(o) {
   }
 
   function paintFiles() {
+    const el = root.querySelector('#files');
+    if (!el) return;
     const key = JSON.stringify([P.uploads, P.uploadsReady]);
     if (key === lastUploads) return;
     lastUploads = key;
-    const el = root.querySelector('#files');
     const tile = (u) => {
       const img = /^image\/(jpeg|png|gif|webp|avif)$/.test(u.content_type);
       return `<figure class="thumb" data-id="${esc(u.id)}">${img ? `<img src="${esc(routes.file(u.id))}" alt="${esc(u.caption || u.filename || u.kind)}" loading="lazy">` : `<div class="noprev">${esc(u.filename || u.kind)}<br><span class="help">can't preview here</span></div>`}
@@ -552,10 +607,12 @@ export async function mountProject(o) {
   }
 
   function paintActivity() {
+    const box = root.querySelector('#activity');
+    if (!box) return;
     const key = JSON.stringify(P.events);
     if (key === lastEvents) return;
     lastEvents = key;
-    root.querySelector('#activity').innerHTML = `<h2>Activity</h2>${P.events.length ? `<ul class="events">${P.events.map((e) => `<li><span class="muted">${esc(ago(e.at))}</span> ${esc(e.what)}</li>`).join('')}</ul>` : '<p class="muted">Nothing yet.</p>'}`;
+    box.innerHTML = `<h2>Activity</h2>${P.events.length ? `<ul class="events">${P.events.map((e) => `<li><span class="muted">${esc(ago(e.at))}</span> ${esc(e.what)}</li>`).join('')}</ul>` : '<p class="muted">Nothing yet.</p>'}`;
   }
 
   // ---- saving ----

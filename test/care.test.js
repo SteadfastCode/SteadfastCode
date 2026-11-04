@@ -102,3 +102,13 @@ test('the live key wins; the sandbox key works until there is one', async () => 
   assert.equal(stripeKey({ STRIPE_TEST_KEY: 'rk_test_1', STRIPE_SECRET_KEY: 'rk_live_1' }), 'rk_live_1');
   assert.equal(stripeKey({}), null);
 });
+
+test('a cancel scheduled from Stripe’s billing page says when the plan ends, and only when that changed', () => {
+  const end = Date.parse('2027-01-01T14:00:00Z') / 1000;
+  const set = updateFromEvent({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', status: 'trialing', cancel_at_period_end: true, cancel_at: end }, previous_attributes: { cancel_at_period_end: false, cancel_at: null } } });
+  assert.equal(set.event, 'Care plan set to end on 2027-01-01');
+  assert.equal(set.set.status, 'active', 'still on until it ends');
+  const undo = updateFromEvent({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', status: 'trialing', cancel_at_period_end: false, cancel_at: null }, previous_attributes: { cancel_at_period_end: true } } });
+  assert.equal(undo.event, 'Care plan no longer set to end');
+  assert.equal(updateFromEvent({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', status: 'active', cancel_at_period_end: true }, previous_attributes: { status: 'trialing' } } }).event, null);
+});

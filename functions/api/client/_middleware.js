@@ -1,7 +1,7 @@
 // Every /api/client route: a live private link (not expired, not revoked) for one project. The
 // token comes as a bearer header; image GETs may carry it as ?t= because an <img> can't send headers.
 // Writes only from this site's own pages. Not behind Cloudflare Access: the link is the login.
-import { hashToken } from '../../../server/client.js';
+import { hashToken, LINK_DAYS } from '../../../server/client.js';
 
 export const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -14,7 +14,15 @@ export async function onRequest(context) {
   if (!token || token.length < 20 || token.length > 100) return json({ error: 'This link isn’t valid. Ask Daniel for a new one.' }, 401);
   const link = await env.INTAKE.prepare('SELECT * FROM client_links WHERE token_hash = ?').bind(await hashToken(token)).first();
   const now = new Date().toISOString();
-  if (!link || link.revoked_at || link.expires_at < now) return json({ error: 'This link has expired or been turned off. Ask Daniel for a new one.' }, 401);
+  if (!link || link.revoked_at) return json({ error: 'This link has been turned off. Get a new one at steadfastcode.tech/client.' }, 401);
+  // A care client's link keeps working while their plan is on (2026-11-04): an expired one is renewed
+  // on use. Anyone else's expires as before, and a new one is an email away on /client.
+  if (link.expires_at < now) {
+    const care = await env.INTAKE.prepare("SELECT status FROM care_plans WHERE project_id = ? AND status IN ('signed', 'active', 'past_due')").bind(link.project_id).first().catch(() => null);
+    if (!care) return json({ error: 'This link has expired. Get a new one at steadfastcode.tech/client.' }, 401);
+    link.expires_at = new Date(Date.now() + LINK_DAYS * 86400_000).toISOString();
+    await env.INTAKE.prepare('UPDATE client_links SET expires_at = ? WHERE id = ?').bind(link.expires_at, link.id).run();
+  }
   if (request.method !== 'GET' && request.method !== 'HEAD' && request.headers.get('origin') !== url.origin) return json({ error: 'Changes only from your project page.' }, 403);
   const project = await env.INTAKE.prepare('SELECT * FROM projects WHERE id = ?').bind(link.project_id).first();
   if (!project || project.status === 'closed') return json({ error: 'This project isn’t open anymore.' }, 404);

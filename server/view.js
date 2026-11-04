@@ -80,8 +80,11 @@ export async function projectView(env, p, { mode }) {
     linkKeySet: mode === 'admin' ? !!env.LINK_KEY : undefined,
     failed: clientStatus(p).failed,
     agreement,
-    // The care plan after launch (2026-11-03): the client sees it once Daniel offers it.
+    // The care plan (2026-11-03): the client sees it once Daniel offers it, before or after launch.
     care,
+    // Launched (2026-11-04): the project is live, or its care plan's launch day has come. The client's
+    // portal then trades the intake for Your details and a Request a change box.
+    launched: p.status === 'live' || !!(care?.launchedAt && care.launchedAt <= new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })),
     // What the client changed that hasn't gone into a preview yet, and what's waiting on Daniel.
     pendingChanges: !!p.client_changed_at,
     // Daniel sees every flag; the client only learns that a bigger ask of theirs went to him.

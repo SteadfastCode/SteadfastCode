@@ -166,7 +166,13 @@ export function updateFromEvent(ev) {
     case 'customer.subscription.deleted': {
       const st = ev.type === 'customer.subscription.deleted' ? 'canceled' : o.status;
       const ours = statusFromStripe(st);
-      return { find: ['stripe_subscription', o.id], set: { stripe_status: st, ...(ours ? { status: ours } : {}) }, event: ours === 'canceled' ? 'Care plan canceled' : ours === 'past_due' ? 'Care plan payment is past due' : null };
+      // A cancel from Stripe's billing page usually waits for the end of the paid (or free) period:
+      // the plan stays active until then, and the activity says when it ends (2026-11-04).
+      const prev = ev.data?.previous_attributes ?? {};
+      const scheduled = ('cancel_at_period_end' in prev || 'cancel_at' in prev) && ours !== 'canceled'
+        ? (o.cancel_at_period_end || o.cancel_at ? `Care plan set to end on ${ymd(o.cancel_at || o.current_period_end || o.trial_end || o.items?.data?.[0]?.current_period_end)}` : 'Care plan no longer set to end')
+        : null;
+      return { find: ['stripe_subscription', o.id], set: { stripe_status: st, ...(ours ? { status: ours } : {}) }, event: ours === 'canceled' ? 'Care plan canceled' : ours === 'past_due' ? 'Care plan payment is past due' : scheduled };
     }
     case 'invoice.paid': {
       const sub = o.subscription ?? o.parent?.subscription_details?.subscription;

@@ -10,6 +10,8 @@
 // note } — structured so a client site can publish it as Google's opening-hours data).
 // `required` fields are the minimum to start a first version; everything else improves it.
 // A section with `tiers` only shows for those packages.
+// `live` fields are the ones a client still keeps current after launch (2026-11-04): their portal's
+// "Your details" tab shows only these, and their edits go straight to the live site.
 //
 // Shared with the client (2026-11-01): their page at /client shows this same form, live, and they
 // can edit every field except the ones marked `owner: 'daniel'` — the package, the add-on and the
@@ -37,16 +39,16 @@ export const intakeSections = [
     title: 'The business',
     you: 'Your business',
     fields: [
-      { id: 'businessName', label: 'Business name', type: 'text', required: true },
-      { id: 'contactName', label: 'Contact name', type: 'text', required: true, you: 'Your name' },
-      { id: 'people', label: 'Who’s behind the business', type: 'list', help: 'Everyone to name on the site, one per line, the contact included; a role after a comma if they want one (Nicole Cesavice, co-owner). Empty means just the contact.', you: 'Who’s behind the business', youHelp: 'Everyone you’d like named on the site, one per line, yourself included. Add a role after a comma if you like.' },
-      { id: 'email', label: 'Email', type: 'email', required: true },
-      { id: 'phone', label: 'Phone', type: 'tel' },
+      { id: 'businessName', label: 'Business name', type: 'text', required: true, live: true },
+      { id: 'contactName', label: 'Contact name', type: 'text', required: true, you: 'Your name', live: true },
+      { id: 'people', label: 'Who’s behind the business', type: 'list', help: 'Everyone to name on the site, one per line, the contact included; a role after a comma if they want one (Nicole Cesavice, co-owner). Empty means just the contact.', you: 'Who’s behind the business', youHelp: 'Everyone you’d like named on the site, one per line, yourself included. Add a role after a comma if you like.', live: true },
+      { id: 'email', label: 'Email', type: 'email', required: true, live: true },
+      { id: 'phone', label: 'Phone', type: 'tel', live: true },
       { id: 'currentSite', label: 'Current website', type: 'text', you: 'Your current website, if you have one' },
       { id: 'domain', label: 'Domain for the new site', type: 'text', help: 'Do they already own it?', you: 'The web address you want', youHelp: 'Do you already own it? If so, where did you buy it?' },
-      { id: 'serviceArea', label: 'Where they work', type: 'textarea', required: true, help: 'Towns, a radius, or the address if customers come to them.', you: 'Where you work', youHelp: 'Towns, a radius, or your address if customers come to you.' },
-      { id: 'showAddress', label: 'Customers come to them (show the address)', type: 'bool', you: 'Customers come to you (show your address)' },
-      { id: 'hours', label: 'Hours', type: 'hours', help: 'Days open with open and close times, or 24/7, or by appointment.' },
+      { id: 'serviceArea', label: 'Where they work', type: 'textarea', required: true, help: 'Towns, a radius, or the address if customers come to them.', you: 'Where you work', youHelp: 'Towns, a radius, or your address if customers come to you.', live: true },
+      { id: 'showAddress', label: 'Customers come to them (show the address)', type: 'bool', you: 'Customers come to you (show your address)', live: true },
+      { id: 'hours', label: 'Hours', type: 'hours', help: 'Days open with open and close times, or 24/7, or by appointment.', live: true },
     ],
   },
   {
@@ -54,7 +56,7 @@ export const intakeSections = [
     title: 'What they sell',
     you: 'What you sell',
     fields: [
-      { id: 'services', label: 'Services or products', type: 'list', required: true, help: 'One per line.' },
+      { id: 'services', label: 'Services or products', type: 'list', required: true, help: 'One per line.', live: true },
       { id: 'mainAction', label: 'The one thing a visitor should do', type: 'choice', options: ['Call', 'Text', 'Fill out a form', 'Book online', 'Buy online', 'Visit in person'], you: 'The one thing you want visitors to do' },
       { id: 'bookingLink', label: 'Booking or scheduling link', type: 'text', help: 'If they book online: the page people book on.', you: 'Your booking link', youHelp: 'If customers book with you online, the link to your booking page.' },
       { id: 'customers', label: 'Who their customers are', type: 'textarea', you: 'Who your customers are' },

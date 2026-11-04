@@ -50,7 +50,25 @@ try {
   else if (valid(sessionStorage.getItem('clientLink'))) { token = sessionStorage.getItem('clientLink'); history.replaceState(null, '', location.pathname + location.search + '#' + token); }
 } catch {}
 if (!valid(token)) {
-  app.innerHTML = '<h1>Your website</h1><p>This page needs the private link Daniel sent you. If you opened it from a message, try tapping the link again.</p>';
+  // No link (2026-11-04): email the one on their project to the address they give.
+  app.innerHTML = `<h1>Your website</h1>
+    <section class="card"><h2>Get your link</h2>
+      <p>Your project opens from a private link. Type the email address on your project and we'll send it to you.</p>
+      <form id="linkform"><label for="linkemail">Email</label><input type="email" id="linkemail" autocomplete="email" required>
+        <p><button type="submit" class="primary" id="linkgo">Email me my link</button></p>
+        <p id="linknote" role="status" class="muted"></p></form>
+    </section>`;
+  const form = document.getElementById('linkform'), note = document.getElementById('linknote'), go = document.getElementById('linkgo');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    go.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
+    try {
+      const r = await fetch('/api/link/request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('linkemail').value }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Something went wrong. Try again in a minute.');
+      note.textContent = j.message;
+    } catch (err) { note.className = 'error'; note.textContent = err.message; go.disabled = false; }
+  });
 } else {
   const progress = document.getElementById('progress');
   wireProgress(progress);

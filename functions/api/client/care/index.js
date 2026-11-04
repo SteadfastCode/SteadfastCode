@@ -5,6 +5,12 @@ import { careState, checkCareSignature, updateCare } from '../../../../server/ca
 import { emailSignedCopy } from '../../../../server/agreement.js';
 import { logEvent } from '../../../../server/view.js';
 
+// GET /api/client/care?signed=1: the signed care plan, word for word, for the Documents tab.
+export async function onRequestGet({ env, data }) {
+  const c = await env.INTAKE.prepare('SELECT terms_text, terms_sha256, signer_name, signed_at FROM care_plans WHERE project_id = ? AND signed_at IS NOT NULL').bind(data.project.id).first();
+  return c ? json({ text: c.terms_text, sha256: c.terms_sha256, name: c.signer_name, signedAt: c.signed_at }) : json({ error: 'Nothing signed yet.' }, 404);
+}
+
 export async function onRequestPost({ request, env, data }) {
   const p = data.project;
   const care = await careState(env, p, 'client');
