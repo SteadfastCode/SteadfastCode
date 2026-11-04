@@ -299,11 +299,13 @@ export async function mountProject(o) {
     const hasCard = c.billing?.hasCard;
     const lines = [];
     if (c.signed) lines.push(`<p class="muted">Signed by ${esc(c.signed.name)} on ${esc(new Date(c.signed.at).toLocaleDateString())}.</p>`);
-    if (careNote === 'done' && !hasCard) lines.push('<p>Thanks, your card is set up. It can take a minute to show here.</p>');
+    if (careNote === 'done') lines.push(`<p><b>Thanks, your card is set up.</b>${hasCard ? '' : ' It can take a minute to show here.'}</p>`);
     if (c.status === 'past_due') lines.push('<p class="error">The last payment didn’t go through. Stripe will try again; you can update your card here.</p>');
     if (!hasCard) lines.push(`<p>Last step: add a card or bank account for the monthly bill. Stripe, the payment company, keeps it; nothing is charged before ${esc(longDate(c.firstBill))}.</p><p><button type="button" class="primary" id="carecard">Add a card</button> <span id="carenote" class="muted"></span></p>`);
     else lines.push(`<p>${c.billing.paidThrough ? `Paid through ${esc(longDate(c.billing.paidThrough))}. ` : `Your card is on file; the first charge is ${esc(longDate(c.firstBill))}. `}</p><p><button type="button" id="carebilling">Change card, see invoices or cancel</button> <span id="carenote" class="muted"></span></p>`);
     box.innerHTML = head + lines.join('');
+    // Back from Stripe: bring the card into view once.
+    if (careNote && !box.dataset.shown) { box.dataset.shown = '1'; setTimeout(() => box.scrollIntoView({ block: 'start' }), 0); }
     const go = (id, path) => { const el = box.querySelector(id); if (el) el.addEventListener('click', async () => { el.disabled = true; try { const r = await api(path, { method: 'POST', body: '{}' }); location.href = r.url; } catch (e) { box.querySelector('#carenote').textContent = e.message; el.disabled = false; } }); };
     go('#carecard', routes.care + '/checkout');
     go('#carebilling', routes.care + '/billing');

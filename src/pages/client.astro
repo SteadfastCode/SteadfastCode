@@ -39,8 +39,17 @@ const config = {
 const C = JSON.parse(document.getElementById('intake-config').textContent);
 const { mountProject, wireProgress } = await import(C.script);
 const app = document.getElementById('app');
-const token = location.hash.slice(1);
-if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) {
+// The link's token is the fragment. It's kept for this browser tab too (2026-11-04), because a trip
+// to Stripe for the card comes back to /client?care=… with no fragment: the token can't go to Stripe
+// in the return address, and without it the page couldn't tell whose portal this is.
+const fromHash = location.hash.slice(1);
+const valid = (t) => /^[A-Za-z0-9_-]{20,100}$/.test(t || '');
+let token = fromHash;
+try {
+  if (valid(fromHash)) sessionStorage.setItem('clientLink', fromHash);
+  else if (valid(sessionStorage.getItem('clientLink'))) { token = sessionStorage.getItem('clientLink'); history.replaceState(null, '', location.pathname + location.search + '#' + token); }
+} catch {}
+if (!valid(token)) {
   app.innerHTML = '<h1>Your website</h1><p>This page needs the private link Daniel sent you. If you opened it from a message, try tapping the link again.</p>';
 } else {
   const progress = document.getElementById('progress');

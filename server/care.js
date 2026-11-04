@@ -130,8 +130,8 @@ export function checkoutParams({ care, answers, origin, customer, products = {} 
     line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: care.price * 100, recurring: { interval: 'month' }, ...(product ?? { product_data: { name: `${plan?.name ?? 'Care'} Care Plan${answers.businessName ? ` — ${answers.businessName}` : ''}` } }) } }],
     subscription_data: { trial_end: unixAt(care.first_bill_at), description: `Steadfast Code ${plan?.name ?? ''} care plan, billed on the 1st`, metadata: { project_id: care.project_id, care_plan: care.id } },
     metadata: { project_id: care.project_id, care_plan: care.id },
-    success_url: `${origin}/client?care=done#care`,
-    cancel_url: `${origin}/client?care=later#care`,
+    success_url: `${origin}/client?care=done`,
+    cancel_url: `${origin}/client?care=later`,
   };
 }
 
