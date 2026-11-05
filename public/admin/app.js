@@ -108,14 +108,52 @@
   }
   window.__apk = { check: checkUpdate, install: installUpdate };
 
-  // ---- the menu (2026-11-04): ☰ in the header instead of the row of tabs, with the pages, the app's
-  // own settings (build and updates, notifications) and sign out. Only in the app: in a browser the
-  // header stays as it is. ----
+  // ---- the tab bar and the menu (2026-11-05), only in the app; in a browser the header stays as it
+  // is. The pages are a tab bar along the bottom, with simple line icons drawn here; ☰ in the header
+  // holds the app's own settings (build and updates, notifications) and sign out. ----
+  const ICONS = {
+    '/admin': 'M9 3.5h6a1 1 0 0 1 1 1V6H8V4.5a1 1 0 0 1 1-1zM8 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H16M8.5 11h7M8.5 14.5h7M8.5 18h4',
+    '/admin/leads': 'M15.5 20v-1.2a3.8 3.8 0 0 0-3.8-3.8H7.3a3.8 3.8 0 0 0-3.8 3.8V20M9.5 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M20.5 20v-1.2a3.8 3.8 0 0 0-2.8-3.66M15 4.65a3.5 3.5 0 0 1 0 6.7',
+    '/admin/inbox': 'M20 15a2 2 0 0 1-2 2H8l-4 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2zM8 9h8M8 12.5h5',
+    '/admin/care': 'M12 3 19.5 6v5.5c0 4.6-3.2 8.4-7.5 9.5-4.3-1.1-7.5-4.9-7.5-9.5V6zM8.8 12.2l2.3 2.3 4.2-4.6',
+    '/admin/usage': 'M4 20h16M7 16.5V12M12 16.5V7M17 16.5V9.5',
+  };
+  function buildTabs() {
+    const links = [...document.querySelectorAll('.admin-head nav a')];
+    if (!links.length || document.getElementById('apptabs')) return;
+    const bar = document.createElement('nav');
+    bar.id = 'apptabs'; bar.className = 'apptabs'; bar.setAttribute('aria-label', 'Pages');
+    bar.innerHTML = links.map((a) => { const href = a.getAttribute('href'); return `<a href="${href}"${a.getAttribute('aria-current') ? ' aria-current="page"' : ''}><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[href] || ''}"/></svg>${href === '/admin/inbox' ? '<span class="badge-n" id="inboxcount" hidden></span>' : ''}</span><span class="lb">${a.textContent}</span></a>`; }).join('');
+    document.body.appendChild(bar);
+    // The page makes room for the bar's real height (safe-area inset included), not a guess.
+    const fit = () => { if (bar.offsetHeight) document.documentElement.style.setProperty('--tabs-h', bar.offsetHeight + 'px'); };
+    fit(); addEventListener('resize', fit);
+    // While a message is being typed, the bar steps aside for the keyboard, as on the client portal.
+    document.addEventListener('focusin', (e) => { if (e.target.closest?.('.composer')) document.documentElement.classList.add('typing'); });
+    document.addEventListener('focusout', (e) => { if (e.target.closest?.('.composer')) document.documentElement.classList.remove('typing'); });
+    // Unread client messages, on the Inbox tab from any page.
+    const count = async () => {
+      try { const d = await (await fetch('/api/admin/inbox', { cache: 'no-store' })).json(); const n = d.unread || 0; const el = document.getElementById('inboxcount'); el.hidden = !n; el.textContent = n > 9 ? '9+' : String(n); } catch {}
+    };
+    count();
+    setInterval(() => { if (document.visibilityState === 'visible') count(); }, 30000);
+  }
   function buildMenu() {
     const head = document.querySelector('.admin-head .in');
     if (!head || document.getElementById('appmenu')) return;
     const st = document.createElement('style');
     st.textContent = `html.in-app .admin-head nav{display:none}
+      .apptabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,1fr);background:var(--card);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+      .apptabs a{display:grid;justify-items:center;gap:2px;padding:4px 0;color:var(--muted);text-decoration:none;font-size:.72rem;font-weight:600}
+      .apptabs a[aria-current="page"]{color:var(--accent)}
+      .apptabs .ic{position:relative;line-height:0}
+      .apptabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+      .apptabs .badge-n{position:absolute;top:-4px;right:-9px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:var(--bad,#d33);color:var(--on-accent,#fff);font-size:.65rem;line-height:16px;text-align:center}
+      html.in-app body{box-sizing:border-box;padding-bottom:var(--tabs-h,64px)}
+      html.in-app footer.bar{bottom:var(--tabs-h,64px)}
+      html.in-app.typing .apptabs{display:none}
+      html.in-app.typing body{padding-bottom:0}
+      html.in-app.typing footer.bar{bottom:0}
       .menubtn{font:inherit;font-size:1.35rem;line-height:1;padding:6px 12px;border-radius:10px;background:none;border:1px solid var(--line);color:var(--ink)}
       .appmenu{position:fixed;inset:0;z-index:50;visibility:hidden}.appmenu.open{visibility:visible}
       .appmenu .shade{position:absolute;inset:0;background:rgb(0 0 0/.45);opacity:0;transition:opacity .2s}.appmenu.open .shade{opacity:1}
@@ -123,8 +161,6 @@
       .appmenu.open .panel{transform:none}
       .appmenu .top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
       .appmenu .top b{font-size:1.05rem}.appmenu .top button{font-size:1.3rem;line-height:1;padding:4px 10px}
-      .appmenu nav{display:grid;padding:8px}.appmenu nav a{padding:12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:600}
-      .appmenu nav a[aria-current="page"]{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
       .appmenu h3{margin:14px 16px 6px;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
       .appmenu .set{margin:0 16px 10px;padding:12px;border:1px solid var(--line);border-radius:12px;display:grid;gap:8px}
       .appmenu .set p{margin:0;font-size:.92rem}.appmenu .set .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -132,15 +168,13 @@
       .appmenu .out{display:block;margin:16px;color:var(--muted)}`;
     document.head.appendChild(st);
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'menubtn'; btn.setAttribute('aria-label', 'Menu'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', 'appmenu');
+    btn.type = 'button'; btn.className = 'menubtn'; btn.setAttribute('aria-label', 'Settings'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', 'appmenu');
     btn.textContent = '☰';
     head.appendChild(btn);
-    const links = [...document.querySelectorAll('.admin-head nav a')].map((a) => a.outerHTML).join('');
     const m = document.createElement('div');
     m.id = 'appmenu'; m.className = 'appmenu';
     m.innerHTML = `<div class="shade" data-close></div><div class="panel" role="dialog" aria-modal="true" aria-label="Menu">
-      <div class="top"><b>Steadfast Code</b><button type="button" data-close aria-label="Close menu">×</button></div>
-      <nav aria-label="Admin">${links}</nav>
+      <div class="top"><b>Settings</b><button type="button" data-close aria-label="Close menu">×</button></div>
       <h3>App</h3><div class="set"><p id="m-apk">Checking for an update…</p><div class="row"><button type="button" id="m-apkgo" hidden></button><button type="button" id="m-apkcheck">Check for updates</button></div></div>
       <h3>Notifications</h3><div class="set"><p id="m-push">Checking…</p><div class="row"><button type="button" id="m-pushtest">Send a test</button></div></div>
       <a class="out" href="/cdn-cgi/access/logout">Sign out</a></div>`;
@@ -162,7 +196,8 @@
       e.target.disabled = false;
     });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildMenu); else buildMenu();
+  const build = () => { buildMenu(); buildTabs(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
 
   registerPush().catch(() => say('pushstatus', 'Couldn’t register for notifications.'));
   // A banner once per app start (not on every page) when there's an update to take.
