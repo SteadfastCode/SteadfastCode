@@ -56,7 +56,7 @@ const v = Date.now().toString(36);
 <body>
 <header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox" aria-current="page">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
 <main class="inbox" id="inbox">
-  <section class="convos" aria-label="Conversations"><h1>Inbox</h1><p class="pushline" id="pushline" hidden><span id="pushstate">Checking notifications…</span> <button type="button" id="pushtest">Send a test</button></p><div id="list"><p class="muted" style="padding:16px">Loading…</p></div></section>
+  <section class="convos" aria-label="Conversations"><h1>Inbox</h1><p class="pushline" id="pushline" hidden><span id="pushstate">Checking notifications…</span> <button type="button" id="pushtest">Send a test</button></p><p class="pushline" id="appline" hidden><span id="appstate">Checking for an app update…</span> <button type="button" id="appgo" hidden></button></p><div id="list"><p class="muted" style="padding:16px">Loading…</p></div></section>
   <section class="pane" aria-label="Conversation" id="pane"><div class="empty">Pick a conversation.</div></section>
 </main>
 <script is:inline>
@@ -143,6 +143,13 @@ const v = Date.now().toString(36);
     const show = (t) => { state.textContent = t; };
     if (window.__pushStatus) show(window.__pushStatus);
     document.addEventListener('pushstatus', (e) => show(e.detail));
+    // In-app updates (public/admin/app.js): this build, and an Install button when there's a newer one.
+    const appLine = document.getElementById('appline'), appState = document.getElementById('appstate'), appGo = document.getElementById('appgo');
+    appLine.hidden = false;
+    const showApk = (d) => { if (!d) return; appState.textContent = d.text; appGo.hidden = !d.action; if (d.action) appGo.textContent = d.action; };
+    showApk(window.__apkstatus);
+    document.addEventListener('apkstatus', (e) => showApk(e.detail));
+    appGo.addEventListener('click', () => window.__apk?.install());
     document.getElementById('pushtest').addEventListener('click', async (e) => {
       e.target.disabled = true;
       try { await api('/devices/test', { method: 'POST', body: '{}' }); show('Test sent: it should arrive in a few seconds.'); } catch (err) { show(err.message); }

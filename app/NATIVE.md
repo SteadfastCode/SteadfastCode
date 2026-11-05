@@ -48,3 +48,21 @@ is registered, so Signal pings end on their own once push works.
 
 Bump `versionCode`/`versionName` in `android/app/build.gradle`, then `npx cap sync android` and
 build again. Web changes need none of this.
+
+## Updates (in-app, like Plumb's)
+
+The app updates itself from inside, as Plumb does (`~/repos/plumb/web/app/NATIVE.md`, "Updating the
+APK over the air"), with no Play Store and no cable. Web changes still need nothing at all.
+
+| Piece | Where |
+|---|---|
+| Publish | `app/build-on-box.sh --publish`: builds (versionCode = minutes since 2026-01-01, so always higher), then puts `app/steadfast-code-<code>.apk` and `app/apk.json` (version, size, SHA-256, signer) in R2 |
+| Serve | `/api/admin/app-apk` (behind Access) returns the manifest and a ten-minute signed link; `/api/app-apk/<file>?t=…` streams the APK (`server/apk.js`, key derived from `LINK_KEY`) |
+| Decide + download | `public/admin/app.js`: newer versionCode, same signer, install permission; `Filesystem.downloadFile` natively |
+| Install | `android/app/src/main/java/tech/steadfastcode/admin/ApkUpdatePlugin.java`, ported from Plumb: Android's own `PackageInstaller` |
+| UI | The Inbox's app line (build, Install), and a banner on opening the app when an update is ready |
+
+Android asks once for "install unknown apps" for Steadfast Code (the app sends you to that screen),
+and confirms each update with its own dialog; no code can remove that tap. A build signed with a
+different key can't update in place, so the app refuses it before downloading. The first build with
+the updater has to be installed by hand once (the plain `build-on-box.sh` link).

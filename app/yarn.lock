@@ -52,12 +52,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@capacitor/filesystem@npm:^8.0.0":
+  version: 8.1.5
+  resolution: "@capacitor/filesystem@npm:8.1.5"
+  dependencies:
+    "@capacitor/synapse": "npm:^1.0.4"
+  peerDependencies:
+    "@capacitor/core": ">=8.0.0"
+  checksum: 10c0/27853ac5bdc32d5d1b15e75b6b4adafc299d9f7999be2fc3a736f520d199b3b5716ebcf9ea329ded4616b1da60b31c85713eff8ea534caa833f693688d366954
+  languageName: node
+  linkType: hard
+
 "@capacitor/push-notifications@npm:^8.1.1":
   version: 8.1.3
   resolution: "@capacitor/push-notifications@npm:8.1.3"
   peerDependencies:
     "@capacitor/core": ">=8.0.0"
   checksum: 10c0/b64d3dffd79d2a8aa5847c293b166489fc094f61956b3beefe53ac62984dda7d1bf7d2c193eba21f9e0267fadcc38778ff3cdab480a5ae1354a202be7a73d889
+  languageName: node
+  linkType: hard
+
+"@capacitor/synapse@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "@capacitor/synapse@npm:1.0.4"
+  checksum: 10c0/83f37d06ebdb4234596f123417043aae8b0fd3b5905d399fe8bb7f1d7c3352c8449bef093793b01a0b3c4a59208ac27aec5b1ed7cf5e399c5c3004cc0ca74646
   languageName: node
   linkType: hard
 
@@ -743,6 +761,7 @@ __metadata:
     "@capacitor/android": "npm:^8.4.1"
     "@capacitor/cli": "npm:^8.4.1"
     "@capacitor/core": "npm:^8.4.1"
+    "@capacitor/filesystem": "npm:^8.0.0"
     "@capacitor/push-notifications": "npm:^8.1.1"
   languageName: unknown
   linkType: soft
