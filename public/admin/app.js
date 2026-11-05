@@ -108,6 +108,62 @@
   }
   window.__apk = { check: checkUpdate, install: installUpdate };
 
+  // ---- the menu (2026-11-04): ☰ in the header instead of the row of tabs, with the pages, the app's
+  // own settings (build and updates, notifications) and sign out. Only in the app: in a browser the
+  // header stays as it is. ----
+  function buildMenu() {
+    const head = document.querySelector('.admin-head .in');
+    if (!head || document.getElementById('appmenu')) return;
+    const st = document.createElement('style');
+    st.textContent = `html.in-app .admin-head nav{display:none}
+      .menubtn{font:inherit;font-size:1.35rem;line-height:1;padding:6px 12px;border-radius:10px;background:none;border:1px solid var(--line);color:var(--ink)}
+      .appmenu{position:fixed;inset:0;z-index:50;visibility:hidden}.appmenu.open{visibility:visible}
+      .appmenu .shade{position:absolute;inset:0;background:rgb(0 0 0/.45);opacity:0;transition:opacity .2s}.appmenu.open .shade{opacity:1}
+      .appmenu .panel{position:absolute;top:0;right:0;bottom:0;width:min(330px,88vw);background:var(--card);border-left:1px solid var(--line);overflow-y:auto;transform:translateX(100%);transition:transform .2s;padding:0 0 24px}
+      .appmenu.open .panel{transform:none}
+      .appmenu .top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+      .appmenu .top b{font-size:1.05rem}.appmenu .top button{font-size:1.3rem;line-height:1;padding:4px 10px}
+      .appmenu nav{display:grid;padding:8px}.appmenu nav a{padding:12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:600}
+      .appmenu nav a[aria-current="page"]{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+      .appmenu h3{margin:14px 16px 6px;font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+      .appmenu .set{margin:0 16px 10px;padding:12px;border:1px solid var(--line);border-radius:12px;display:grid;gap:8px}
+      .appmenu .set p{margin:0;font-size:.92rem}.appmenu .set .row{display:flex;gap:8px;flex-wrap:wrap}
+      .appmenu .set button{font-size:.88rem;padding:6px 12px}
+      .appmenu .out{display:block;margin:16px;color:var(--muted)}`;
+    document.head.appendChild(st);
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'menubtn'; btn.setAttribute('aria-label', 'Menu'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', 'appmenu');
+    btn.textContent = '☰';
+    head.appendChild(btn);
+    const links = [...document.querySelectorAll('.admin-head nav a')].map((a) => a.outerHTML).join('');
+    const m = document.createElement('div');
+    m.id = 'appmenu'; m.className = 'appmenu';
+    m.innerHTML = `<div class="shade" data-close></div><div class="panel" role="dialog" aria-modal="true" aria-label="Menu">
+      <div class="top"><b>Steadfast Code</b><button type="button" data-close aria-label="Close menu">×</button></div>
+      <nav aria-label="Admin">${links}</nav>
+      <h3>App</h3><div class="set"><p id="m-apk">Checking for an update…</p><div class="row"><button type="button" id="m-apkgo" hidden></button><button type="button" id="m-apkcheck">Check for updates</button></div></div>
+      <h3>Notifications</h3><div class="set"><p id="m-push">Checking…</p><div class="row"><button type="button" id="m-pushtest">Send a test</button></div></div>
+      <a class="out" href="/cdn-cgi/access/logout">Sign out</a></div>`;
+    document.body.appendChild(m);
+    const open = (on) => { m.classList.toggle('open', on); btn.setAttribute('aria-expanded', String(on)); if (on) { m.querySelector('[data-close]').focus?.(); checkUpdate(); } };
+    btn.addEventListener('click', () => open(true));
+    m.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => open(false)));
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') open(false); });
+    const apk = (d) => { if (!d) return; m.querySelector('#m-apk').textContent = d.text; const go = m.querySelector('#m-apkgo'); go.hidden = !d.action; if (d.action) go.textContent = d.action; };
+    const push = (t) => { if (t) m.querySelector('#m-push').textContent = t; };
+    apk(window.__apkstatus); push(window.__pushstatus);
+    document.addEventListener('apkstatus', (e) => apk(e.detail));
+    document.addEventListener('pushstatus', (e) => push(e.detail));
+    m.querySelector('#m-apkgo').addEventListener('click', () => installUpdate());
+    m.querySelector('#m-apkcheck').addEventListener('click', () => { apk({ text: 'Checking…' }); checkUpdate(); });
+    m.querySelector('#m-pushtest').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try { const r = await fetch('/api/admin/devices/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); push(r.ok ? 'Test sent: it should arrive in a few seconds.' : 'Couldn’t send a test.'); } catch { push('Couldn’t send a test.'); }
+      e.target.disabled = false;
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildMenu); else buildMenu();
+
   registerPush().catch(() => say('pushstatus', 'Couldn’t register for notifications.'));
   // A banner once per app start (not on every page) when there's an update to take.
   checkUpdate().then((p) => {
