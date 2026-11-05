@@ -96,12 +96,15 @@ const v = Date.now().toString(36);
     const body = document.getElementById('msgbody'), btn = document.getElementById('msgsend'), note = document.getElementById('msgnote');
     const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 160) + 'px'; };
     body.addEventListener('input', grow);
-    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); btn.click(); } });
+    // Enter sends on a keyboard; on a touch screen it's a new line and Send sends, as in any messaging app.
+    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && !matchMedia('(hover: none) and (pointer: coarse)').matches) { e.preventDefault(); btn.click(); } });
     btn.addEventListener('pointerdown', (e) => { if (document.activeElement === body) e.preventDefault(); });
     btn.addEventListener('click', async () => {
       if (!body.value.trim()) { note.textContent = 'Write a message first.'; return; }
       btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
-      try { const d = await api(`/projects/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: body.value }) }); body.value = ''; grow(); show(d.messages, true); note.textContent = d.emailed ? 'Sent · emailed' : 'Sent · no email went out'; loadList(); }
+      const text = body.value;
+      // Clear only what was sent: anything typed while it was sending stays.
+      try { const d = await api(`/projects/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: text }) }); body.value = body.value.startsWith(text) ? body.value.slice(text.length).replace(/^\n/, '') : body.value; grow(); show(d.messages, true); note.textContent = d.emailed ? 'Sent · emailed' : 'Sent · no email went out'; loadList(); }
       catch (e) { note.className = 'error'; note.textContent = e.message; }
       btn.disabled = false;
     });

@@ -474,7 +474,8 @@ export async function mountProject(o) {
     const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 160) + 'px'; };
     body.addEventListener('input', grow);
     // Enter sends, Shift+Enter is a new line; never mid-composition (an IME's Enter picks a word).
-    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); btn.click(); } });
+    // Enter sends on a keyboard; on a touch screen it's a new line and Send sends, as in any messaging app.
+    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && !matchMedia('(hover: none) and (pointer: coarse)').matches) { e.preventDefault(); btn.click(); } });
     body.addEventListener('focus', () => { document.body.classList.add('composing'); requestAnimationFrame(placeComposer); });
     body.addEventListener('blur', () => { document.body.classList.remove('composing'); requestAnimationFrame(placeComposer); });
     // Tapping Send mustn't blur the box first: on a phone that would drop the keyboard and move the button.
@@ -483,8 +484,10 @@ export async function mountProject(o) {
       if (!body.value.trim()) { note.textContent = 'Write a message first.'; return; }
       btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
       try {
-        const d = await api(routes.messages, { method: 'POST', body: JSON.stringify({ body: body.value }) });
-        body.value = ''; grow(); showMessages(d.messages);
+        const text = body.value;
+        const d = await api(routes.messages, { method: 'POST', body: JSON.stringify({ body: text }) });
+        // Clear only what was sent: anything typed while it was sending stays.
+        body.value = body.value.startsWith(text) ? body.value.slice(text.length).replace(/^\n/, '') : body.value; grow(); showMessages(d.messages);
         note.textContent = admin ? (d.emailed ? 'Sent. They got an email about it.' : 'Sent. No email went out (no address, or email is off).') : 'Sent. Daniel will answer here.';
       } catch (e) { note.className = 'error'; note.textContent = e.message; }
       btn.disabled = false;

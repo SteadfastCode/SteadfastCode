@@ -123,6 +123,8 @@
   .composer textarea { flex: 1; min-height: 44px; max-height: 160px; resize: none; margin: 0; }
   .composer button { flex: none; min-height: 44px; }
   .composer .help { display: inline-block; margin-top: 4px; }
+  /* The keyboard hint means nothing on a touch screen, where Enter is a new line (2026-11-04). */
+  @media (hover: none) and (pointer: coarse) { .composer #msghint { display: none; } }
   .composer #msgnote { display: block; }
   .composer #msgnote:empty { display: none; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
