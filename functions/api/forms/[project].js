@@ -10,6 +10,15 @@
 // A form that silently swallows a message is the one failure this must never have: anything short
 // of Resend accepting the email is ?sent=0.
 import { cleanForm, returnTo, formEmail } from '../../../server/forms.js';
+import { logEvent } from '../../../server/view.js';
+
+// Anyone can post here (the form's address is on every page of the client's site), so one site
+// sends at most this many messages an hour, and one visitor this many in ten minutes. Past that the
+// page says to call or email instead. Each send is a line in the project's activity, which is also
+// the count. The visitor's address is kept only as a short hash, to tell one from another.
+const FORM_PER_HOUR = 30;
+const FORM_PER_VISITOR = 5;
+const shortHash = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].slice(0, 4).map((b) => b.toString(16).padStart(2, '0')).join('');
 
 export async function onRequestPost({ request, env, params }) {
   const p = env.INTAKE ? await env.INTAKE.prepare('SELECT id, slug, status, answers, preview_url FROM projects WHERE id = ?').bind(String(params.project)).first().catch(() => null) : null;
@@ -31,12 +40,24 @@ export async function onRequestPost({ request, env, params }) {
   if (problem) return go(false, problem);
   const mail = formEmail(data, answers, { from: env.CONTACT_FROM, page: back });
   if (!mail || !env.RESEND_API_KEY) return go(false, 'offline');
+  const visitor = await shortHash(request.headers.get('cf-connecting-ip') || 'unknown');
+  try {
+    const since = (ms) => new Date(Date.now() - ms).toISOString();
+    const [site, one] = await Promise.all([
+      env.INTAKE.prepare("SELECT COUNT(*) AS n FROM project_events WHERE project_id = ? AND what LIKE 'Website form:%' AND at > ?").bind(p.id, since(3600_000)).first(),
+      env.INTAKE.prepare('SELECT COUNT(*) AS n FROM project_events WHERE project_id = ? AND what LIKE ? AND at > ?').bind(p.id, `Website form:%[${visitor}]`, since(600_000)).first(),
+    ]);
+    if ((site?.n ?? 0) >= FORM_PER_HOUR || (one?.n ?? 0) >= FORM_PER_VISITOR) return go(false, 'busy');
+  } catch {
+    // The count is a guard, not the job: if it can't be read, the message still goes.
+  }
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${env.RESEND_API_KEY}` },
       body: JSON.stringify(mail),
     });
+    if (r.ok) { try { await logEvent(env, p.id, 'box', `Website form: message from ${data.name.slice(0, 60)} [${visitor}]`); } catch { /* the message went; the count is the only loss */ } }
     return go(r.ok, r.ok ? null : 'offline');
   } catch {
     return go(false, 'offline');

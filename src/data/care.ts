@@ -8,7 +8,7 @@
 
 import { business, money, carePlans, domainNote } from './site.ts';
 
-export const CARE_TERMS_VERSION = '2026-11-03a';
+export const CARE_TERMS_VERSION = '2026-11-08a';
 export const CHANGE_WINDOW_DAYS = 30;
 
 /** The hosting move at launch, in order. Daniel ticks each one on /admin/care. */
@@ -62,7 +62,7 @@ export function careTermsFor(a: CareInput, date = new Date()) {
   const sections: { h: string; p: string[] }[] = [
     {
       h: 'Who this is between',
-      p: [`This care plan is between ${business.owner} (${business.name}), ${business.city}, ${business.state}, “I” or “me” below, and ${client}, “you” and “your” below. It covers hosting and looking after your website after launch, on the ${plan.name} plan. ${signedOn}.`],
+      p: [`This care plan is between ${business.owner} (${business.name}), ${business.city}, ${business.state}, “I” or “me” below, and ${client}, “you” and “your” below. It covers hosting and looking after your website after launch, on the ${plan.name} plan, signed on ${signedOn}.`],
     },
     {
       h: 'What’s included',
@@ -72,7 +72,7 @@ export function careTermsFor(a: CareInput, date = new Date()) {
       h: 'Price and billing',
       p: [
         `${listed} a month, plus any sales tax that applies, billed on the 1st of each month to the card or bank account you add through Stripe, the payment company I use. I never see or keep your card details.`,
-        `Your first charge is on ${longDate(a.firstBill)}. Nothing is charged before then, including the rest of your 30 days of changes after your site goes live.`,
+        `Your first charge is on ${longDate(a.firstBill)}. Nothing is charged before then, including whatever is left of your ${CHANGE_WINDOW_DAYS} days of changes from the first preview.`,
         'If I ever change the price, I’ll tell you in writing at least 30 days before, and you can cancel before it applies.',
       ],
     },

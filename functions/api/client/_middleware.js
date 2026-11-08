@@ -10,7 +10,8 @@ export async function onRequest(context) {
   if (!env.INTAKE) return json({ error: 'Not available right now.' }, 503);
   const url = new URL(request.url);
   const bearer = (request.headers.get('authorization') || '').match(/^Bearer\s+(\S+)$/)?.[1];
-  const token = bearer || (request.method === 'GET' ? url.searchParams.get('t') : null);
+  // ?t= only where an <img> needs it; every other route sends the header, so the token stays out of URLs and logs.
+  const token = bearer || (request.method === 'GET' && url.pathname.startsWith('/api/client/uploads/') ? url.searchParams.get('t') : null);
   if (!token || token.length < 20 || token.length > 100) return json({ error: 'This link isn’t valid. Ask Daniel for a new one.' }, 401);
   const link = await env.INTAKE.prepare('SELECT * FROM client_links WHERE token_hash = ?').bind(await hashToken(token)).first();
   const now = new Date().toISOString();

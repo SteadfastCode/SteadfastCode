@@ -69,8 +69,14 @@ export function cleanCarePatch(body, existing) {
     else if (body.offer === false && st === 'offered') out.status = 'draft';
     else if (typeof body.offer === 'boolean' && !['draft', 'offered'].includes(st)) problems.push('This plan is already signed; changes to it go through Stripe.');
   }
+  // A canceled plan can start over as a draft (the old signature and subscription stay in the
+  // project's history and in Stripe); nothing else can.
+  if ('reset' in body) {
+    if (body.reset === true && existing?.status === 'canceled') Object.assign(out, { status: 'draft', first_bill_at: null, terms_version: null, terms_text: null, terms_sha256: null, signer_name: null, signed_at: null, signer_ip: null, signer_agent: null, stripe_subscription: null, stripe_status: null, paid_through: null, ends_at: null });
+    else problems.push('Only a canceled plan can be started over.');
+  }
   // After signing, the plan and price are what was signed; a new plan is a new offer.
-  if (existing?.signed_at && ('plan' in out || 'price' in out)) problems.push('The plan and price are what the client signed. Cancel it in Stripe and offer a new one to change them.');
+  if (existing?.signed_at && !('signed_at' in out) && ('plan' in out || 'price' in out)) problems.push('The plan and price are what the client signed. Once it’s canceled in Stripe, Start a new plan here to change them.');
   return { patch: out, problems };
 }
 
@@ -116,7 +122,19 @@ export async function stripe(env, path, params, method = 'POST') {
   return j;
 }
 
-const unixAt = (ymd) => Math.floor(Date.parse(ymd + 'T09:00:00-05:00') / 1000);
+export const unixAt = (ymd) => Math.floor(Date.parse(ymd + 'T09:00:00-05:00') / 1000);
+
+/**
+ * The first bill a card can be set up against. Stripe takes a trial end only when it is at least
+ * 48 hours away, so the signed date stands while that holds; a card added later (or again, after a
+ * cancel) bills from the next 1st at least three days out instead. `moved` says the date changed.
+ */
+export function billableFirstBill(care, now = new Date()) {
+  const signed = care?.first_bill_at ?? null;
+  if (signed && unixAt(signed) * 1000 >= now.getTime() + 49 * 3600_000) return { firstBill: signed, moved: false };
+  const minDate = new Date(now.getTime() + 3 * 86400_000).toISOString().slice(0, 10);
+  return { firstBill: firstBillDate({ minDate }).firstBill, moved: true };
+}
 
 /** The Checkout Session that collects a card and starts the subscription, free until the first bill. */
 export function checkoutParams({ care, answers, origin, customer, products = {} }) {
@@ -161,7 +179,8 @@ export function updateFromEvent(ev) {
   switch (ev?.type) {
     case 'checkout.session.completed':
       if (o.mode !== 'subscription' || !o.metadata?.project_id) return null;
-      return { find: ['project_id', o.metadata.project_id], set: { stripe_customer: o.customer, stripe_subscription: o.subscription, stripe_status: 'trialing', status: 'active' }, event: 'Care plan: card added, billing starts on the 1st' };
+      // A fresh subscription: whatever an earlier one left behind (its end date, what it paid through) is gone.
+      return { find: ['project_id', o.metadata.project_id], set: { stripe_customer: o.customer, stripe_subscription: o.subscription, stripe_status: 'trialing', status: 'active', ends_at: null, paid_through: null }, event: 'Care plan: card added, billing starts on the 1st' };
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {

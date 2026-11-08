@@ -13,7 +13,7 @@ export async function onRequestGet({ env, data }) {
 
 export async function onRequestPatch({ request, env, data }) {
   const body = await request.json().catch(() => null);
-  if (!body || typeof body.answers !== 'object') return json({ error: 'Nothing to save.' }, 400);
+  if (!body?.answers || typeof body.answers !== 'object' || Array.isArray(body.answers)) return json({ error: 'Nothing to save.' }, 400);
   const p = data.project;
   const { answers, dropped } = mergeClientAnswers(JSON.parse(p.answers), body.answers);
   const now = new Date().toISOString();

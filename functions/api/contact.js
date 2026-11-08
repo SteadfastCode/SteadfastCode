@@ -23,13 +23,16 @@ const FIELDS = ['name', 'email', 'phone', 'business', 'plan', 'site', 'message']
 const MAX = { name: 120, email: 200, phone: 40, business: 160, plan: 40, site: 300, message: 5000 };
 
 export async function onRequestPost({ request, env }) {
-  const form = await request.formData();
+  const form = await request.formData().catch(() => null);
+  if (!form) return redirect(request, 0);
   // Honeypot: a filled "company" field is a bot. Pretend it worked; give it nothing to learn from.
   if (form.get('company')) return redirect(request, 1);
 
   const data = {};
   for (const f of FIELDS) data[f] = String(form.get(f) ?? '').trim().slice(0, MAX[f]);
   if (!data.name || !data.email || !data.message) return redirect(request, 0);
+  // Resend refuses a reply-to that isn't an address, and that would fail a message that was fine.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return redirect(request, 0);
 
   const submission = {
     source: 'web',

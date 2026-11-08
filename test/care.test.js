@@ -4,7 +4,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { firstBillDate, careTermsFor, planIncludes, carePlanById } from '../src/data/care.ts';
-import { cleanCarePatch, checkCareSignature, stripeForm, checkoutParams, verifyStripeSignature, updateFromEvent, statusFromStripe } from '../server/care.js';
+import { cleanCarePatch, checkCareSignature, stripeForm, checkoutParams, verifyStripeSignature, updateFromEvent, statusFromStripe, billableFirstBill } from '../server/care.js';
+
+test('a card added too close to the first bill (or after it) bills from the next 1st instead; in time, the signed date stands', () => {
+  // Signed for Dec 1; the card comes Nov 10: fine, Stripe gets Dec 1.
+  assert.deepEqual(billableFirstBill({ first_bill_at: '2026-12-01' }, new Date('2026-11-10T15:00:00Z')), { firstBill: '2026-12-01', moved: false });
+  // Nov 29 at 14:01Z is under 48 hours before Dec 1 9am Eastern: Stripe would refuse it, so Jan 1.
+  assert.deepEqual(billableFirstBill({ first_bill_at: '2026-12-01' }, new Date('2026-11-29T14:01:00Z')), { firstBill: '2027-01-01', moved: true });
+  // Dec 3, after the date passed (or a card added again after a cancel): the next 1st at least three days out.
+  assert.deepEqual(billableFirstBill({ first_bill_at: '2026-12-01' }, new Date('2026-12-03T12:00:00Z')), { firstBill: '2027-01-01', moved: true });
+  assert.deepEqual(billableFirstBill({ first_bill_at: '2026-12-01' }, new Date('2026-12-30T12:00:00Z')), { firstBill: '2027-02-01', moved: true }, 'Jan 1 would be under three days out');
+});
+
+test('a canceled plan can start over as a draft, and only a canceled one', () => {
+  const r = cleanCarePatch({ reset: true }, { status: 'canceled', signed_at: '2026-11-01T00:00:00Z' });
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.patch.status, 'draft');
+  for (const k of ['signed_at', 'terms_text', 'first_bill_at', 'stripe_subscription', 'stripe_status', 'paid_through', 'ends_at']) assert.equal(r.patch[k], null, k);
+  assert.ok(!('stripe_customer' in r.patch), 'the Stripe customer is kept for the next card');
+  assert.match(cleanCarePatch({ reset: true }, { status: 'active', signed_at: 'x' }).problems[0], /Only a canceled plan/);
+  assert.match(cleanCarePatch({ price: 70 }, { status: 'active', signed_at: 'x' }).problems[0], /Start a new plan/);
+});
 
 test('the first bill is the 1st on or after the later of launch and 30 days from the first preview', () => {
   // Joshua: first preview Nov 3, so the window ends Dec 3 and the first bill is Jan 1.
@@ -83,7 +103,7 @@ test("the webhook trusts only Stripe's signature, and only a fresh one", async (
 });
 
 test('each Stripe event becomes one update: card added, paid, failed, cancelled', () => {
-  assert.deepEqual(updateFromEvent({ type: 'checkout.session.completed', data: { object: { mode: 'subscription', customer: 'cus_1', subscription: 'sub_1', metadata: { project_id: 'p1' } } } }).set, { stripe_customer: 'cus_1', stripe_subscription: 'sub_1', stripe_status: 'trialing', status: 'active' });
+  assert.deepEqual(updateFromEvent({ type: 'checkout.session.completed', data: { object: { mode: 'subscription', customer: 'cus_1', subscription: 'sub_1', metadata: { project_id: 'p1' } } } }).set, { stripe_customer: 'cus_1', stripe_subscription: 'sub_1', stripe_status: 'trialing', status: 'active', ends_at: null, paid_through: null });
   assert.equal(updateFromEvent({ type: 'checkout.session.completed', data: { object: { mode: 'payment', metadata: {} } } }), null);
   const paid = updateFromEvent({ type: 'invoice.paid', data: { object: { subscription: 'sub_1', amount_paid: 5900, lines: { data: [{ period: { end: Date.parse('2027-02-01T14:00:00Z') / 1000 } }] } } } });
   assert.deepEqual(paid.find, ['stripe_subscription', 'sub_1']);

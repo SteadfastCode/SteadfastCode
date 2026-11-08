@@ -9,7 +9,7 @@ import { logEvent } from '../../../server/view.js';
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const SAME = { ok: true, message: 'If that email is on a project, a link is on its way. It can take a minute; check your spam folder too.' };
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   const url = new URL(request.url);
   if (request.headers.get('origin') !== url.origin) return json({ error: 'Only from the sign-in page.' }, 403);
   if (!env.INTAKE || !env.RESEND_API_KEY) return json({ error: 'Email sign-in isn’t available right now. Email support@steadfastcode.tech and Daniel will send your link.' }, 503);
@@ -28,6 +28,9 @@ export async function onRequestPost({ request, env }) {
     links.push({ id: p.id, business: a.businessName || 'your website', name: (a.contactName || '').split(' ')[0], url: `${url.origin}/client#${token}` });
   }
   if (!links.length) return json(SAME);
+  // Logged before the send: the ten-minute limit holds even when Resend is down, and a match answers
+  // as fast as a miss (the email goes out after the answer), so timing says nothing about who's a client.
+  for (const l of links) await logEvent(env, l.id, 'box', 'Emailed the client their link');
   const text = [
     `Hi${links[0].name ? ' ' + links[0].name : ''},`,
     '',
@@ -41,11 +44,11 @@ export async function onRequestPost({ request, env }) {
     '',
     'Daniel',
   ].join('\n');
-  const r = await fetch('https://api.resend.com/emails', {
+  const send = fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${env.RESEND_API_KEY}` },
     body: JSON.stringify({ from: env.CONTACT_FROM || 'Steadfast Code <site@steadfastcode.tech>', to: [email], reply_to: env.CONTACT_TO || 'support@steadfastcode.tech', subject: 'Your Steadfast Code link', text }),
   }).catch(() => null);
-  if (r?.ok) for (const l of links) await logEvent(env, l.id, 'box', 'Emailed the client their link');
+  if (typeof waitUntil === 'function') waitUntil(send); else await send;
   return json(SAME);
 }

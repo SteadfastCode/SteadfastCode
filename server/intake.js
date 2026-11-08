@@ -26,6 +26,8 @@ export function cleanValue(field, value) {
     }
     case 'hours': return cleanHours(value);
     case 'pricing': return cleanPricing(value);
+    // The address the site's form relay sends to: an address, or blank, never anything else.
+    case 'email': { if (typeof value !== 'string') return undefined; const v = value.trim().slice(0, 200); return v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : undefined; }
     default: return typeof value === 'string' ? value.trim().slice(0, MAX_TEXT) : undefined;
   }
 }
