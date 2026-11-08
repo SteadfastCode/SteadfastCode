@@ -3,7 +3,7 @@
 // The answer is the same whether or not it matched, so the form can't be used to find out who's a
 // client. A link that still works is sent again (it's kept encrypted, server/client.js); otherwise
 // a new one is made, and older links keep working. One email per project every 10 minutes.
-import { newToken, hashToken, sealToken, openToken, LINK_DAYS } from '../../../server/client.js';
+import { tokenForEmail } from '../../../server/messages.js';
 import { logEvent } from '../../../server/view.js';
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -23,13 +23,7 @@ export async function onRequestPost({ request, env }) {
   for (const p of results) {
     const recent = await env.INTAKE.prepare("SELECT 1 FROM project_events WHERE project_id = ? AND what = 'Emailed the client their link' AND at > ?").bind(p.id, since).first();
     if (recent) continue;
-    const live = await env.INTAKE.prepare('SELECT token_enc FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? AND token_enc IS NOT NULL ORDER BY created_at DESC LIMIT 1').bind(p.id, now.toISOString()).first();
-    let token = live ? await openToken(env, live.token_enc) : null;
-    if (!token) {
-      token = newToken();
-      await env.INTAKE.prepare('INSERT INTO client_links (id, project_id, token_hash, token_enc, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(crypto.randomUUID(), p.id, await hashToken(token), await sealToken(env, token), now.toISOString(), new Date(now.getTime() + LINK_DAYS * 86400_000).toISOString()).run();
-    }
+    const token = await tokenForEmail(env, p.id, now);
     const a = JSON.parse(p.answers);
     links.push({ id: p.id, business: a.businessName || 'your website', name: (a.contactName || '').split(' ')[0], url: `${url.origin}/client#${token}` });
   }

@@ -423,15 +423,18 @@ export async function mountProject(o) {
   function openMessages() { if (wide()) setDrawer(true); else setTab('messages'); }
   async function paintMessages() {
     const list = document.getElementById('msglist');
-    // Opening the conversation marks Daniel's messages read, so only when it's actually showing.
+    // Opening the conversation marks Daniel's messages read, so only when it's actually showing, and
+    // only while this window has the client's attention: from a window left open it just peeks, so
+    // the unread mark stays until they're back.
     if (drawer && !drawerOpen()) return;
     if (!list || msgLoading || (msgLoaded && !P.unreadMessages)) return;
     msgLoading = true;
+    const peek = !document.hasFocus();
     try {
-      const d = await api(routes.messages);
+      const d = await api(routes.messages + (peek ? '?peek=1' : ''));
       msgLoaded = true;
       showMessages(d.messages);
-      P.unreadMessages = 0;
+      if (!peek) P.unreadMessages = 0;
       if (!admin) { paintTabs(); ensureDrawer(); }
     } catch (e) { list.innerHTML = `<li class="error">${esc(/no such table/.test(e.message) ? 'Messages are being switched on.' : e.message)}</li>`; }
     msgLoading = false;
@@ -860,6 +863,8 @@ export async function mountProject(o) {
   if (admin) bar.hidden = false;
   render();
   pollTimer = setInterval(() => { if (!stopped && document.visibilityState === 'visible' && !Object.keys(pending).length) refresh(); }, POLL_MS);
+  // Back to this window: messages that only peeked while it sat in the background are read now.
+  addEventListener('focus', () => { if (!stopped && P?.unreadMessages) paintMessages(); });
   addEventListener('beforeunload', (e) => { if (Object.keys(pending).length) { flush(); e.preventDefault(); } });
   return { stop() { stop(); presence(null); if (Object.keys(pending).length) flush(); }, flush };
 }

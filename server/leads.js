@@ -149,20 +149,24 @@ export function cleanTouch(body, lead) {
 
 // ---------------------------------------------------------------- import
 
-/** Split one CSV line, quotes honoured ("a, b" stays one field; "" inside quotes is a quote). */
-function csvLine(line) {
-  const out = [];
+/** Split CSV text into rows of cells, quotes honoured: "a, b" stays one cell, "" inside quotes is a quote, and a quoted cell may run over several lines (a spreadsheet's notes column). Blank lines are skipped. */
+export function csvRows(text) {
+  const rows = [];
+  let row = [];
   let cur = '';
   let q = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
+  const endRow = () => { row.push(cur.trim()); if (row.some((c) => c)) rows.push(row); row = []; cur = ''; };
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
     if (q) {
-      if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
+      if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
     } else if (c === '"') q = true;
-    else if (c === ',') { out.push(cur); cur = ''; } else cur += c;
+    else if (c === ',') { row.push(cur.trim()); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; endRow(); }
+    else cur += c;
   }
-  out.push(cur);
-  return out.map((s) => s.trim());
+  if (cur || row.length) endRow();
+  return rows;
 }
 
 // What a column may be called, so a spreadsheet exported from anywhere imports without renaming.
@@ -202,12 +206,11 @@ export function parseImport(text) {
       return { rows: arr.filter((r) => r && typeof r === 'object'), problems: [] };
     } catch (err) { return { rows: [], problems: [`Not valid JSON: ${err.message}`] }; }
   }
-  const lines = t.split(/\r?\n/).filter((l) => l.trim());
-  const header = csvLine(lines[0]).map(headerKey);
-  if (!header.includes('business')) return { rows: [], problems: [`The first line must name the columns, and one of them the business (got: ${lines[0].slice(0, 120)}).`] };
+  const lines = csvRows(t);
+  const header = (lines[0] ?? []).map(headerKey);
+  if (!header.includes('business')) return { rows: [], problems: [`The first line must name the columns, and one of them the business (got: ${t.split(/\r?\n/)[0].slice(0, 120)}).`] };
   const rows = [];
-  for (const line of lines.slice(1)) {
-    const cells = csvLine(line);
+  for (const cells of lines.slice(1)) {
     const row = {};
     header.forEach((k, i) => { if (k && cells[i] != null && cells[i] !== '') row[k] = cells[i]; });
     if (Object.keys(row).length) rows.push(row);
@@ -237,7 +240,10 @@ export function mergeImport(existingNames, rows, { now, newId = () => crypto.ran
 // ---------------------------------------------------------------- CSV out
 
 const CSV_COLUMNS = ['id', 'kind', 'business', 'category', 'town', 'website', 'siteState', 'contact', 'role', 'email', 'phone', 'fit', 'status', 'nextAt', 'nextStep', 'source', 'why', 'message', 'createdAt', 'updatedAt', 'touches'];
-const csvCell = (v) => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+// A cell that starts like a formula (=, +, -, @, a tab) gets a leading apostrophe, which spreadsheets
+// read as "this is text" and hide: anyone can type into the contact form, and what they type ends up
+// in this file, so a cell must never run as a formula when Daniel opens it.
+const csvCell = (v) => { const s = String(v ?? '').replace(/^(?=[=+\-@\t\r])/, "'"); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 /** The board as a spreadsheet; `touches` is the log of each lead, oldest first, in one cell. */
 export function toCsv(leads, touchesByLead = new Map()) {
   const rows = leads.map((l) => CSV_COLUMNS.map((c) => (c === 'touches' ? (touchesByLead.get(l.id) ?? []).map((t) => `${String(t.at).slice(0, 16)} ${t.kind}: ${t.text}`).join(' | ') : l[c])).map(csvCell).join(','));

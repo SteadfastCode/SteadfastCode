@@ -94,7 +94,10 @@
     try {
       say('apkstatus', { text: 'Downloading the update…' });
       // A fresh link: the one from the check may be past its ten minutes.
-      const m = await (await fetch('/api/admin/app-apk', { cache: 'no-store' })).json();
+      const r = await fetch('/api/admin/app-apk', { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status === 404 ? 'the build is no longer published' : `the server answered ${r.status}`);
+      const m = await r.json();
+      if (!m.url) throw new Error('the server gave no download link');
       const file = await Filesystem.downloadFile({ url: m.url, path: 'steadfast-code.apk', directory: 'CACHE' });
       say('apkstatus', { text: 'Handing it to Android…' });
       await ApkUpdate.installApk({ path: file.path, sha256: m.sha256 });

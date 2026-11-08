@@ -84,7 +84,13 @@ const inWeek = localDate(new Date(Date.now() + 7 * 86400_000));
 const due = (l) => (!l.nextAt || !(C.active.includes(l.status) || l.status === 'hold')) ? null : l.nextAt < today ? 'overdue' : l.nextAt === today ? 'today' : l.nextAt <= inWeek ? 'soon' : null;
 const dueRank = { overdue: 0, today: 1, soon: 2 };
 const order = (l) => (dueRank[l.due] ?? 3) * 100 + (C.active.includes(l.status) ? C.statuses.indexOf(l.status) : 10 + C.statuses.indexOf(l.status));
-const link = (url) => `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a>`;
+// A lead's website as a link, only when it is a web address: the contact form takes any text for
+// "current site", and this page runs as Daniel, so anything else is shown as plain text.
+const link = (url) => {
+  const shown = esc(url.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
+  try { const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`); if (!/^https?:$/.test(u.protocol) || !u.hostname.includes('.')) return shown; return `<a href="${esc(u.href)}" target="_blank" rel="noopener">${shown}</a>`; }
+  catch { return shown; }
+};
 const kindBadge = (l) => (l.kind === 'prospect' ? '' : ` <span class="badge kind">${esc(C.kindLabel[l.kind])}</span>`);
 
 // The lead's fields, once, for the Add and Details forms.
@@ -170,7 +176,7 @@ async function viewBoard() {
 async function viewLead(id) {
   app.innerHTML = '<p class="muted">Loading…</p>';
   const { lead: l, touches } = await api('/leads/' + encodeURIComponent(id));
-  const meta = [l.town, l.category, l.website ? link(l.website) : '', l.siteState !== 'unknown' ? C.siteStateLabel[l.siteState] : '', l.fit ? tierName(l.fit) : ''].filter(Boolean).map((x) => (x.startsWith('<a ') ? x : esc(x))).join(' · ');
+  const meta = [esc(l.town), esc(l.category), l.website ? link(l.website) : '', l.siteState !== 'unknown' ? esc(C.siteStateLabel[l.siteState]) : '', l.fit ? esc(tierName(l.fit)) : ''].filter(Boolean).join(' · ');
   const projects = l.projects.length
     ? l.projects.map((p) => `<div class="row"><div><a href="/admin#p/${esc(p.id)}"><b>${esc(p.business || l.business)}</b></a><div class="muted">${esc(p.status)}${p.previewUrl ? ` · <a href="${esc(p.previewUrl)}" target="_blank" rel="noopener">preview</a>` : ''}</div></div><a class="btn" href="/admin#p/${esc(p.id)}">Open</a></div>`).join('')
     : l.kind === 'partner' ? '<p class="muted">A partner sends prospects; projects start from those.</p>'

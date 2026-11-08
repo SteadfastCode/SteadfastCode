@@ -160,6 +160,10 @@ test('a pasted list is read as CSV or JSON, and merging skips what is already on
   assert.deepEqual(problems, []);
   assert.equal(rows.length, 3);
   assert.equal(rows[0].contact, 'Smith, Ann', 'quoted commas survive');
+  const multi = parseImport('Business,Notes\nA Bakery,"Called twice.\nLeft a message."\nB Signs,"one line"\n\n');
+  assert.equal(multi.rows.length, 2, 'a quoted cell may run over lines; blank lines are skipped');
+  assert.equal(multi.rows[0].notes, 'Called twice.\nLeft a message.');
+  assert.equal(multi.rows[1].business, 'B Signs');
   const m = mergeImport(["joe's plumbing"], rows, { now: 't', newId: (() => { let n = 0; return () => `id-${++n}`; })() });
   assert.deepEqual(m.skipped, ["Joe's Plumbing"]);
   assert.equal(m.added.length, 2);
@@ -195,6 +199,13 @@ test('the CSV export quotes what it must and folds each lead’s log into one ce
   assert.match(csv, /"A ""B"" C"/);
   assert.match(csv, /"Smith, Ann"/);
   assert.match(csv, /"2026-11-03T15:00 email: Sent the audit, with ""quotes"""/);
+  // What a visitor typed into the contact form must never run as a formula when the file is opened.
+  const hostile = toCsv([leadFromRow({ id: 'b', received_at: 't', business: '=HYPERLINK("http://evil.example","x")', name: '+1 Ann', message: '-2+3+cmd|\' /C calc\'!A0', phone: '@SUM(1)', status: 'new' })]);
+  assert.match(hostile, /,"'=HYPERLINK\(""http:\/\/evil\.example"",""x""\)",/);
+  assert.match(hostile, /,'\+1 Ann,/);
+  assert.match(hostile, /,'-2\+3\+cmd\|' \/C calc'!A0,/);
+  assert.match(hostile, /,'@SUM\(1\),/);
+  assert.doesNotMatch(hostile, /,[=+\-@]/);
 });
 
 test('the intake answers from a board lead carry its town, why, source and last touches', () => {

@@ -1,10 +1,11 @@
-// GET /api/client/messages: the conversation with Daniel (opening it marks his messages read).
-// POST /api/client/messages { body }: write to Daniel. The box tells him on Signal.
+// GET /api/client/messages: the conversation with Daniel (opening it marks his messages read;
+// with ?peek=1 it doesn't, for a poll from a window the client isn't looking at).
+// POST /api/client/messages { body }: write to Daniel. The box tells him by push, or on Signal.
 import { json } from './_middleware.js';
 import { cleanMessage, thread, addMessage } from '../../../server/messages.js';
 
-export async function onRequestGet({ env, data }) {
-  return json({ messages: await thread(env, data.project.id, 'client') });
+export async function onRequestGet({ request, env, data }) {
+  return json({ messages: await thread(env, data.project.id, 'client', { markRead: !new URL(request.url).searchParams.has('peek') }) });
 }
 
 export async function onRequestPost({ request, env, data }) {

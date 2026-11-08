@@ -102,7 +102,7 @@ const v = Date.now().toString(36);
       btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
       const text = body.value;
       // Clear only what was sent: anything typed while it was sending stays.
-      try { const d = await api(`/projects/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: text }) }); body.value = body.value.startsWith(text) ? body.value.slice(text.length).replace(/^\n/, '') : body.value; grow(); show(d.messages, true); note.textContent = d.emailed ? 'Sent · emailed' : 'Sent · no email went out'; loadList(); }
+      try { const d = await api(`/projects/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: text }) }); body.value = body.value.startsWith(text) ? body.value.slice(text.length).replace(/^\n/, '') : body.value; grow(); if (open === id) show(d.messages, true); note.textContent = d.emailed ? 'Sent · emailed' : 'Sent · no email went out'; loadList(); }
       catch (e) { note.className = 'error'; note.textContent = e.message; }
       btn.disabled = false;
     });
@@ -122,11 +122,15 @@ const v = Date.now().toString(36);
     list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === 'daniel' ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === 'daniel' ? 'You' : esc(m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === 'daniel' && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : '<li class="muted">No messages yet. Say hello; they’ll get an email with their link.</li>';
     if (atEnd) t.scrollTop = t.scrollHeight;
   }
+  // Opening a conversation marks the client's messages read, but only while this window is the one
+  // Daniel is looking at: a poll from an inbox left open on the desk only peeks, so the message stays
+  // unread and the box still tells his phone.
   async function loadThread(toEnd) {
     if (!open) return;
     const id = open;
-    try { const d = await api(`/projects/${id}/messages`); if (open === id) show(d.messages, toEnd); } catch (e) { const l = document.getElementById('msglist'); if (l) l.innerHTML = `<li class="error">${esc(e.message)}</li>`; }
+    try { const d = await api(`/projects/${id}/messages${document.hasFocus() ? '' : '?peek=1'}`); if (open === id) show(d.messages, toEnd); } catch (e) { const l = document.getElementById('msglist'); if (l) l.innerHTML = `<li class="error">${esc(e.message)}</li>`; }
   }
+  addEventListener('focus', () => { loadThread(false); loadList(); });
 
   async function route() {
     const m = location.hash.match(/^#p\/([\w-]+)$/);
