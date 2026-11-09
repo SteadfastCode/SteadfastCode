@@ -25,8 +25,10 @@ export const TIERS = websiteTiers.map((t) => t.id);
 
 // The board's field names and their columns in `leads` (migrations 0001 and 0011). A contact-form
 // submission's name, plan and site are the board's contact, fit and website.
-const COLUMN = { business: 'business', contact: 'name', role: 'role', email: 'email', phone: 'phone', website: 'site', town: 'town', category: 'category', source: 'source_detail', why: 'why', nextStep: 'next_step', nextAt: 'next_at', kind: 'kind', status: 'status', siteState: 'site_state', fit: 'plan' };
-const TEXT = { business: 160, contact: 120, role: 80, email: 200, phone: 40, website: 300, town: 80, category: 60, source: 300, why: 1500, nextStep: 300 };
+// `mockUrl` (migration 0015): a mock-up Daniel built for the lead before any project exists, on a
+// private Pages preview; the board shows it as a link, so he can open it on his phone to show them.
+const COLUMN = { business: 'business', contact: 'name', role: 'role', email: 'email', phone: 'phone', website: 'site', town: 'town', category: 'category', source: 'source_detail', why: 'why', nextStep: 'next_step', nextAt: 'next_at', kind: 'kind', status: 'status', siteState: 'site_state', fit: 'plan', mockUrl: 'mock_url' };
+const TEXT = { business: 160, contact: 120, role: 80, email: 200, phone: 40, website: 300, town: 80, category: 60, source: 300, why: 1500, nextStep: 300, mockUrl: 300 };
 export const TOUCH_TEXT_MAX = 2000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -41,6 +43,7 @@ export function leadFromRow(r) {
     email: r.email ?? '',
     phone: r.phone ?? '',
     website: r.site ?? '',
+    mockUrl: r.mock_url ?? '',
     siteState: SITE_STATES.includes(r.site_state) ? r.site_state : 'unknown',
     town: r.town ?? '',
     category: r.category ?? '',
@@ -71,6 +74,8 @@ export function cleanPatch(patch) {
   }
   if (out.website && !/^https?:\/\//i.test(out.website)) out.website = `https://${out.website}`;
   if (out.website && !/^https?:\/\/[^\s/]+\.[^\s/]+/i.test(out.website)) problems.push('The website does not look like an address.');
+  if (out.mockUrl && !/^https?:\/\//i.test(out.mockUrl)) out.mockUrl = `https://${out.mockUrl}`;
+  if (out.mockUrl && !/^https?:\/\/[^\s/]+\.[^\s/]+/i.test(out.mockUrl)) problems.push('The mock-up link does not look like an address.');
   if (out.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(out.email)) problems.push('The email does not look like an address.');
   const pick = (k, allowed) => {
     if (!(k in patch)) return;
@@ -96,7 +101,7 @@ export function cleanPatch(patch) {
 
 // Columns an empty field clears to NULL. `name`, `email` and `message` are NOT NULL from the
 // contact form's days, so a blank contact or email stays ''.
-const NULLABLE = new Set(['role', 'phone', 'website', 'town', 'category', 'source', 'why', 'nextStep', 'nextAt', 'fit']);
+const NULLABLE = new Set(['role', 'phone', 'website', 'town', 'category', 'source', 'why', 'nextStep', 'nextAt', 'fit', 'mockUrl']);
 
 /** The SET clause and parameters for a cleaned patch, plus updated_at. */
 export function updateStatement(id, patch, now) {
@@ -119,8 +124,8 @@ export function newLead(input, { now, id = crypto.randomUUID() } = {}) {
 /** INSERT for a new lead, every column named so the contact form's NOT NULL columns get a value. */
 export function insertStatement(lead) {
   return {
-    sql: 'INSERT INTO leads (id, received_at, updated_at, kind, name, email, phone, business, plan, site, message, source_detail, status, role, category, town, site_state, why, next_step, next_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    params: [lead.id, lead.createdAt, lead.updatedAt, lead.kind, lead.contact, lead.email, lead.phone || null, lead.business, lead.fit || null, lead.website || null, lead.message ?? '', lead.source || null, lead.status, lead.role || null, lead.category || null, lead.town || null, lead.siteState, lead.why || null, lead.nextStep || null, lead.nextAt || null],
+    sql: 'INSERT INTO leads (id, received_at, updated_at, kind, name, email, phone, business, plan, site, message, source_detail, status, role, category, town, site_state, why, next_step, next_at, mock_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    params: [lead.id, lead.createdAt, lead.updatedAt, lead.kind, lead.contact, lead.email, lead.phone || null, lead.business, lead.fit || null, lead.website || null, lead.message ?? '', lead.source || null, lead.status, lead.role || null, lead.category || null, lead.town || null, lead.siteState, lead.why || null, lead.nextStep || null, lead.nextAt || null, lead.mockUrl || null],
   };
 }
 
@@ -239,7 +244,7 @@ export function mergeImport(existingNames, rows, { now, newId = () => crypto.ran
 
 // ---------------------------------------------------------------- CSV out
 
-const CSV_COLUMNS = ['id', 'kind', 'business', 'category', 'town', 'website', 'siteState', 'contact', 'role', 'email', 'phone', 'fit', 'status', 'nextAt', 'nextStep', 'source', 'why', 'message', 'createdAt', 'updatedAt', 'touches'];
+const CSV_COLUMNS = ['id', 'kind', 'business', 'category', 'town', 'website', 'siteState', 'mockUrl', 'contact', 'role', 'email', 'phone', 'fit', 'status', 'nextAt', 'nextStep', 'source', 'why', 'message', 'createdAt', 'updatedAt', 'touches'];
 // A cell that starts like a formula (=, +, -, @, a tab) gets a leading apostrophe, which spreadsheets
 // read as "this is text" and hide: anyone can type into the contact form, and what they type ends up
 // in this file, so a cell must never run as a formula when Daniel opens it.

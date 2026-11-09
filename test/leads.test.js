@@ -102,6 +102,13 @@ test('cleaning: text is trimmed and capped, enums are checked, a bare domain get
   assert.equal(patch.fit, '');
   assert.ok(!('ignored' in patch));
   assert.match(cleanPatch({ website: 'javascript:alert(1)' }).problems[0], /website does not look like an address/);
+  // A mock-up link (migration 0015) is cleaned like the website, and comes along in the INSERT and the CSV.
+  assert.equal(cleanPatch({ mockUrl: 'stdfst-ace.pages.dev' }).patch.mockUrl, 'https://stdfst-ace.pages.dev');
+  assert.match(cleanPatch({ mockUrl: 'javascript:alert(1)' }).problems[0], /mock-up link does not look like an address/);
+  assert.equal(updateStatement('L1', { mockUrl: '' }, 'now').params[0], null, 'a cleared mock-up is NULL');
+  const withMock = insertStatement(newLead({ business: 'Ace', mockUrl: 'https://stdfst-ace.pages.dev' }, { now: 't' }).lead);
+  assert.ok(withMock.sql.includes('mock_url') && withMock.params.includes('https://stdfst-ace.pages.dev'));
+  assert.match(toCsv([leadFromRow({ id: 'a', received_at: 't', business: 'A', status: 'new', mock_url: 'https://m.example' })]).split('\n')[0], /,mockUrl,/);
   assert.match(cleanPatch({ kind: 'client' }).problems[0], /kind must be one of inbound, prospect, partner/);
   assert.match(cleanPatch({ siteState: 'great' }).problems[0], /siteState must be one of/);
   assert.match(cleanPatch({ fit: 'platinum' }).problems[0], /fit must be one of/);

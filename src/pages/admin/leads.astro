@@ -60,6 +60,10 @@ const config = {
   ul.log li { border-top: 1px solid var(--line); padding-top: 8px; overflow-wrap: anywhere; }
   ul.log .when { color: var(--muted); font-size: .85rem; }
   .badge.kind { text-transform: none; }
+  .badge.mock { text-transform: none; color: var(--accent); border-color: var(--accent); text-decoration: none; }
+  .badge.mock:hover { background: var(--accent); color: var(--accent-ink, #fff); }
+  .mockrow { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
+  .mockrow .help { flex: 1 1 24rem; }
   pre.result { white-space: pre-wrap; font: inherit; font-size: .9rem; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
   textarea.paste { min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; }
   h1 .badge { vertical-align: middle; font-size: .85rem; }
@@ -92,6 +96,8 @@ const link = (url) => {
   catch { return shown; }
 };
 const kindBadge = (l) => (l.kind === 'prospect' ? '' : ` <span class="badge kind">${esc(C.kindLabel[l.kind])}</span>`);
+// A mock-up built for the lead opens in a new tab straight from the board (a phone in a meeting).
+const mockBadge = (l) => (l.mockUrl ? ` ${link(l.mockUrl).replace('<a ', '<a class="badge mock" ').replace(/>[^<]*<\/a>$/, '>Mock-up</a>')}` : '');
 
 // The lead's fields, once, for the Add and Details forms.
 const FIELDS = [
@@ -101,6 +107,7 @@ const FIELDS = [
   { id: 'town', label: 'Town', max: 80 },
   { id: 'website', label: 'Website', placeholder: 'example.com, or blank', max: 300 },
   { id: 'siteState', label: 'Their site today', options: C.siteStates.map((s) => [s, C.siteStateLabel[s]]) },
+  { id: 'mockUrl', label: 'Mock-up preview (a Pages link, if you built one)', placeholder: 'https://stdfst-….pages.dev', wide: true, max: 300 },
   { id: 'contact', label: 'Contact', max: 120 },
   { id: 'role', label: 'Role', max: 80 },
   { id: 'email', label: 'Email', type: 'email', max: 200 },
@@ -132,10 +139,10 @@ async function viewBoard() {
   const dueCount = leads.filter((l) => l.due === 'overdue' || l.due === 'today').length;
   const won = leads.filter((l) => l.status === 'won').length;
   const counts = Object.fromEntries(C.statuses.map((s) => [s, leads.filter((l) => l.status === s).length]));
-  const chips = [['active', `Active ${active}`], ['all', `All ${leads.length}`], ['inbound', `Came to us ${leads.filter((l) => l.kind === 'inbound').length}`], ...C.statuses.map((s) => [s, `${C.statusLabel[s]} ${counts[s]}`]), ['partner', `Partners ${leads.filter((l) => l.kind === 'partner').length}`]];
+  const chips = [['active', `Active ${active}`], ['all', `All ${leads.length}`], ['inbound', `Came to us ${leads.filter((l) => l.kind === 'inbound').length}`], ['mock', `Mock-ups ${leads.filter((l) => l.mockUrl).length}`], ...C.statuses.map((s) => [s, `${C.statusLabel[s]} ${counts[s]}`]), ['partner', `Partners ${leads.filter((l) => l.kind === 'partner').length}`]];
   const upNext = leads.filter((l) => l.due).slice(0, 12);
-  const row = (l) => `<div class="lead" data-id="${esc(l.id)}" data-status="${esc(l.status)}" data-kind="${esc(l.kind)}" data-search="${esc([l.business, l.town, l.category, l.contact, l.email, l.phone, l.why, l.source, l.nextStep, C.statusLabel[l.status], C.kindLabel[l.kind]].join(' ').toLowerCase())}">
-    <div class="main"><a href="#l/${esc(l.id)}"><b>${esc(l.business || l.contact || 'Untitled')}</b></a>${kindBadge(l)}<div class="sub">${[esc(l.town), esc(l.category), l.website ? link(l.website) : '', l.siteState !== 'unknown' ? esc(C.siteStateLabel[l.siteState]) : '', l.fit ? esc(tierName(l.fit)) : ''].filter(Boolean).join(' · ')}</div></div>
+  const row = (l) => `<div class="lead" data-id="${esc(l.id)}" data-status="${esc(l.status)}" data-kind="${esc(l.kind)}" data-mock="${l.mockUrl ? 1 : 0}" data-search="${esc([l.business, l.town, l.category, l.contact, l.email, l.phone, l.why, l.source, l.nextStep, C.statusLabel[l.status], C.kindLabel[l.kind], l.mockUrl ? 'mock-up' : ''].join(' ').toLowerCase())}">
+    <div class="main"><a href="#l/${esc(l.id)}"><b>${esc(l.business || l.contact || 'Untitled')}</b></a>${kindBadge(l)}${mockBadge(l)}<div class="sub">${[esc(l.town), esc(l.category), l.website ? link(l.website) : '', l.siteState !== 'unknown' ? esc(C.siteStateLabel[l.siteState]) : '', l.fit ? esc(tierName(l.fit)) : ''].filter(Boolean).join(' · ')}</div></div>
     <div class="contact"><span class="head">Contact</span>${esc(l.contact) || '<span class="muted">—</span>'}${l.role ? ` <span class="muted">${esc(l.role)}</span>` : ''}<div class="sub">${[l.phone ? `<a href="tel:${esc(l.phone.replace(/[^\d+]/g, ''))}">${esc(l.phone)}</a>` : '', l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : ''].filter(Boolean).join(' · ')}</div></div>
     <div class="st"><span class="head">Status</span><select class="status s-${esc(l.status)}" data-id="${esc(l.id)}" aria-label="Status of ${esc(l.business)}">${C.statuses.map((s) => `<option value="${s}"${s === l.status ? ' selected' : ''}>${esc(C.statusLabel[s])}</option>`).join('')}</select></div>
     <div class="touch"><span class="head">Last touch</span>${l.lastTouch ? `${esc(C.touchLabel[l.lastTouch.kind] || l.lastTouch.kind)} <span class="muted">${esc(ago(l.lastTouch.at))}</span><div class="sub">${esc(l.lastTouch.text.slice(0, 400))}</div>` : '<span class="muted">nothing yet</span>'}</div>
@@ -154,7 +161,7 @@ async function viewBoard() {
   const apply = () => {
     let shown = 0;
     app.querySelectorAll('.lead[data-id]').forEach((el) => {
-      const okStatus = filter === 'all' || (filter === 'active' ? C.active.includes(el.dataset.status) : filter === 'partner' || filter === 'inbound' ? el.dataset.kind === filter : el.dataset.status === filter);
+      const okStatus = filter === 'all' || (filter === 'active' ? C.active.includes(el.dataset.status) : filter === 'mock' ? el.dataset.mock === '1' : filter === 'partner' || filter === 'inbound' ? el.dataset.kind === filter : el.dataset.status === filter);
       const ok = okStatus && (!query || el.dataset.search.includes(query));
       el.hidden = !ok;
       if (ok) shown++;
@@ -185,6 +192,7 @@ async function viewLead(id) {
     <p><a class="back" href="#">← Leads</a></p>
     <h1>${esc(l.business || l.contact || 'Untitled')}${kindBadge(l)}</h1>
     ${meta ? `<p class="muted">${meta}</p>` : ''}
+    ${l.mockUrl ? `<p class="mockrow"><a class="btn" href="${esc(l.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="help">Built before any project, on a private preview. If they say yes: push its folder (<code>~/repos/clients/client-&lt;slug&gt;</code> on the box) to GitHub under that name, start the project with the same business name, and the first build carries it on instead of starting over.</span></p>` : ''}
     ${l.why ? `<p>${esc(l.why)}</p>` : ''}
     ${l.message ? `<p><span class="muted">They wrote:</span> ${esc(l.message)}</p>` : ''}
     ${l.source ? `<p class="muted">Source: ${esc(l.source)}</p>` : ''}
