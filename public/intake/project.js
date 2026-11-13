@@ -697,7 +697,8 @@ export async function mountProject(o) {
     const el = root.querySelector('#linkcard');
     const l = P.clientLink;
     // Only redraw when the link itself changes, so a copy in progress isn't wiped by the 2 s refresh.
-    const key = JSON.stringify([l, madeUrl, P.linkKeySet]);
+    const to = String(P.answers.email ?? '').trim();
+    const key = JSON.stringify([l, madeUrl, P.linkKeySet, to]);
     if (el.dataset.key === key) return;
     el.dataset.key = key;
     const url = l?.url || (l && madeUrl) || null;
@@ -705,13 +706,26 @@ export async function mountProject(o) {
       ${l ? `<p class="muted">On · made ${esc(ago(l.createdAt))} · ${l.lastUsedAt ? `last opened ${esc(ago(l.lastUsedAt))}` : 'not opened yet'} · works until ${esc(new Date(l.expiresAt).toLocaleDateString())}</p>` : '<p class="muted">No link yet. A link lets them see and fill in this same page, upload photos, and watch the build.</p>'}
       ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
       ${url && !l?.url ? '<p class="help">Copy it now: without the LINK_KEY secret it won’t be shown again after you leave this page.</p>' : ''}
-      <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>`;
+      <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>
+      <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>`;
     el.querySelector('#makelink').onclick = async () => {
       if (l && !confirm('Make a new link? The current one stops working.')) return;
       try { madeUrl = (await api(routes.link, { method: 'POST', body: '{}' })).url; await refresh(); } catch (e) { alert(e.message); }
     };
     const kill = el.querySelector('#killlink');
     if (kill) kill.onclick = async () => { if (!confirm('Turn the client link off? Their page stops working until you make a new one.')) return; madeUrl = null; await api(routes.link, { method: 'DELETE' }); await refresh(); };
+    const mail = el.querySelector('#emaillink');
+    if (mail) mail.onclick = async () => {
+      if (!confirm(`Email the client link to ${to}?${l?.url ? '' : ' A new link is made for it; any older one keeps working.'}`)) return;
+      mail.disabled = true;
+      try {
+        await api(routes.link + '/email', { method: 'POST', body: '{}' });
+        if (!l?.url) await refresh(); // a new link was made, so the card redraws: say it on the new one
+        el.querySelector('#emailsaid').textContent = `Sent ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`;
+      }
+      catch (e) { alert(e.message); }
+      finally { mail.disabled = false; }
+    };
     const copy = el.querySelector('#copylink');
     if (copy) copy.onclick = async () => {
       try { await navigator.clipboard.writeText(url); } catch { const f = el.querySelector('#linkurl'); f.select(); document.execCommand('copy'); }

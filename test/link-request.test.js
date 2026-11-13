@@ -41,3 +41,32 @@ test('a matching email gets a link by email; a stranger gets the same answer and
     assert.equal((await post(env, { email: 'not an email' })).status, 400);
   } finally { globalThis.fetch = real; }
 });
+
+// "Email it to them" on the admin's client link card (functions/api/admin/projects/[id]/link/email.js).
+import { onRequestPost as emailLink } from '../functions/api/admin/projects/[id]/link/email.js';
+
+test('the admin can email the client their link, only to the email on the project', async () => {
+  const sent = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { sent.push(JSON.parse(init.body)); return new Response('{}', { status: 200 }); };
+  const one = (answers) => ({
+    writes: [],
+    prepare(sql) { const w = this.writes; return { bind: () => ({ first: async () => (/FROM projects/.test(sql) ? (answers ? { id: 'p1', answers: JSON.stringify(answers) } : null) : null), run: async () => { w.push(sql); return {}; } }) }; },
+  });
+  const call = (env) => emailLink({ request: new Request('https://steadfastcode.tech/api/admin/projects/p1/link/email', { method: 'POST' }), env, params: { id: 'p1' }, data: { email: 'daniel@steadfastcode.tech' } });
+  try {
+    const LINK_KEY = btoa(String.fromCharCode(...new Uint8Array(32)));
+    const env = { INTAKE: one(JSON.parse(projects[0].answers)), RESEND_API_KEY: 'k', LINK_KEY };
+    const r = await call(env);
+    assert.equal(r.status, 200);
+    assert.deepEqual(sent[0].to, ['Joshua@Example.com']);
+    assert.match(sent[0].text, /^Hi Joshua,/);
+    assert.match(sent[0].text, /https:\/\/steadfastcode\.tech\/client#[A-Za-z0-9_-]{40,}/);
+    assert.ok(env.INTAKE.writes.some((w) => /INSERT INTO client_links/.test(w)), 'a link is made when none can be reopened');
+    assert.ok(env.INTAKE.writes.some((w) => /project_events/.test(w)), 'the send is logged');
+    assert.equal((await call({ ...env, INTAKE: one({ businessName: 'No email' }) })).status, 400);
+    assert.equal((await call({ ...env, INTAKE: one(null) })).status, 404);
+    assert.equal((await call({ ...env, RESEND_API_KEY: '' })).status, 503);
+    assert.equal(sent.length, 1);
+  } finally { globalThis.fetch = real; }
+});
