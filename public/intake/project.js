@@ -747,6 +747,14 @@ export async function mountProject(o) {
     fab.addEventListener('click', () => setCpane(!cpaneOpen()));
     document.body.appendChild(fab);
     cpane.querySelector('#cpaneclose').addEventListener('click', () => setCpane(false));
+    // The card's top sits 16px under the header while the page is at the top, and 16px from the
+    // viewport once the header has scrolled away, so it lines up with the first card beside it.
+    const head = document.querySelector('.admin-head');
+    const dock = () => { cpane.style.setProperty('--cpane-top', `${Math.max(16, (head ? head.getBoundingClientRect().bottom : 0) + 16)}px`); };
+    dock();
+    addEventListener('scroll', dock, { passive: true });
+    addEventListener('resize', dock);
+    cpane.undock = () => { removeEventListener('scroll', dock); removeEventListener('resize', dock); };
     wireContract(cpane.querySelector('#cbody'));
     let was = false; try { was = sessionStorage.getItem('cpane') === '1'; } catch {}
     setCpane(was);
@@ -1043,7 +1051,7 @@ export async function mountProject(o) {
     stopped = true;
     clearInterval(pollTimer); clearInterval(heartbeat); clearInterval(tick);
     // The contract pane belongs to this project: gone with it (Daniel's page mounts the next one fresh).
-    if (cpane) { cpane.remove(); cpane = null; document.getElementById('cfab')?.remove(); document.body.classList.remove('cpane-open'); }
+    if (cpane) { cpane.undock?.(); cpane.remove(); cpane = null; document.getElementById('cfab')?.remove(); document.body.classList.remove('cpane-open'); }
   }
   const tick = setInterval(() => { const el = progress.querySelector('#elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
 

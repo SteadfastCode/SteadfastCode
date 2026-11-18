@@ -181,25 +181,34 @@
   /* The Contract pane on Daniel's project page (2026-11-17): a column on the right that's always there
      on a wide screen, and slides in over a Contract button, pushing the form left, on anything
      narrower. On a phone it takes the whole screen. */
-  .cpane { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; z-index: 9; display: flex; flex-direction: column; background: var(--card); border-left: 1px solid var(--line); box-shadow: -10px 0 30px -18px rgb(0 0 0 / .5); transform: translateX(100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
+  /* A card in a second column, not a drawer (Daniel, 2026-11-17): the same border and corners as the
+     other cards, inset from the edge, scrolling on its own. Its top docks under the header until the
+     page scrolls (project.js sets --cpane-top), so it reads as part of the page, not a panel over it. */
+  .cpane { --cpane-top: 68px; position: fixed; top: var(--cpane-top); right: 16px; bottom: 16px; width: 440px; z-index: 9; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px -18px rgb(0 0 0 / .5); transform: translateX(calc(100% + 16px)); visibility: hidden; transition: transform .2s ease, visibility .2s; }
   body.cpane-open .cpane { transform: none; visibility: visible; }
-  body.cpane-open { padding-right: 440px; }
-  body.cpane-open footer.bar { right: 440px; }
+  body.cpane-open { padding-right: 456px; }
+  body.cpane-open footer.bar { right: 456px; }
+  /* The header still runs the full width; only the cards move over to make the column. */
+  body.cpane-open .admin-head { margin-right: -456px; padding-right: 456px; }
   body.cpane-open .cfab { display: none; }
+  .cpane .drawer-head { padding: 14px 14px 8px; border-bottom: 0; }
+  .cpane .drawer-head h2 { font-size: 1.3rem; }
   .cfab { bottom: 70px; }
   .cfab.attention { box-shadow: 0 0 0 3px var(--warn), 0 6px 18px -6px rgb(0 0 0 / .45); }
   @media (min-width: 1240px) {
     .cpane { transform: none; visibility: visible; box-shadow: none; }
-    body { padding-right: 440px; }
-    footer.bar { right: 440px; }
+    body { padding-right: 456px; }
+    footer.bar { right: 456px; }
+    .admin-head { margin-right: -456px; padding-right: 456px; }
     .cfab, #cpaneclose, #opencontract { display: none; }
   }
   @media (max-width: 600px) {
-    .cpane { width: 100%; }
+    .cpane { width: auto; left: 16px; }
     body.cpane-open { padding-right: 0; }
     body.cpane-open footer.bar { display: none; }
   }
-  .cbody { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 40px; }
+  .cbody { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 40px; }
+  .cbody > .muted:first-child { margin-top: 0; }
   .csec { border-top: 1px solid var(--line); padding: 10px 0 12px; }
   .csec:first-of-type { border-top: 0; }
   .csec.off .clines, .cline.off span { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
