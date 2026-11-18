@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agreementFor, termsKey } from '../src/data/agreement.ts';
 import { checkSignature, sha256 } from '../server/agreement.js';
-import { websiteTiers, launchNote, domainNote } from '../src/data/site.ts';
+import { websiteTiers, launchNote, domainNote, contractCarry, contractLocalOnly } from '../src/data/site.ts';
 
 const base = { tier: 'starter', businessName: 'Joshua Lawn & Garden', contactName: 'Joshua Smith', email: 'j@example.com' };
 
@@ -29,10 +29,37 @@ test('the agreement carries the package, its full list, the price and the halves
   assert.match(a.text, /small “Built by Steadfast Code” link\. It’s yours to keep or remove; just ask\./);
 });
 
-test('higher packages spell out everything they include, not "Everything in ..."', () => {
+test('higher packages spell out everything they include, not "Everything in ...", with the lower page counts left to the heading', () => {
   const g = agreementFor({ ...base, tier: 'growth' });
   assert.doesNotMatch(g.text, /Everything in /);
-  for (const t of websiteTiers.slice(0, 3)) for (const line of t.includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x))) assert.ok(g.text.includes(line), line);
+  for (const t of websiteTiers.slice(0, 2)) for (const line of t.includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x))) assert.ok(g.text.includes(contractCarry[line] ?? line), line);
+  for (const line of websiteTiers[2].includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x))) assert.ok(g.text.includes(line), line);
+  assert.match(g.text, /The Growth package: up to 15 pages/);
+  assert.doesNotMatch(g.text, /• One long-scroll page|• Up to 6 pages/);
+  assert.match(g.text, /• A home page written and designed around what you sell/);
+  assert.match(g.text, /• Every page written to answer the question people actually search/);
+  // Every carried or local-only line is a real line of some package, so a reword there is caught here.
+  const all = websiteTiers.flatMap((t) => t.includes);
+  for (const line of [...Object.keys(contractCarry), ...Object.keys(contractLocalOnly)]) assert.ok(all.includes(line), `not a package line any more: ${line}`);
+});
+
+test('an online store’s contract drops the map, the Google Business Profile and local SEO; a local business keeps them', () => {
+  const store = agreementFor({ ...base, tier: 'store' });
+  assert.match(store.text, /The Online store package: up to 15 pages/);
+  assert.doesNotMatch(store.text, /Google Business Profile set up|service-area pages|click-to-call, map|• Up to 15 pages/);
+  assert.match(store.text, /• Contact form, click-to-call\n/);
+  assert.match(store.text, /• Reviews wired in, schema on every page/);
+  assert.match(store.text, /• A friendly editor so you can change text and photos yourself/);
+  assert.match(store.text, /Shopify or a headless store/);
+  const church = agreementFor({ ...base, tier: 'store', siteType: 'church' });
+  assert.match(church.text, /Google Business Profile set up or cleaned up/);
+  const local = agreementFor({ ...base, tier: 'business' });
+  assert.match(local.text, /Google Business Profile set up or cleaned up/);
+  assert.match(local.text, /click-to-call, map/);
+  // The kind is in the signature's key only when it changes the text, so older signatures keep their key.
+  assert.equal(termsKey({ ...base, tier: 'business' }), termsKey({ ...base, tier: 'business', siteType: 'local' }));
+  assert.notEqual(termsKey({ ...base, tier: 'business' }), termsKey({ ...base, tier: 'business', siteType: 'creative' }));
+  assert.equal(termsKey({ ...base, tier: 'business' }).split('|').length, 4);
 });
 
 test('the editor add-on adds its price on Starter and Business, and is ignored where it is included', () => {

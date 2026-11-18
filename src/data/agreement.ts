@@ -13,7 +13,8 @@
 // can start in the first meeting). "Daniel Ecker (Steadfast Code)" rather than "doing business as"
 // until the fictitious name is registered.
 
-import { business, money, websiteTiers, addOns, launchNote, domainNote, priceFor, type Pricing } from './site.ts';
+import { business, money, websiteTiers, addOns, launchNote, domainNote, priceFor, contractCarry, contractLocalOnly, type Pricing } from './site.ts';
+import { siteTypeFor, LOCAL_KINDS } from './intake.ts';
 
 export const AGREEMENT_VERSION = '2026-11-02f';
 
@@ -25,13 +26,19 @@ export type AgreementInput = {
   contactName?: string;
   email?: string;
   pricing?: Pricing;
+  // The kind of site (2026-11-17): a store or a portfolio isn't promised a map or a Google Business Profile.
+  siteType?: string;
 };
 
-/** What makes a signature stale: the package, the add-on, the price, the wording. */
+// A kind of site that people don't visit or call locally drops the local lines; it's part of the key
+// only then, so every contract signed before kinds existed keeps its key.
+const localKind = (a: AgreementInput) => (LOCAL_KINDS as readonly string[]).includes(siteTypeFor(a));
+
+/** What makes a signature stale: the package, the add-on, the price, the wording, a non-local kind of site. */
 export function termsKey(a: AgreementInput) {
   const tier = websiteTiers.find((t) => t.id === a.tier);
   const editor = !!a.editor && tier?.scope.editor === 'add-on';
-  return [AGREEMENT_VERSION, a.tier, editor ? 'editor' : '', tier ? priceFor(tier, editor, a.pricing).price : ''].join('|');
+  return [AGREEMENT_VERSION, a.tier, editor ? 'editor' : '', tier ? priceFor(tier, editor, a.pricing).price : '', localKind(a) ? '' : siteTypeFor(a)].filter((x, i) => i < 4 || x).join('|');
 }
 
 const editorAddOn = addOns.find((x) => x.id === 'editor')!;
@@ -56,9 +63,12 @@ export function agreementFor(a: AgreementInput, date = new Date()) {
   const from = 'from' in tier && tier.from;
   const client = [a.contactName, a.businessName].filter(Boolean).join(', for ') || 'the client';
   // Speed is a build target, not a deliverable: it's in "What I don't promise" below (Daniel, 2026-11-02).
-  const listed = (t: Tier) => t.includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x));
+  // Local-only lines (the map, the Google Business Profile) are left out or trimmed for any other kind of site.
+  const local = localKind(a);
+  const listed = (t: Tier): string[] => t.includes.filter((x) => !/^Everything in /.test(x) && !/well under a second/.test(x)).map((x) => (local || !(x in contractLocalOnly) ? x : contractLocalOnly[x])).filter((x): x is string => !!x);
   const included = listed(tier);
-  const earlier = websiteTiers.slice(0, websiteTiers.indexOf(tier)).flatMap(listed);
+  // A lower package's page-count lines read without the count: the heading above already gives this package's.
+  const earlier = websiteTiers.slice(0, websiteTiers.indexOf(tier)).flatMap(listed).map((x) => contractCarry[x] ?? x);
   const day = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
 
   const sections: { h: string; p: string[] }[] = [

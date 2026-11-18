@@ -132,6 +132,27 @@ export const websiteTiers = [
   },
 ] as const;
 
+// How a lower package's lines read in a higher package's contract (2026-11-17). The contract spells
+// out everything the package includes instead of "Everything in Starter", and three of those lines
+// carry a page count that the contract's heading already states for the bigger package ("One
+// long-scroll page" made no sense on an Online store contract; Daniel, on the Deliverance intake).
+// Keyed by the exact line, so a reworded line fails test/agreement.test.js instead of slipping
+// through unchanged.
+export const contractCarry: Record<string, string> = {
+  'One long-scroll page, written and designed around what you sell': 'A home page written and designed around what you sell',
+  'Up to 6 pages, each one written to answer the question people actually search': 'Every page written to answer the question people actually search',
+  'Up to 15 pages, plus a friendly editor so you can change text and photos yourself': 'A friendly editor so you can change text and photos yourself',
+};
+
+// Lines that only make sense for a business people visit or call locally. A contract for any other
+// kind of site (an online store, a portfolio) leaves them out rather than promise a map and a
+// Google Business Profile to a shop that ships worldwide. Keyed the same way.
+export const contractLocalOnly: Record<string, string | null> = {
+  'Contact form or booking link, click-to-call, map': 'Contact form, click-to-call',
+  'Google Business Profile set up or cleaned up': null,
+  'Local SEO foundation: service-area pages where they are honest, reviews wired in, schema on every page': 'Reviews wired in, schema on every page',
+};
+
 // One-time extras on a website build. Growth includes the editor; Starter and Business can add it.
 // Decided by Daniel 2026-10-29 ($500).
 export const addOns = [

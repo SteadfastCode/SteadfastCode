@@ -54,8 +54,9 @@ export const siteTypes = [
 
 export type SiteType = (typeof siteTypes)[number]['id'];
 
-// The kinds people visit or call locally: the address, hours and Google Business Profile questions.
-const LOCAL_KINDS = ['local', 'storefront', 'professional', 'church'];
+// The kinds people visit or call locally: the address, hours and Google Business Profile questions,
+// and the contract's map and local-SEO lines (agreement.ts).
+export const LOCAL_KINDS = ['local', 'storefront', 'professional', 'church'];
 
 export const intakeSections = [
   {
