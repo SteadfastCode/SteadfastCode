@@ -791,9 +791,12 @@ export async function mountProject(o) {
   function openEditor(btn) {
     const row = btn.closest('.cline, .csech');
     if (!row || row.querySelector('.cform')) return;
-    const { edit: key, text, edited, heading } = btn.dataset;
+    const { edit: key, text, edited, heading, lib } = btn.dataset;
     row.dataset.editing = '1';
-    row.insertAdjacentHTML('beforeend', `<form class="cform" data-editkey="${esc(key)}"${heading ? ' data-heading="1"' : ''}><textarea rows="${heading ? 1 : 3}" maxlength="${heading ? 80 : 600}" aria-label="Wording">${esc(text)}</textarea><div class="cformbtns"><button type="submit">Save</button><button type="button" data-cancel>Cancel</button>${edited ? '<button type="button" data-reset>Standard wording</button>' : ''}</div></form>`);
+    // A library line or section can be saved to this project alone, or to the library for every project
+    // that uses it (Daniel, 2026-11-17). A standard line's wording lives in the code, so it has one Save.
+    const saves = lib ? `<button type="submit" data-to="project">Save to project</button><button type="submit" data-to="library" data-lib="${esc(lib)}">Save to library</button>` : '<button type="submit">Save</button>';
+    row.insertAdjacentHTML('beforeend', `<form class="cform" data-editkey="${esc(key)}"${heading ? ' data-heading="1"' : ''}><textarea rows="${heading ? 1 : 3}" maxlength="${heading ? 80 : 600}" aria-label="Wording">${esc(text)}</textarea><div class="cformbtns">${saves}<button type="button" data-cancel>Cancel</button>${edited ? `<button type="button" data-reset>${lib ? 'Library wording' : 'Standard wording'}</button>` : ''}</div></form>`);
     const ta = row.querySelector('textarea');
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cKey = null; paintContract(); } if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.form.requestSubmit(); } });
@@ -837,6 +840,22 @@ export async function mountProject(o) {
         // Rewording: the same words as the standard line mean no edit at all.
         const text = form.querySelector('textarea').value.replace(/\s+/g, ' ').trim();
         const base = unbullet(form.closest('.cline, .csech').querySelector('[data-edit]').dataset.base);
+        if (e.submitter?.dataset.to === 'library') {
+          // Into the library: the row's own wording changes, and this project's edit of it is dropped so it shows.
+          if (!text) return;
+          const key = form.dataset.editkey, isSec = e.submitter.dataset.lib === 'section';
+          e.submitter.disabled = true;
+          try { await api(routes.library, { method: 'PATCH', body: JSON.stringify(isSec ? { sectionId: key, heading: text } : { lineId: key, text }) }); }
+          catch (err) { alert(err.message); e.submitter.disabled = false; return; }
+          delete c.edit[key];
+          delete form.closest('.cline, .csech').dataset.editing;
+          form.remove();
+          saveContract(c);
+          await flush();
+          cKey = null;
+          await refresh();
+          return;
+        }
         if (!text || text === base) delete c.edit[form.dataset.editkey]; else c.edit[form.dataset.editkey] = text;
         // The editor closes on Save whatever the server says back (a save that changes nothing redraws nothing).
         delete form.closest('.cline, .csech').dataset.editing;
@@ -875,13 +894,13 @@ export async function mountProject(o) {
     const lib = ag.library || { sections: [], lines: [] };
     const c = contract();
     const inContract = new Set(ag.catalog.flatMap((s) => s.p.map((l) => l.key)));
-    const pencil = (key, text, base, edited, heading) => `<button type="button" class="cedit" data-edit="${esc(key)}" data-text="${esc(unbullet(text))}" data-base="${esc(base ?? text)}"${edited ? ' data-edited="1"' : ''}${heading ? ' data-heading="1"' : ''} aria-label="Reword this ${heading ? 'heading' : 'line'}">✎</button>`;
+    const pencil = (key, text, base, edited, heading, lib) => `<button type="button" class="cedit" data-edit="${esc(key)}" data-text="${esc(unbullet(text))}" data-base="${esc(base ?? text)}"${edited ? ' data-edited="1"' : ''}${heading ? ' data-heading="1"' : ''}${lib ? ` data-lib="${lib}"` : ''} aria-label="Reword this ${heading ? 'heading' : 'line'}">✎</button>`;
     const chip = (l) => `<span class="chip"><button type="button" data-addline="${esc(l.id)}" data-sec="${esc(l.section_id)}" title="${esc(l.text)}">+ ${esc(trunc(l.text, 70))}</button><button type="button" class="forget" data-forget="${esc(l.id)}" data-kind="line" aria-label="Forget this line">×</button></span>`;
-    const line = (s, l) => `<div class="cline${l.on ? '' : ' off'}"><label class="check"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span class="ctext">${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}${l.edited ? ' <span class="muted">(reworded)</span>' : ''}</span></label>${pencil(l.key, l.text, l.base, l.edited)}</div>`;
+    const line = (s, l) => `<div class="cline${l.on ? '' : ' off'}"><label class="check"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span class="ctext">${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}${l.edited ? ' <span class="muted">(reworded)</span>' : ''}</span></label>${pencil(l.key, l.text, l.base, l.edited, false, l.added ? 'line' : '')}</div>`;
     const section = (s) => {
       const spare = lib.lines.filter((l) => l.section_id === s.key && !inContract.has(l.id));
       return `<div class="csec${s.on ? '' : ' off'}">
-        <div class="csech"><label class="check"><input type="checkbox" data-cs="${esc(s.key)}"${s.on ? ' checked' : ''}${s.locked ? ' disabled' : ''}> <b>${esc(s.h)}</b>${s.locked ? ' <span class="muted">(always)</span>' : ''}${s.edited ? ' <span class="muted">(reworded)</span>' : ''}</label>${pencil(s.key, s.h, s.base, s.edited, true)}${s.added ? `<button type="button" class="forget" data-forget="${esc(s.key)}" data-kind="section" aria-label="Forget this section">×</button>` : ''}</div>
+        <div class="csech"><label class="check"><input type="checkbox" data-cs="${esc(s.key)}"${s.on ? ' checked' : ''}${s.locked ? ' disabled' : ''}> <b>${esc(s.h)}</b>${s.locked ? ' <span class="muted">(always)</span>' : ''}${s.edited ? ' <span class="muted">(reworded)</span>' : ''}</label>${pencil(s.key, s.h, s.base, s.edited, true, s.added ? 'section' : '')}${s.added ? `<button type="button" class="forget" data-forget="${esc(s.key)}" data-kind="section" aria-label="Forget this section">×</button>` : ''}</div>
         <div class="clines">${s.p.map((l) => line(s, l)).join('')}</div>
         ${lib.missing ? '' : `<button type="button" class="cmore" data-more aria-expanded="false">+ Line</button><div class="cpanel" hidden>${spare.length ? `<div class="chips">${spare.map(chip).join('')}</div>` : ''}<form class="cadd" data-newline="${esc(s.key)}"><input type="text" placeholder="A new line for this section" maxlength="600" aria-label="New line for ${esc(s.h)}"><button type="submit">Add</button></form></div>`}
       </div>`;

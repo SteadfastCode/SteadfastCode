@@ -4,6 +4,7 @@
 // GET: { sections, lines }.
 // POST { heading }: a new section; POST { sectionId, text }: a new line in a section (an identical
 // line already there is returned, not duplicated). Either answers with the row.
+// PATCH { lineId, text } or { sectionId, heading }: rewords it for every project that uses it.
 // DELETE { sectionId } or { lineId }: forgets it (a built-in section never; a section goes with its
 // lines). A project that refers to a forgotten line simply loses that line.
 import { json } from './_middleware.js';
@@ -42,6 +43,32 @@ export async function onRequestPost({ request, env }) {
   const id = 'l-' + crypto.randomUUID().replace(/-/g, '').slice(0, 10);
   await env.INTAKE.prepare('INSERT INTO contract_lines (id, section_id, text, created_at) VALUES (?, ?, ?, ?)').bind(id, sectionId, text, now).run();
   return json({ line: { id, section_id: sectionId, text } }, 201);
+}
+
+// PATCH { lineId, text } or { sectionId, heading }: rewords it in the library, for every project
+// that uses it (a built-in section's heading lives in the code, so it isn't reworded here).
+export async function onRequestPatch({ request, env }) {
+  const body = await request.json().catch(() => ({}));
+  if (typeof body.lineId === 'string') {
+    const text = cleanLibraryText(body.text, 600);
+    if (!text) return json({ error: 'Write the line first.' }, 400);
+    const line = await env.INTAKE.prepare('SELECT id, section_id FROM contract_lines WHERE id = ?').bind(body.lineId).first();
+    if (!line) return json({ error: 'No such line.' }, 404);
+    const same = await env.INTAKE.prepare('SELECT id FROM contract_lines WHERE section_id = ? AND text = ? AND id != ?').bind(line.section_id, text, line.id).first();
+    if (same) return json({ error: 'The library already has that line in this section.' }, 409);
+    await env.INTAKE.prepare('UPDATE contract_lines SET text = ? WHERE id = ?').bind(text, line.id).run();
+    return json({ line: { id: line.id, section_id: line.section_id, text } });
+  }
+  if (typeof body.sectionId === 'string') {
+    const heading = cleanLibraryText(body.heading, 80);
+    if (!heading) return json({ error: 'Give the section a heading.' }, 400);
+    const s = await env.INTAKE.prepare('SELECT id, builtin FROM contract_sections WHERE id = ?').bind(body.sectionId).first();
+    if (!s) return json({ error: 'No such section.' }, 404);
+    if (s.builtin) return json({ error: 'A standard section’s heading can be reworded on the project, not in the library.' }, 400);
+    await env.INTAKE.prepare('UPDATE contract_sections SET heading = ? WHERE id = ?').bind(heading, s.id).run();
+    return json({ section: { id: s.id, heading } });
+  }
+  return json({ error: 'Say which line or section.' }, 400);
 }
 
 export async function onRequestDelete({ request, env }) {
