@@ -581,6 +581,7 @@ export async function mountProject(o) {
       ${a.mockUrl && !P.previewUrl ? `<p><a class="btn" href="${esc(a.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="muted">${admin ? 'The first build starts from it.' : 'Your new site starts from this mock-up. Say what to change under Look and feel.'}</span></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
+      ${admin ? `<p><button type="button" id="opencontract" aria-controls="cpane" aria-expanded="${cpaneOpen()}">${cpaneOpen() ? 'Hide the contract' : 'Show the contract'}</button></p>` : ''}
       ${admin ? `<p class="muted">Messages${P.unreadMessages ? `: <b>${P.unreadMessages} unread</b>` : ''} · <a href="/admin/inbox#p/${esc(P.id)}">Open in Inbox</a></p>` : ''}
       ${admin && P.previewUrl ? `<p class="muted">${P.care?.exists ? `Care plan: ${esc(P.care.planName)}, ${money(P.care.price)} a month · ${esc({ draft: 'draft', offered: 'offered, not signed', signed: 'signed, no card yet', active: 'active', past_due: 'payment past due', canceled: 'canceled' }[P.care.status] || P.care.status)}. ` : 'No care plan yet. '}<a href="/admin/care#p/${esc(P.id)}">Care plans</a></p>` : ''}
       ${updateLines()}`;
@@ -593,7 +594,7 @@ export async function mountProject(o) {
       try { await flush(); await api(routes.build, { method: 'POST', body: JSON.stringify({ full: true }) }); await refresh(); } catch (e) { alert(e.message); fr.disabled = false; }
     };
     const oc = root.querySelector('#opencontract');
-    if (oc) oc.onclick = () => { setCpane(true); cpane?.scrollTo(0, 0); };
+    if (oc) oc.onclick = () => { setCpane(!cpaneOpen()); };
     const so = root.querySelector('#signingopen');
     if (so) so.onchange = async () => { so.disabled = true; try { await api(routes.signing, { method: 'POST', body: JSON.stringify({ open: so.checked }) }); await refresh(); } catch (e) { alert(e.message); so.checked = !so.checked; } so.disabled = false; };
     const view = root.querySelector('[data-signed]');
@@ -718,7 +719,7 @@ export async function mountProject(o) {
     if (!admin) return '';
     if (ag.reason === 'no-package') return '<p class="muted">Contract: picks up the package once it’s set.</p>';
     const toggle = `<label class="check"><input type="checkbox" id="signingopen"${ag.signingOpen ? ' checked' : ''}> Let them sign now</label><span class="help">${ag.signingOpen ? 'Turn off to let them read it ahead of the meeting without signing.' : 'Review only: they can read it, and sign once you turn this on.'}</span>`;
-    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The contract changed since it was signed; the client will be asked to sign the updated one.' : 'Contract not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}${ag.current ? '<p><button type="button" id="opencontract">Open the contract</button></p>' : ''}`;
+    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The contract changed since it was signed; the client will be asked to sign the updated one.' : 'Contract not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}`;
   }
 
   // ---- the Contract pane (2026-11-17), Daniel's side: the whole contract as a column on the right
@@ -728,11 +729,14 @@ export async function mountProject(o) {
   let cpane = null;
   let cKey = null;
   const cpaneOpen = () => document.body.classList.contains('cpane-open');
-  function setCpane(open) {
+  // Shown or hidden at every width (Daniel, 2026-11-17): hidden, the form is the one centered column
+  // again. The Getting started card's button toggles it; on a wide screen it starts shown.
+  function setCpane(open, repaint = true) {
     document.body.classList.toggle('cpane-open', open);
-    try { sessionStorage.setItem('cpane', open ? '1' : ''); } catch {}
+    try { sessionStorage.setItem('cpane', open ? '1' : '0'); } catch {}
     document.getElementById('cfab')?.setAttribute('aria-expanded', String(open));
     if (open) { cKey = null; paintContract(); }
+    if (repaint && P) paint();
   }
   function ensureContractPane() {
     if (!admin || cpane) return;
@@ -763,8 +767,8 @@ export async function mountProject(o) {
     addEventListener('resize', dock);
     cpane.undock = () => { removeEventListener('scroll', dock); removeEventListener('resize', dock); };
     wireContract(cpane.querySelector('#cbody'));
-    let was = false; try { was = sessionStorage.getItem('cpane') === '1'; } catch {}
-    setCpane(was);
+    let was = null; try { was = sessionStorage.getItem('cpane'); } catch {}
+    setCpane(was === null || was === '' ? matchMedia('(min-width: 1240px)').matches : was === '1', false);
   }
   const contract = () => ({ off: [], add: {}, sections: [], ...(P.answers.contract || {}) });
   function saveContract(c) {
