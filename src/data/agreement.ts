@@ -84,7 +84,7 @@ export const standardLines: { id: string; section: string; text: string; locked?
   { id: 's-halves', section: 'price', text: 'Half ({half}) is due when you sign, to start. The other half ({rest}) is due at launch.' },
   { id: 's-deposit-1', section: 'deposit', text: 'Because I can start building your first version the same day we meet, the deposit isn’t refundable once the build has started.' },
   { id: 's-deposit-2', section: 'deposit', text: 'If you decide to stop before launch, you don’t owe the second half. The work done so far stays with me until it’s paid for; you can pay the second half at any time to get the site.' },
-  { id: 's-timing-1', section: 'timing', text: '{package} usually launches {days} from the start. {launchNote}' },
+  { id: 's-timing-1', section: 'timing', text: '{package} usually launches {launchTime} from the start. {launchNote}' },
   { id: 's-timing-2', section: 'timing', text: 'If I haven’t heard from you for 30 days after I’ve sent a preview, and I’ve checked in at least twice, I’ll consider the project delivered: the second half is due, and launching it later is still included whenever you’re ready.' },
   { id: 's-changes-1', section: 'changes', text: 'Changes are unlimited for 30 days from the day you first see your site, as long as they’re within the package: wording, photos, colors, layout, whatever it takes to make it yours. After that, changes come with a care plan or a quote.' },
   { id: 's-changes-2', section: 'changes', text: 'If something I built doesn’t work the way I said it would, I fix it free.' },
@@ -103,6 +103,9 @@ export const standardLines: { id: string; section: string; text: string; locked?
   { id: 's-fine-2', section: 'fine-print', text: 'This contract is governed by Pennsylvania law. It’s the whole contract for this website; anything we add later is in writing (an email is fine).' },
   { id: 's-fine-3', section: 'fine-print', locked: true, text: 'By typing your name and ticking the box below, you agree to sign electronically, and that your electronic signature counts the same as one on paper. You’ll get a copy by email.' },
 ];
+
+/** The placeholders a line may use, for the editor's hint; the values are built in contractCatalog(). */
+export const placeholderNames = ['client', 'package', 'pages', 'price', 'half', 'rest', 'launchTime', 'date', 'owner', 'company', 'city', 'state', 'priceLead', 'priceDetail', 'launchNote', 'domainNote'];
 
 /** `{name}` placeholders filled from the project's values; one with no value is left as written. */
 export function fill(text: string, values: Record<string, string>) {
@@ -153,10 +156,11 @@ function priceDetail(tier: Tier, editor: boolean, p: ReturnType<typeof priceFor>
  * line is a library row (so a rewording can be saved there too); `standard` that it came with the
  * contract; `added` that Daniel put it on this project.
  */
-export type CatalogLine = { key: string; text: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string; lib?: boolean; standard?: boolean; fixed?: string[] };
+export type CatalogLine = { key: string; text: string; raw?: string; base?: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; lib?: boolean; standard?: boolean; fixed?: string[] };
 
 /** The placeholders in a line's wording. */
-const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+const ALIASES: Record<string, string> = { days: 'launchTime' };
+const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => ALIASES[m[1]] ?? m[1]);
 /**
  * A standard line reworded in the library without a placeholder its seed had (Daniel wrote "2–6
  * weeks" over {days}, 2026-11-17): the fact no longer flows from site.ts, so the website and the
@@ -168,7 +172,7 @@ export function fixedPlaceholders(row: LibraryLine) {
   const has = new Set(placeholders(row.text));
   return placeholders(seed.text).filter((p) => !has.has(p));
 }
-export type CatalogSection = { key: string; h: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string; p: CatalogLine[] };
+export type CatalogSection = { key: string; h: string; raw?: string; base?: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; p: CatalogLine[] };
 
 const byPosition = <T extends { position?: number | null }>(a: T, b: T) => (a.position ?? 1e9) - (b.position ?? 1e9);
 
@@ -197,7 +201,7 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
     package: tier.name, pages: tier.pages === 1 ? 'one page' : `up to ${tier.pages} pages`, date: day,
     priceLead: from && !priced.custom ? 'The price for your store, as we agreed it, starts at' : 'The price is',
     price: money(price), priceDetail: priceDetail(tier, editor, priced), half: money(half), rest: money(price - half),
-    days: tier.days, launchNote, domainNote,
+    launchTime: tier.days, days: tier.days, launchNote, domainNote,
   };
   // The package's bullets, where the {packageLines} row sits.
   const bullets = [...[...earlier, ...included].map((x) => `• ${x}`), ...(editor ? [`• The content editor add-on: ${editorAddOn.what}`] : [])];
@@ -215,7 +219,9 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
   const off = new Set(c.off ?? []);
   const edit = c.edit ?? {};
   // A reworded line keeps its bullet when the standard one had it; a rewording may use the placeholders too.
-  const worded = (key: string, base: string) => { const e = edit[key] ? fill(edit[key], values) : ''; const text = !e ? base : base.startsWith('• ') && !e.startsWith('• ') ? `• ${e}` : e; return e ? { text, edited: true, base } : { text }; };
+  // `base` is the standard template, `raw` the wording as typed (the template, or Daniel's rewording,
+  // placeholders and all: what the editor shows), `text` the wording filled in for this project.
+  const worded = (key: string, base: string) => { const raw = edit[key]; const baseText = fill(base, values); const e = raw ? fill(raw, values) : ''; const text = !e ? baseText : baseText.startsWith('• ') && !e.startsWith('• ') ? `• ${e}` : e; return { text, raw: raw ?? base, base, ...(raw ? { edited: true } : {}) }; };
   const byId = new Map(library.lines.map((l) => [l.id, l]));
   // Library lines Daniel added to a section, by id; one the library no longer has is simply gone.
   const added = (sectionKey: string, asBullets: boolean): CatalogLine[] => (c.add?.[sectionKey] ?? []).map((id) => byId.get(id)).filter((l): l is LibraryLine => !!l && !l.standard && l.section_id === sectionKey).map((l) => ({ key: l.id, on: true, added: true, lib: true, ...worded(l.id, asBullets && !l.text.startsWith('• ') ? `• ${l.text}` : l.text) }));
@@ -232,7 +238,7 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
       }
       const locked = !!r.locked;
       const fixed = fixedPlaceholders(r);
-      lines.push({ key: r.id, locked, lib: true, standard: true, on: locked || !off.has(r.id), ...(fixed.length ? { fixed } : {}), ...worded(r.id, fill(r.text, values)) });
+      lines.push({ key: r.id, locked, lib: true, standard: true, on: locked || !off.has(r.id), ...(fixed.length ? { fixed } : {}), ...worded(r.id, r.text) });
     }
     // Daniel's lines go after the last bullet where there are bullets, else at the end of the section.
     const lastBullet = lines.map((l) => l.text.startsWith('• ')).lastIndexOf(true);
@@ -240,7 +246,7 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
     const p = lastBullet >= 0 ? [...lines.slice(0, lastBullet + 1), ...extra, ...lines.slice(lastBullet + 1)] : [...lines, ...extra];
     const h = worded(s.id, s.heading);
     const locked = s.id === 'who';
-    out.push({ key: s.id, h: h.text, ...(h.edited ? { edited: true, base: s.heading } : {}), locked, on: locked || !off.has(s.id), added: !s.builtin, p });
+    out.push({ key: s.id, h: h.text, raw: h.raw, base: s.heading, ...(h.edited ? { edited: true } : {}), locked, on: locked || !off.has(s.id), added: !s.builtin, p });
   }
   return out;
 }

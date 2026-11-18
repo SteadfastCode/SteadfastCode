@@ -6,6 +6,7 @@
 // the sitemap, and excluded from the public-page tests (test/admin.test.js covers it instead).
 import { intakeSections, defaultPages, siteTypes } from '../data/intake';
 import { websiteTiers, addOns, standardDiscounts } from '../data/site';
+import { placeholderNames } from '../data/agreement';
 
 // One version per build, on the shared script's and stylesheet's addresses, so a deploy is never
 // served from a browser's cached copy of the old ones.
@@ -19,6 +20,8 @@ const config = {
   tiers: websiteTiers.map((t) => ({ id: t.id, name: t.name, price: t.price, from: !!('from' in t && t.from), scope: t.scope, who: t.who })),
   editorPrice: addOns.find((a) => a.id === 'editor')?.price ?? null,
   discounts: [...standardDiscounts],
+  // The contract card's editor lists these (src/data/agreement.ts fills them per project).
+  placeholders: placeholderNames,
 };
 ---
 <!doctype html>

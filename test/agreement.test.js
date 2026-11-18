@@ -124,7 +124,8 @@ test('Daniel can switch sections and lines off, add library lines and sections, 
   const who = plain[0].p[0];
   const reworded = { ...store, contract: { edit: { [who.key]: 'This contract is between us two.', build: 'What gets built', 'l-shop': 'Shopify Markets for every region', [plain[1].p[1].key]: 'A home page built around the game', 'x-regions': 'Regions' }, add: { build: ['l-shop'] }, sections: ['x-regions'] } };
   const rc = contractCatalog(reworded, library);
-  assert.deepEqual([rc[0].p[0].text, rc[0].p[0].edited, rc[0].p[0].base, rc[0].p[0].locked, rc[0].p[0].on], ['This contract is between us two.', true, who.text, true, true]);
+  assert.deepEqual([rc[0].p[0].text, rc[0].p[0].edited, rc[0].p[0].base, rc[0].p[0].raw, rc[0].p[0].locked, rc[0].p[0].on], ['This contract is between us two.', true, standardLines[0].text, 'This contract is between us two.', true, true], 'base is the template, raw the rewording as typed');
+  assert.equal(who.raw, standardLines[0].text, 'the editor gets the template, placeholders and all');
   assert.deepEqual([rc[1].h, rc[1].edited, rc[1].base], ['What gets built', true, 'What I’ll build']);
   assert.equal(rc[1].p[1].text, '• A home page built around the game');
   assert.equal(rc[1].p.find((l) => l.key === 'l-shop').text, '• Shopify Markets for every region');
@@ -156,7 +157,10 @@ test('the standard lines come from the library once it has them, placeholders fi
   // A standard line reworded in the library without its placeholders is flagged: the website no longer feeds it.
   const drifted = { ...library, lines: library.lines.map((l) => (l.id === 's-timing-1' ? { ...l, text: 'Online stores should launch 2–6 weeks from the start. {launchNote}' } : l)) };
   const timing = contractCatalog({ ...base, tier: 'store' }, drifted).find((s) => s.key === 'timing').p[0];
-  assert.deepEqual(timing.fixed, ['package', 'days']);
+  assert.deepEqual(timing.fixed, ['package', 'launchTime']);
+  const aliased = { ...library, lines: library.lines.map((l) => (l.id === 's-timing-1' ? { ...l, text: '{package} usually launches {days} from the start. {launchNote}' } : l)) };
+  assert.equal(contractCatalog({ ...base, tier: 'store' }, aliased).find((s) => s.key === 'timing').p[0].fixed, undefined, '{days}, the older name, still counts');
+  assert.match(agreementFor({ ...base, tier: 'store' }, aliased).text, /launches 2–6 weeks from the start/);
   assert.equal(contractCatalog({ ...base, tier: 'store' }, library).find((s) => s.key === 'timing').p[0].fixed, undefined);
 });
 
