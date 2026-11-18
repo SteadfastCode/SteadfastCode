@@ -195,11 +195,18 @@
   .cpane .drawer-head h2 { font-size: 1.3rem; }
   .cfab { bottom: 70px; }
   .cfab.attention { box-shadow: 0 0 0 3px var(--warn), 0 6px 18px -6px rgb(0 0 0 / .45); }
+  /* Wide screens (Daniel, 2026-11-17): two equal columns, the form on the left and the contract card on
+     the right, in one grid (project.js wraps <main> and the card in .cols). The card is sticky and
+     scrolls on its own; the header and the build bar widen to match. */
   @media (min-width: 1240px) {
-    .cpane { transform: none; visibility: visible; box-shadow: none; }
-    body { padding-right: 456px; }
-    footer.bar { right: 456px; }
-    .admin-head { margin-right: -456px; padding-right: 456px; }
+    body.has-cpane .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; max-width: 1400px; margin: 0 auto; padding: 0 16px; }
+    body.has-cpane .cols > main { max-width: none; margin: 0; padding-left: 0; padding-right: 0; }
+    /* Its height leaves the build bar (about 66px) in view underneath. */
+    body.has-cpane .cpane { position: sticky; top: 16px; right: auto; bottom: auto; width: auto; height: calc(100vh - 16px - 82px); margin-top: 16px; transform: none; visibility: visible; box-shadow: none; }
+    body.has-cpane, body.has-cpane.cpane-open { padding-right: 0; }
+    body.has-cpane footer.bar { right: 0; }
+    body.has-cpane .admin-head { margin-right: 0; padding-right: 0; }
+    body.has-cpane .admin-head .in, body.has-cpane #progress .in, body.has-cpane footer.bar .in { max-width: 1400px; }
     .cfab, #cpaneclose, #opencontract { display: none; }
   }
   @media (max-width: 600px) {

@@ -741,7 +741,14 @@ export async function mountProject(o) {
     cpane.className = 'cpane';
     cpane.setAttribute('aria-label', 'Contract');
     cpane.innerHTML = `<div class="drawer-head"><h2>Contract</h2><button type="button" id="cpaneclose" aria-label="Close the contract">×</button></div><div class="cbody" id="cbody"><p class="muted">Loading…</p></div>`;
-    document.body.appendChild(cpane);
+    // The form and the card share a two-column grid on a wide screen (form.css .cols); the wrapper
+    // is undone in stop(), so the next project starts from the page as it was.
+    const cols = document.createElement('div');
+    cols.className = 'cols';
+    root.parentNode.insertBefore(cols, root);
+    cols.appendChild(root);
+    cols.appendChild(cpane);
+    document.body.classList.add('has-cpane');
     const fab = document.createElement('button');
     fab.type = 'button'; fab.id = 'cfab'; fab.className = 'msgfab cfab'; fab.textContent = 'Contract'; fab.setAttribute('aria-controls', 'cpane');
     fab.addEventListener('click', () => setCpane(!cpaneOpen()));
@@ -1051,7 +1058,13 @@ export async function mountProject(o) {
     stopped = true;
     clearInterval(pollTimer); clearInterval(heartbeat); clearInterval(tick);
     // The contract pane belongs to this project: gone with it (Daniel's page mounts the next one fresh).
-    if (cpane) { cpane.undock?.(); cpane.remove(); cpane = null; document.getElementById('cfab')?.remove(); document.body.classList.remove('cpane-open'); }
+    if (cpane) {
+      cpane.undock?.(); cpane.remove(); cpane = null;
+      const cols = root.parentNode;
+      if (cols?.classList.contains('cols')) { cols.parentNode.insertBefore(root, cols); cols.remove(); }
+      document.getElementById('cfab')?.remove();
+      document.body.classList.remove('cpane-open', 'has-cpane');
+    }
   }
   const tick = setInterval(() => { const el = progress.querySelector('#elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
 
