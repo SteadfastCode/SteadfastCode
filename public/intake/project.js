@@ -761,7 +761,12 @@ export async function mountProject(o) {
     // The card's top sits 16px under the header while the page is at the top, and 16px from the
     // viewport once the header has scrolled away, so it lines up with the first card beside it.
     const head = document.querySelector('.admin-head');
-    const dock = () => { cpane.style.setProperty('--cpane-top', `${Math.max(16, (head ? head.getBoundingClientRect().bottom : 0) + 16)}px`); };
+    // …and its bottom clears the build bar, however tall the bar is at this width (none on a phone).
+    const dock = () => {
+      cpane.style.setProperty('--cpane-top', `${Math.max(16, (head ? head.getBoundingClientRect().bottom : 0) + 16)}px`);
+      const barH = bar.hidden || getComputedStyle(bar).display === 'none' ? 0 : bar.getBoundingClientRect().height;
+      cpane.style.setProperty('--cpane-bottom', `${Math.round(barH) + 16}px`);
+    };
     dock();
     addEventListener('scroll', dock, { passive: true });
     addEventListener('resize', dock);
