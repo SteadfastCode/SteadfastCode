@@ -793,9 +793,12 @@ export async function mountProject(o) {
     if (!row || row.querySelector('.cform')) return;
     const { edit: key, text, edited, heading, lib } = btn.dataset;
     row.dataset.editing = '1';
-    // A library line or section can be saved to this project alone, or to the library for every project
-    // that uses it (Daniel, 2026-11-17). A standard line's wording lives in the code, so it has one Save.
-    const saves = lib ? `<button type="submit" data-to="project">Save to project</button><button type="submit" data-to="library" data-lib="${esc(lib)}">Save to library</button>` : '<button type="submit">Save</button>';
+    // Every line can be saved to this project alone, or to the library too (Daniel, 2026-11-17): a
+    // library line or section is reworded there, for every project that uses it; a standard line's
+    // wording lives in the code, so its rewording becomes a new library line under this section, a
+    // chip on every later contract. A standard section's heading has one Save: nothing to reuse.
+    const to = lib || (heading ? '' : 'new');
+    const saves = to ? `<button type="submit" data-to="project">Save to project</button><button type="submit" data-to="library" data-lib="${esc(to)}">Save to library</button>` : '<button type="submit">Save</button>';
     row.insertAdjacentHTML('beforeend', `<form class="cform" data-editkey="${esc(key)}"${heading ? ' data-heading="1"' : ''}><textarea rows="${heading ? 1 : 3}" maxlength="${heading ? 80 : 600}" aria-label="Wording">${esc(text)}</textarea><div class="cformbtns">${saves}<button type="button" data-cancel>Cancel</button>${edited ? `<button type="button" data-reset>${lib ? 'Library wording' : 'Standard wording'}</button>` : ''}</div></form>`);
     const ta = row.querySelector('textarea');
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -841,13 +844,21 @@ export async function mountProject(o) {
         const text = form.querySelector('textarea').value.replace(/\s+/g, ' ').trim();
         const base = unbullet(form.closest('.cline, .csech').querySelector('[data-edit]').dataset.base);
         if (e.submitter?.dataset.to === 'library') {
-          // Into the library: the row's own wording changes, and this project's edit of it is dropped so it shows.
           if (!text) return;
-          const key = form.dataset.editkey, isSec = e.submitter.dataset.lib === 'section';
+          const key = form.dataset.editkey, lib = e.submitter.dataset.lib;
           e.submitter.disabled = true;
-          try { await api(routes.library, { method: 'PATCH', body: JSON.stringify(isSec ? { sectionId: key, heading: text } : { lineId: key, text }) }); }
-          catch (err) { alert(err.message); e.submitter.disabled = false; return; }
-          delete c.edit[key];
+          try {
+            if (lib === 'new') {
+              // A standard line: the rewording stays on this project, and the library gets it as a new line here.
+              const sec = form.closest('.cline').querySelector('[data-sec]').dataset.sec;
+              await api(routes.library, { method: 'POST', body: JSON.stringify({ sectionId: sec, text }) });
+              if (text === base) delete c.edit[key]; else c.edit[key] = text;
+            } else {
+              // A library line or section: its own wording changes, and this project's edit of it is dropped so it shows.
+              await api(routes.library, { method: 'PATCH', body: JSON.stringify(lib === 'section' ? { sectionId: key, heading: text } : { lineId: key, text }) });
+              delete c.edit[key];
+            }
+          } catch (err) { alert(err.message); e.submitter.disabled = false; return; }
           delete form.closest('.cline, .csech').dataset.editing;
           form.remove();
           saveContract(c);
