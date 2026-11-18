@@ -1,8 +1,9 @@
 // The admin intake's rules, kept pure so they can be tested without D1: which answers are kept,
-// what a lead fills in, what the package covers, and when there is enough to start a first version.
-// The questions themselves live in src/data/intake.ts; the packages in src/data/site.ts.
+// what a lead fills in, which questions a project asks, what the package covers, and when there is
+// enough to start a first version. The questions themselves live in src/data/intake.ts; the
+// packages in src/data/site.ts.
 
-import { intakeSections, defaultPages } from '../src/data/intake.ts';
+import { intakeSections, siteTypes, siteTypeFor, defaultPagesFor } from '../src/data/intake.ts';
 import { websiteTiers, addOns, priceFor } from '../src/data/site.ts';
 
 const MAX_TEXT = 2000;
@@ -10,6 +11,10 @@ const MAX_LIST = 60;
 
 export const fields = Object.fromEntries(intakeSections.flatMap((s) => s.fields.map((f) => [f.id, { ...f, section: s.id, sectionTiers: s.tiers ?? null }])));
 export const tierById = (id) => websiteTiers.find((t) => t.id === id) ?? null;
+export { siteTypes, siteTypeFor };
+
+/** The questions no project can drop: the package, the name, the pages, Daniel's own controls. */
+export const alwaysAsked = Object.values(fields).filter((f) => f.ask === 'always').map((f) => f.id);
 
 /** One answer, cleaned to its field's type; undefined means "not a valid value, ignore it". */
 export function cleanValue(field, value) {
@@ -24,10 +29,19 @@ export function cleanValue(field, value) {
       if (!items) return undefined;
       return items.map((v) => String(v).trim().slice(0, 300)).filter(Boolean).slice(0, MAX_LIST);
     }
+    // The questions asked on this project: known field ids only; the ones always asked go without saying.
+    case 'fieldset': return Array.isArray(value) ? [...new Set(value.filter((id) => fields[id] && fields[id].ask !== 'always'))] : undefined;
     case 'hours': return cleanHours(value);
     case 'pricing': return cleanPricing(value);
     // The address the site's form relay sends to: an address, or blank, never anything else.
     case 'email': { if (typeof value !== 'string') return undefined; const v = value.trim().slice(0, 200); return v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : undefined; }
+    // A link: blank, or an http(s) address (a bare host gets https://), never anything that isn't one.
+    case 'url': {
+      if (typeof value !== 'string') return undefined;
+      let v = value.trim().slice(0, 300);
+      if (v && !/^https?:\/\//i.test(v)) v = `https://${v}`;
+      return v === '' || /^https?:\/\/[^\s/]+\.[^\s/]+/i.test(v) ? v : undefined;
+    }
     default: return typeof value === 'string' ? value.trim().slice(0, MAX_TEXT) : undefined;
   }
 }
@@ -93,18 +107,19 @@ export function mergeAnswers(saved, patch) {
     const field = fields[k];
     const clean = field ? cleanValue(field, v) : undefined;
     if (clean === undefined) { dropped.push(k); continue; }
-    if (clean === null || clean === '' || (Array.isArray(clean) && clean.length === 0)) delete next[k];
+    if (clean === null || clean === '' || (Array.isArray(clean) && clean.length === 0 && k !== 'asked')) delete next[k];
     else next[k] = clean;
   }
-  // A package picked with no pages yet gets that package's usual pages as a starting point.
-  if (patch?.tier && next.tier && !next.pages) next.pages = [...defaultPages[next.tier]];
+  // A package or kind of site picked with no pages yet gets that kind's usual pages as a starting point.
+  if ((patch?.tier || patch?.siteType) && next.tier && !next.pages) next.pages = defaultPagesFor(next.tier, siteTypeFor(next));
   return { answers: next, dropped };
 }
 
 /**
  * The answers a lead already gives us: a contact-form submission's own fields, and for a lead
  * from the outreach board (2026-11-03) its town, why Daniel reached out, where it came from and
- * the last few touches, so the meeting starts with the story in front of him.
+ * the last few touches, so the meeting starts with the story in front of him. A mock-up built for
+ * the lead (2026-11-09) comes along too, so the project starts from it rather than from nothing.
  */
 export function answersFromLead(lead, touches = []) {
   const outreach = lead.kind && lead.kind !== 'inbound';
@@ -122,27 +137,58 @@ export function answersFromLead(lead, touches = []) {
     businessName: lead.business ?? '',
     currentSite: lead.site ?? '',
     serviceArea: lead.town ?? '',
+    mockUrl: lead.mock_url ?? '',
     notes,
   });
   return answers;
 }
 
-/** Fields that apply to this package (a section or field with `tiers` shows only for those). */
-export function applies(field, tier) {
+/** The questions a kind of site asks by default, within a package: the preset the menu starts from. */
+export function presetFor(answers) {
+  const kind = siteTypeFor(answers);
+  return Object.values(fields).filter((f) => {
+    const ask = f.ask ?? 'all';
+    return ask === 'always' || ask === 'all' || (Array.isArray(ask) && ask.includes(kind));
+  }).map((f) => f.id);
+}
+
+/**
+ * The questions this project asks: Daniel's own list when he has made one (plus the ones always
+ * asked), else the preset for its kind of site. `preset` says which it is, so the menu can offer
+ * a way back.
+ */
+export function askedFor(answers) {
+  const own = Array.isArray(answers.asked);
+  const ids = own ? [...new Set([...alwaysAsked, ...answers.asked])] : presetFor(answers);
+  return { asked: ids, preset: !own };
+}
+
+/**
+ * Whether a question is on this project's form: its package (a section or field with `tiers`
+ * shows only for those), its `when` answer, and the asked list. A tier id alone still works, for
+ * the package check by itself.
+ */
+export function applies(field, answers) {
+  const a = typeof answers === 'string' ? { tier: answers } : answers ?? {};
+  const tier = a.tier;
   if (field.sectionTiers && !field.sectionTiers.includes(tier)) return false;
   if (field.tiers && !field.tiers.includes(tier)) return false;
-  return true;
+  if (typeof answers === 'string') return true;
+  if (field.when && !a[field.when]) return false;
+  return askedFor(a).asked.includes(field.id);
 }
 
 /**
  * Where the answers stand against the package: what's still missing before a first version can
  * start, and every place the answers go past what the package covers. Scope notes never block a
- * build — Daniel decides — they make sure nothing past the package slips in unpriced.
+ * build — Daniel decides — they make sure nothing past the package slips in unpriced. Only a
+ * question that is asked can be missing: a store never waits on "Where they work".
  */
 export function check(answers) {
   const tier = tierById(answers.tier);
+  const { asked, preset } = askedFor(answers);
   const missing = Object.values(fields)
-    .filter((f) => f.required && (!tier || applies(f, tier.id)))
+    .filter((f) => f.required && asked.includes(f.id) && (!tier || applies(f, tier.id)))
     .filter((f) => answers[f.id] == null || answers[f.id] === '' || (Array.isArray(answers[f.id]) && answers[f.id].length === 0))
     .map((f) => ({ id: f.id, label: f.label }));
   const scope = [];
@@ -164,7 +210,7 @@ export function check(answers) {
   for (const item of answers.outOfScope ?? []) scope.push(`Extra, quoted separately: ${item}`);
   const priced = tier ? priceFor(tier, !!answers.editor && tier.scope.editor === 'add-on', answers.pricing) : null;
   const price = priced ? priced.price : null;
-  return { ready: missing.length === 0, missing, scope, price, pricing: priced, tier: tier ? { id: tier.id, name: tier.name, price: tier.price, from: !!tier.from, scope: tier.scope } : null };
+  return { ready: missing.length === 0, missing, scope, price, pricing: priced, tier: tier ? { id: tier.id, name: tier.name, price: tier.price, from: !!tier.from, scope: tier.scope } : null, siteType: siteTypeFor(answers), asked, preset };
 }
 
 /** A repo-safe slug from the business name: `client-<slug>` is the repo the build makes. */

@@ -192,7 +192,7 @@ async function viewLead(id) {
     <p><a class="back" href="#">← Leads</a></p>
     <h1>${esc(l.business || l.contact || 'Untitled')}${kindBadge(l)}</h1>
     ${meta ? `<p class="muted">${meta}</p>` : ''}
-    ${l.mockUrl ? `<p class="mockrow"><a class="btn" href="${esc(l.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="help">Built before any project, on a private preview. If they say yes: push its folder (<code>~/repos/clients/client-&lt;slug&gt;</code> on the box) to GitHub under that name, start the project with the same business name, and the first build carries it on instead of starting over.</span></p>` : ''}
+    ${l.mockUrl ? `<p class="mockrow"><a class="btn" href="${esc(l.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="help">Built before any project, on a private preview. If they say yes: push its folder (<code>~/repos/clients/client-&lt;slug&gt;</code> on the box) to GitHub under that name and start the project from this lead with the same business name. The link comes along: both sides get an Open the mock-up button, the intake asks what to change from it, and the first build carries it on instead of starting over.</span></p>` : ''}
     ${l.why ? `<p>${esc(l.why)}</p>` : ''}
     ${l.message ? `<p><span class="muted">They wrote:</span> ${esc(l.message)}</p>` : ''}
     ${l.source ? `<p class="muted">Source: ${esc(l.source)}</p>` : ''}

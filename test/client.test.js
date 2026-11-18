@@ -11,7 +11,7 @@ import { onRequest as clientMiddleware } from '../functions/api/client/_middlewa
 
 test('a client can change everything except the package and what sets the scope', () => {
   const owned = intakeSections.flatMap((s) => s.fields).filter((f) => f.owner === 'daniel').map((f) => f.id).sort();
-  assert.deepEqual(owned, ['editor', 'outOfScope', 'pricing', 'tier']);
+  assert.deepEqual(owned, ['asked', 'editor', 'mockUrl', 'outOfScope', 'pricing', 'siteType', 'tier']);
   assert.ok(clientEditable.has('pages'), 'pages are the client\'s to edit; the scope note shows both sides when they go past the package');
   for (const id of owned) assert.equal(clientEditable.has(id), false, id);
   assert.ok(clientEditable.has('notes'), 'notes are shared, not private');
@@ -24,10 +24,18 @@ test('a client can change everything except the package and what sets the scope'
 
 test('every question, help line and dropdown answer has client wording, or wording that already works for them', () => {
   // The question and the help line under it, as the client reads them (Daniel caught the help lines, 2026-11-01).
-  for (const sec of intakeSections) assert.doesNotMatch(sec.you || sec.title, /\b(they|their|them|theirs)\b/i, `section "${sec.you || sec.title}" talks about the client in the third person`);
+  const third = /\b(they|their|them|theirs)\b/i;
+  for (const sec of intakeSections) {
+    assert.doesNotMatch(sec.you || sec.title, third, `section "${sec.you || sec.title}" talks about the client in the third person`);
+    for (const [k, w] of Object.entries(sec.wording || {})) assert.doesNotMatch(w.you || w.title, third, `section ${sec.id} for ${k}: "${w.you || w.title}"`);
+  }
   for (const f of intakeSections.flatMap((s) => s.fields).filter((f) => !f.clientHidden)) {
     const answers = (f.options || []).map((o) => o.you || o.value || o);
-    for (const text of [f.you || f.label, f.youHelp || f.help, ...answers].filter(Boolean)) assert.doesNotMatch(text, /\b(they|their|them|theirs)\b/i, `${f.id}: "${text}" talks about the client in the third person`);
+    for (const text of [f.you || f.label, f.youHelp || f.help, ...answers].filter(Boolean)) assert.doesNotMatch(text, third, `${f.id}: "${text}" talks about the client in the third person`);
+    // The same for each kind of site's wording, read the way the form reads it (public/intake/project.js).
+    for (const [k, w] of Object.entries(f.wording || {})) {
+      for (const text of [w.you || w.label || f.you || f.label, w.youHelp ?? w.help ?? f.youHelp ?? f.help].filter(Boolean)) assert.doesNotMatch(text, third, `${f.id} for ${k}: "${text}" talks about the client in the third person`);
+    }
   }
 });
 

@@ -66,9 +66,18 @@ export async function mountProject(o) {
     return j;
   };
   const tierOf = (id) => C.tiers.find((t) => t.id === id);
-  const applies = (x) => (!x.clientHidden || admin) && (!x.tiers || (P.answers.tier && x.tiers.includes(P.answers.tier)));
+  // Which questions are on this form (2026-11-17): the server says (check.asked), from the kind of
+  // site's preset or Daniel's own list. A section shows when any of its questions does.
+  const kind = () => P.check?.siteType || 'local';
+  const asked = () => P.check?.asked || [];
+  const tierOk = (x) => !x.tiers || (P.answers.tier && x.tiers.includes(P.answers.tier));
+  const applies = (x) => (!x.clientHidden || admin) && tierOk(x) && (x.fields ? true : !x.menu && (!x.when || !!P.answers[x.when]) && asked().includes(x.id));
   const canEdit = (f) => admin || (P.editable || []).includes(f.id);
-  const label = (f) => (!admin && f.you) || f.label;
+  // How a question reads: its wording for this kind of site when it has one, in the client's words on their side.
+  const words = (x) => x.wording?.[kind()] || {};
+  const label = (f) => { const w = words(f); return admin ? w.label || f.label : w.you || w.label || f.you || f.label; };
+  const helpOf = (f) => { const w = words(f); return admin ? w.help ?? f.help : w.youHelp ?? w.help ?? f.youHelp ?? f.help; };
+  const secTitle = (s) => { const w = words(s); return admin ? w.title || s.title : w.you || w.title || s.you || s.title; };
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
   // The client's page is tabs (2026-11-04). Before signing: the contract, and planning for a head
@@ -106,7 +115,7 @@ export async function mountProject(o) {
     const v = P.answers[f.id];
     const editable = canEdit(f);
     const dis = editable ? '' : ' disabled';
-    const help = [(!admin && f.youHelp) || f.help, editable ? null : 'Daniel sets this'].filter(Boolean).map((h) => `<span class="help">${esc(h)}</span>`).join('');
+    const help = [helpOf(f), editable ? null : 'Daniel sets this'].filter(Boolean).map((h) => `<span class="help">${esc(h)}</span>`).join('');
     const id = 'f-' + f.id;
     const who = `<span class="who" data-who="${f.id}" hidden></span>`;
     const req = f.required ? ' *' : '';
@@ -228,6 +237,7 @@ export async function mountProject(o) {
     // A redraw makes fresh, empty cards: everything that skips repainting when nothing changed starts over.
     docsLoaded = false;
     careKey = null;
+    qKey = null;
     const notesField = C.sections.flatMap((x) => x.fields).find((f) => f.id === 'notes');
     if (admin) bar.hidden = false; // the client's bar shows only with a build or preview (paintBar)
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
@@ -238,6 +248,7 @@ export async function mountProject(o) {
       <h1 id="title"></h1>
       ${show.intro ? `<p class="muted">${launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
+      ${admin ? `<details class="card qmenu" id="qmenu"${qOpen ? ' open' : ''}><summary><h2>Questions</h2><span class="muted" id="qcount"></span></summary><div id="qbody"></div></details>` : ''}
       ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
       ${show.messages && !wide() ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${MSG_INTRO}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol>${composerHtml(true)}</section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
@@ -245,10 +256,11 @@ export async function mountProject(o) {
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
       ${show.link ? '<section class="card" id="linkcard"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
-      ${show.fields ? C.sections.filter(applies).map((s) => { const fs = s.fields.filter(fieldShown(show.fields)); return fs.length ? `<section class="card"><h2>${esc((!admin && s.you) || s.title)}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; }).join('') : ''}
+      ${show.fields ? C.sections.filter(applies).map((s) => { const fs = s.fields.filter(fieldShown(show.fields)); return fs.length ? `<section class="card"><h2>${esc(secTitle(s))}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; }).join('') : ''}
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
+    wireQuestionsMenu();
     if (!wide()) wireMessages();
     root.querySelectorAll('[data-f]').forEach((el) => {
       if (el.dataset.kind === 'hours') wireHours(el);
@@ -305,6 +317,49 @@ export async function mountProject(o) {
     out.textContent = !pr ? 'Pick a package first.' : pr.custom ? `${money(pr.price)}, a price you set (list ${money(pr.base)}).` : pr.pct ? `${money(pr.price)}: ${pr.pct}% off ${money(pr.base)}, ${money(pr.base - pr.price)} less.` : `${money(pr.price)}, the list price.`;
   }
   const priceNote = (pr) => (!pr || pr.price === pr.base ? '' : ` <span class="muted">(${pr.custom ? 'special price' : `${pr.pct}% off`}, list ${money(pr.base)})</span>`);
+
+  // ---- the Questions menu (2026-11-17), Daniel's side: the kind of site, then every question this
+  // package can ask with a checkbox. Picking a kind starts from its preset; a checkbox makes the list
+  // Daniel's own, and "Back to the preset" hands it back. The ones always asked are locked on.
+  let qOpen = false;
+  let qKey = null;
+  const askable = (f) => !f.menu && f.ask !== 'always' && tierOk(f);
+  function wireQuestionsMenu() {
+    const menu = root.querySelector('#qmenu');
+    if (!menu) return;
+    menu.addEventListener('toggle', () => { qOpen = menu.open; });
+    menu.addEventListener('click', (e) => {
+      const k = e.target.closest('[data-kind]');
+      if (k) { queue('siteType', k.dataset.kind, false); queue('asked', null, true); }
+      if (e.target.closest('#qreset')) queue('asked', null, true);
+    });
+    menu.addEventListener('change', (e) => {
+      const q = e.target.closest('[data-q]');
+      if (!q) return;
+      const on = new Set(asked().filter((id) => { const f = C.sections.flatMap((s) => s.fields).find((x) => x.id === id); return f && f.ask !== 'always'; }));
+      if (q.checked) on.add(q.dataset.q); else on.delete(q.dataset.q);
+      queue('asked', [...on], true);
+    });
+  }
+  function paintQuestionsMenu() {
+    const body = root.querySelector('#qbody');
+    if (!body) return;
+    const c = P.check;
+    const kindName = (C.siteTypes || []).find((t) => t.id === c.siteType)?.name || c.siteType;
+    const secs = C.sections.filter(tierOk).map((s) => ({ s, fs: s.fields.filter(askable) })).filter((x) => x.fs.length);
+    const all = secs.flatMap((x) => x.fs);
+    const on = all.filter((f) => c.asked.includes(f.id));
+    root.querySelector('#qcount').textContent = `${on.length} of ${all.length} · ${kindName}${c.preset ? '' : ' · your own list'}`;
+    const key = JSON.stringify([c.siteType, c.asked, c.preset, P.answers.tier, !!P.answers.mockUrl]);
+    if (key === qKey) return;
+    qKey = key;
+    body.innerHTML = `
+      <p class="muted">What the client is asked. The kind of site picks a preset; tick or untick anything on top of it. The client only sees what's ticked here.</p>
+      <div class="kinds">${(C.siteTypes || []).map((t) => `<button type="button" data-kind="${t.id}" aria-pressed="${t.id === c.siteType}"><b>${esc(t.name)}</b><span>${esc(t.who)}</span></button>`).join('')}</div>
+      <p class="qpreset muted">${c.preset ? `Following the ${esc(kindName)} preset.` : `Your own list, started from the ${esc(kindName)} preset.`} ${c.preset ? '' : '<button type="button" id="qreset">Back to the preset</button>'}</p>
+      ${secs.map(({ s, fs }) => `<div class="qsec"><h3>${esc(s.title)} <span class="muted">${fs.filter((f) => c.asked.includes(f.id)).length} of ${fs.length}</span></h3><div class="qlist">${fs.map((f) => `<label class="check"><input type="checkbox" data-q="${f.id}"${c.asked.includes(f.id) ? ' checked' : ''}> ${esc(words(f).label || f.label)}${f.when ? ` <span class="muted">(with a ${f.when === 'mockUrl' ? 'mock-up' : f.when})</span>` : ''}</label>`).join('')}</div></div>`).join('')}
+      <p class="help">Always asked, so not listed: the package, the name and contact, the email, the pages, and your own notes.</p>`;
+  }
 
   // ---- the care plan on the client's portal (2026-11-03): read and sign, add a card, then billing ----
   let careKey = null;
@@ -508,6 +563,7 @@ export async function mountProject(o) {
 
   function paint() {
     paintPricing();
+    if (admin) paintQuestionsMenu();
     ensureDrawer();
     paintQuestions();
     paintMessages();
@@ -522,6 +578,7 @@ export async function mountProject(o) {
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}${priceNote(c.pricing)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(liveUrl() || P.previewUrl)}" target="_blank" rel="noopener">${liveUrl() ? 'Open your site' : 'Open the preview'}</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
+      ${a.mockUrl && !P.previewUrl ? `<p><a class="btn" href="${esc(a.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="muted">${admin ? 'The first build starts from it.' : 'Your new site starts from this mock-up. Say what to change under Look and feel.'}</span></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
       ${admin ? `<p class="muted">Messages${P.unreadMessages ? `: <b>${P.unreadMessages} unread</b>` : ''} · <a href="/admin/inbox#p/${esc(P.id)}">Open in Inbox</a></p>` : ''}

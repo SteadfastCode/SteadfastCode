@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { mergeAnswers, answersFromLead, check, slugFor, fields } from '../server/intake.js';
-import { intakeSections } from '../src/data/intake.ts';
+import { mergeAnswers, answersFromLead, check, slugFor, fields, presetFor, askedFor, applies, alwaysAsked } from '../server/intake.js';
+import { intakeSections, siteTypes, defaultPagesFor } from '../src/data/intake.ts';
 import { websiteTiers } from '../src/data/site.ts';
 import { onRequest as adminMiddleware } from '../functions/api/admin/_middleware.js';
 
@@ -21,12 +21,83 @@ test('the admin page is noindex, out of the sitemap, and loads nothing from a th
   const config = JSON.parse(html.match(/<script type="application\/json" id="intake-config">([\s\S]*?)<\/script>/)[1]);
   assert.deepEqual(config.tiers.map((t) => t.id), websiteTiers.map((t) => t.id));
   assert.equal(config.sections.length, intakeSections.length);
+  assert.deepEqual(config.siteTypes.map((t) => t.id), siteTypes.map((t) => t.id));
 });
 
-test('field ids are unique and every choice has options', () => {
+test('field ids are unique, every choice has options, and every ask list and when names something real', () => {
   const ids = intakeSections.flatMap((s) => s.fields.map((f) => f.id));
   assert.equal(new Set(ids).size, ids.length);
-  for (const f of Object.values(fields)) if (f.type === 'choice') assert.ok(f.options.length > 1, f.id);
+  const kinds = siteTypes.map((t) => t.id);
+  for (const f of Object.values(fields)) {
+    if (f.type === 'choice') assert.ok(f.options.length > 1, f.id);
+    if (Array.isArray(f.ask)) for (const k of f.ask) assert.ok(kinds.includes(k), `${f.id} asks for unknown kind ${k}`);
+    else if (f.ask) assert.ok(['always', 'all', 'off'].includes(f.ask), `${f.id}: ask ${f.ask}`);
+    if (f.when) assert.ok(fields[f.when], `${f.id} waits on unknown field ${f.when}`);
+    for (const k of Object.keys(f.wording || {})) assert.ok(kinds.includes(k), `${f.id} has wording for unknown kind ${k}`);
+  }
+});
+
+test('each kind of site asks its own questions: a store never asks where they work, a church asks its service times', () => {
+  const local = presetFor({ tier: 'business' });
+  const store = presetFor({ tier: 'store' });
+  const church = presetFor({ tier: 'business', siteType: 'church' });
+  for (const id of alwaysAsked) for (const p of [local, store, church]) assert.ok(p.includes(id), `${id} is always asked`);
+  assert.ok(local.includes('serviceArea') && local.includes('hours') && local.includes('gbp'));
+  assert.ok(!store.includes('serviceArea') && !store.includes('hours') && !store.includes('gbp') && !store.includes('mainAction'), 'local-only questions stay off a store');
+  assert.ok(store.includes('regions') && store.includes('fulfillment') && store.includes('migrate'));
+  assert.ok(church.includes('serviceTimes') && church.includes('givingLink') && !church.includes('bookingLink'));
+  assert.ok(!local.includes('serviceTimes'));
+  // The Online store package is a store unless Daniel says otherwise; everything else starts local.
+  assert.equal(check({ tier: 'store' }).siteType, 'store');
+  assert.equal(check({ tier: 'growth' }).siteType, 'local');
+  assert.equal(check({ tier: 'store', siteType: 'church' }).siteType, 'church');
+  // The store section itself is still the package's: a church on the Business package has no store questions.
+  assert.equal(applies(fields.regions, { tier: 'business', siteType: 'store' }), false);
+  assert.equal(applies(fields.regions, { tier: 'store' }), true);
+  // What to change from the mock-up only shows with a mock-up.
+  assert.equal(applies(fields.mockChanges, { tier: 'business' }), false);
+  assert.equal(applies(fields.mockChanges, { tier: 'business', mockUrl: 'https://stdfst-x.pages.dev' }), true);
+});
+
+test('Daniel’s own question list replaces the preset, keeps what is always asked, and clears back to it', () => {
+  let { answers, dropped } = mergeAnswers({ tier: 'business' }, { asked: ['hours', 'serviceTimes', 'tier', 'nope'] });
+  assert.deepEqual(dropped, []);
+  assert.deepEqual(answers.asked, ['hours', 'serviceTimes'], 'always-asked and unknown ids are not stored');
+  let got = askedFor(answers);
+  assert.equal(got.preset, false);
+  assert.ok(got.asked.includes('serviceTimes') && got.asked.includes('hours') && got.asked.includes('businessName') && !got.asked.includes('serviceArea'));
+  // An empty list is a real choice (only the always-asked questions), not "no list".
+  ({ answers } = mergeAnswers(answers, { asked: [] }));
+  assert.deepEqual(answers.asked, []);
+  assert.equal(askedFor(answers).preset, false);
+  ({ answers } = mergeAnswers(answers, { asked: null }));
+  assert.equal(answers.asked, undefined);
+  assert.equal(askedFor(answers).preset, true);
+  assert.deepEqual(mergeAnswers({}, { siteType: 'bakery' }).dropped, ['siteType']);
+  // A question switched off is never missing: a store with no service area is ready to build.
+  const store = { tier: 'store', businessName: 'Lowen Games', contactName: 'Andrew', email: 'a@example.com', services: ['Deliverance'], pages: ['Home', 'Shop'] };
+  assert.equal(check(store).ready, true);
+  assert.deepEqual(check({ ...store, siteType: 'local' }).missing.map((m) => m.id), ['serviceArea']);
+  assert.deepEqual(check({ ...store, siteType: 'local', asked: [] }).missing, []);
+});
+
+test('a mock-up link is kept as a link, and comes along from the lead', () => {
+  assert.equal(mergeAnswers({}, { mockUrl: 'stdfst-deliverance.pages.dev' }).answers.mockUrl, 'https://stdfst-deliverance.pages.dev');
+  assert.deepEqual(mergeAnswers({}, { mockUrl: 'not a link' }).dropped, ['mockUrl']);
+  assert.equal(mergeAnswers({ mockUrl: 'https://x.pages.dev' }, { mockUrl: '' }).answers.mockUrl, undefined);
+  const a = answersFromLead({ name: 'Andrew', email: 'a@example.com', business: 'Lowen Games', plan: 'store', mock_url: 'https://stdfst-deliverance.pages.dev', message: 'hi' });
+  assert.equal(a.mockUrl, 'https://stdfst-deliverance.pages.dev');
+  assert.equal(a.tier, 'store');
+  assert.deepEqual(a.pages, ['Home', 'Shop', 'About', 'Contact', 'Blog']);
+});
+
+test('the usual pages follow the kind of site', () => {
+  assert.deepEqual(defaultPagesFor('starter', 'church'), ['Home']);
+  assert.deepEqual(defaultPagesFor('business', 'church'), ['Home', 'About', 'Visit', 'Ministries', 'Contact']);
+  assert.deepEqual(defaultPagesFor('growth', 'church'), ['Home', 'About', 'Visit', 'Ministries', 'Contact', 'Sermons', 'Events']);
+  assert.deepEqual(defaultPagesFor('growth', 'creative'), ['Home', 'Portfolio', 'About', 'Contact', 'Blog']);
+  assert.deepEqual(mergeAnswers({}, { tier: 'business' }).answers.pages, ['Home', 'Services', 'About', 'Contact']);
+  assert.deepEqual(mergeAnswers({ tier: 'business' }, { siteType: 'creative' }).answers.pages, ['Home', 'Portfolio', 'About', 'Contact']);
 });
 
 test('answers are cleaned to their type, unknown keys are dropped, and blanks clear a field', () => {
