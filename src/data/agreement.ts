@@ -29,8 +29,12 @@ import { siteTypeFor, LOCAL_KINDS } from './intake.ts';
 export const AGREEMENT_VERSION = '2026-11-02f';
 
 type Tier = (typeof websiteTiers)[number];
-/** Daniel's edits to one project's contract: keys switched off, library lines added per section (by id), library sections added (by id). */
-export type Contract = { off?: string[]; add?: Record<string, string[]>; sections?: string[] };
+/**
+ * Daniel's edits to one project's contract: keys switched off, library lines added per section (by
+ * id), library sections added (by id), and reworded lines and headings (`edit`, by key: a line's or
+ * section's key, a library line's or section's id). Any line can be reworded, the locked ones too.
+ */
+export type Contract = { off?: string[]; add?: Record<string, string[]>; sections?: string[]; edit?: Record<string, string> };
 /** The contract library as the server reads it: every section and line Daniel can draw on. */
 export type Library = { sections: { id: string; heading: string; builtin?: number | boolean; position?: number }[]; lines: { id: string; section_id: string; text: string }[] };
 export const emptyLibrary: Library = { sections: [], lines: [] };
@@ -59,8 +63,9 @@ export function contractKey(c?: Contract | null) {
   const off = [...new Set(c.off ?? [])].sort();
   const add = Object.fromEntries(Object.entries(c.add ?? {}).filter(([, v]) => v?.length).sort(([a], [b]) => (a < b ? -1 : 1)));
   const sections = c.sections ?? [];
-  if (!off.length && !Object.keys(add).length && !sections.length) return '';
-  return 'c' + lineKey(JSON.stringify({ off, add, sections }));
+  const edit = Object.fromEntries(Object.entries(c.edit ?? {}).filter(([, v]) => v).sort(([a], [b]) => (a < b ? -1 : 1)));
+  if (!off.length && !Object.keys(add).length && !sections.length && !Object.keys(edit).length) return '';
+  return 'c' + lineKey(JSON.stringify({ off, add, sections, ...(Object.keys(edit).length ? { edit } : {}) }));
 }
 
 // A kind of site that people don't visit or call locally drops the local lines; it's part of the key
@@ -84,8 +89,9 @@ function priceDetail(tier: Tier, editor: boolean, p: ReturnType<typeof priceFor>
   return editor ? ` (${listParts(tier, editor)})` : '';
 }
 
-export type CatalogLine = { key: string; text: string; on: boolean; locked?: boolean; added?: boolean };
-export type CatalogSection = { key: string; h: string; on: boolean; locked?: boolean; added?: boolean; p: CatalogLine[] };
+/** `base` is the standard wording when the line or heading has been reworded (`edited`). */
+export type CatalogLine = { key: string; text: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string };
+export type CatalogSection = { key: string; h: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string; p: CatalogLine[] };
 
 type Draft = { key: string; h: string; locked?: boolean; p: (string | { text: string; locked: true })[] };
 
@@ -203,25 +209,31 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
 
   const c = a.contract ?? {};
   const off = new Set(c.off ?? []);
+  const edit = c.edit ?? {};
+  // A reworded line keeps its bullet when the standard one had it.
+  const worded = (key: string, base: string) => { const e = edit[key]; const text = !e ? base : base.startsWith('• ') && !e.startsWith('• ') ? `• ${e}` : e; return e ? { text, edited: true, base } : { text }; };
   const byId = new Map(library.lines.map((l) => [l.id, l]));
   // Library lines Daniel added to a section, by id; one the library no longer has is simply gone.
-  const added = (sectionKey: string, bullets: boolean): CatalogLine[] => (c.add?.[sectionKey] ?? []).map((id) => byId.get(id)).filter((l): l is Library['lines'][number] => !!l && l.section_id === sectionKey).map((l) => ({ key: l.id, text: bullets && !l.text.startsWith('• ') ? `• ${l.text}` : l.text, on: true, added: true }));
+  const added = (sectionKey: string, bullets: boolean): CatalogLine[] => (c.add?.[sectionKey] ?? []).map((id) => byId.get(id)).filter((l): l is Library['lines'][number] => !!l && l.section_id === sectionKey).map((l) => ({ key: l.id, on: true, added: true, ...worded(l.id, bullets && !l.text.startsWith('• ') ? `• ${l.text}` : l.text) }));
   const sections: CatalogSection[] = drafts.map((d) => {
     const lines: CatalogLine[] = d.p.map((x) => {
       const text = typeof x === 'string' ? x : x.text;
       const locked = typeof x !== 'string';
       const key = `${d.key}.${lineKey(text)}`;
-      return { key, text, locked, on: locked || !off.has(key) };
+      return { key, locked, on: locked || !off.has(key), ...worded(key, text) };
     });
     // Daniel's lines go after the last bullet where there are bullets, else at the end of the section.
     const lastBullet = lines.map((l) => l.text.startsWith('• ')).lastIndexOf(true);
     const extra = added(d.key, lastBullet >= 0);
     const p = lastBullet >= 0 ? [...lines.slice(0, lastBullet + 1), ...extra, ...lines.slice(lastBullet + 1)] : [...lines, ...extra];
-    return { key: d.key, h: d.h, locked: !!d.locked, on: !!d.locked || !off.has(d.key), p };
+    const h = worded(d.key, d.h);
+    return { key: d.key, h: h.text, ...(h.edited ? { edited: true, base: d.h } : {}), locked: !!d.locked, on: !!d.locked || !off.has(d.key), p };
   });
   for (const id of c.sections ?? []) {
     const s = library.sections.find((x) => x.id === id && !x.builtin);
-    if (s) sections.push({ key: s.id, h: s.heading, on: !off.has(s.id), added: true, p: added(s.id, false) });
+    if (!s) continue;
+    const h = worded(s.id, s.heading);
+    sections.push({ key: s.id, h: h.text, ...(h.edited ? { edited: true, base: s.heading } : {}), on: !off.has(s.id), added: true, p: added(s.id, false) });
   }
   return sections;
 }

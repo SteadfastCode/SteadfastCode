@@ -778,13 +778,26 @@ export async function mountProject(o) {
     let was = null; try { was = sessionStorage.getItem('cpane'); } catch {}
     setCpane(was === null || was === '' ? matchMedia('(min-width: 1240px)').matches : was === '1', false);
   }
-  const contract = () => ({ off: [], add: {}, sections: [], ...(P.answers.contract || {}) });
+  const contract = () => ({ off: [], add: {}, sections: [], edit: {}, ...(P.answers.contract || {}) });
   function saveContract(c) {
-    const next = { off: [...new Set(c.off)], add: Object.fromEntries(Object.entries(c.add).filter(([, v]) => v.length)), sections: c.sections };
-    const empty = !next.off.length && !Object.keys(next.add).length && !next.sections.length;
+    const next = { off: [...new Set(c.off)], add: Object.fromEntries(Object.entries(c.add).filter(([, v]) => v.length)), sections: c.sections, edit: Object.fromEntries(Object.entries(c.edit).filter(([, v]) => v)) };
+    const empty = !next.off.length && !Object.keys(next.add).length && !next.sections.length && !Object.keys(next.edit).length;
     queue('contract', empty ? null : next, true);
   }
   const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+  const unbullet = (s) => s.replace(/^• /, '');
+  // Rewording a line or heading (2026-11-17): the ✎ beside it swaps the text for a small editor; Save
+  // keeps the new wording on this project (the standard wording stays a click away), Esc cancels.
+  function openEditor(btn) {
+    const row = btn.closest('.cline, .csech');
+    if (!row || row.querySelector('.cform')) return;
+    const { edit: key, text, edited, heading } = btn.dataset;
+    row.dataset.editing = '1';
+    row.insertAdjacentHTML('beforeend', `<form class="cform" data-editkey="${esc(key)}"${heading ? ' data-heading="1"' : ''}><textarea rows="${heading ? 1 : 3}" maxlength="${heading ? 80 : 600}" aria-label="Wording">${esc(text)}</textarea><div class="cformbtns"><button type="submit">Save</button><button type="button" data-cancel>Cancel</button>${edited ? '<button type="button" data-reset>Standard wording</button>' : ''}</div></form>`);
+    const ta = row.querySelector('textarea');
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Escape') { cKey = null; paintContract(); } if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.form.requestSubmit(); } });
+  }
   function wireContract(body) {
     body.addEventListener('change', (e) => {
       const t = e.target, c = contract();
@@ -803,7 +816,12 @@ export async function mountProject(o) {
     });
     body.addEventListener('click', async (e) => {
       const add = e.target.closest('[data-addline]'), sec = e.target.closest('[data-addsec]'), forget = e.target.closest('[data-forget]');
+      const more = e.target.closest('[data-more]'), edit = e.target.closest('[data-edit]'), cancel = e.target.closest('[data-cancel]'), reset = e.target.closest('[data-reset]');
       const c = contract();
+      if (more) { const panel = more.nextElementSibling; panel.hidden = !panel.hidden; more.setAttribute('aria-expanded', String(!panel.hidden)); if (!panel.hidden) panel.querySelector('input')?.focus(); }
+      if (edit) openEditor(edit);
+      if (cancel) { cKey = null; paintContract(); }
+      if (reset) { delete c.edit[reset.closest('form').dataset.editkey]; saveContract(c); }
       if (add) { c.add[add.dataset.sec] = [...(c.add[add.dataset.sec] || []), add.dataset.addline]; saveContract(c); }
       if (sec) { c.sections = [...c.sections, sec.dataset.addsec]; saveContract(c); }
       if (forget) {
@@ -814,7 +832,19 @@ export async function mountProject(o) {
     });
     body.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const form = e.target, input = form.querySelector('input'), text = input.value.trim(), c = contract();
+      const form = e.target, c = contract();
+      if (form.dataset.editkey) {
+        // Rewording: the same words as the standard line mean no edit at all.
+        const text = form.querySelector('textarea').value.replace(/\s+/g, ' ').trim();
+        const base = unbullet(form.closest('.cline, .csech').querySelector('[data-edit]').dataset.base);
+        if (!text || text === base) delete c.edit[form.dataset.editkey]; else c.edit[form.dataset.editkey] = text;
+        // The editor closes on Save whatever the server says back (a save that changes nothing redraws nothing).
+        delete form.closest('.cline, .csech').dataset.editing;
+        form.remove();
+        saveContract(c);
+        return;
+      }
+      const input = form.querySelector('input'), text = input.value.trim();
       if (!text) return;
       form.querySelector('button').disabled = true;
       try {
@@ -845,24 +875,23 @@ export async function mountProject(o) {
     const lib = ag.library || { sections: [], lines: [] };
     const c = contract();
     const inContract = new Set(ag.catalog.flatMap((s) => s.p.map((l) => l.key)));
+    const pencil = (key, text, base, edited, heading) => `<button type="button" class="cedit" data-edit="${esc(key)}" data-text="${esc(unbullet(text))}" data-base="${esc(base ?? text)}"${edited ? ' data-edited="1"' : ''}${heading ? ' data-heading="1"' : ''} aria-label="Reword this ${heading ? 'heading' : 'line'}">✎</button>`;
     const chip = (l) => `<span class="chip"><button type="button" data-addline="${esc(l.id)}" data-sec="${esc(l.section_id)}" title="${esc(l.text)}">+ ${esc(trunc(l.text, 70))}</button><button type="button" class="forget" data-forget="${esc(l.id)}" data-kind="line" aria-label="Forget this line">×</button></span>`;
+    const line = (s, l) => `<div class="cline${l.on ? '' : ' off'}"><label class="check"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span class="ctext">${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}${l.edited ? ' <span class="muted">(reworded)</span>' : ''}</span></label>${pencil(l.key, l.text, l.base, l.edited)}</div>`;
     const section = (s) => {
-      const added = s.added;
       const spare = lib.lines.filter((l) => l.section_id === s.key && !inContract.has(l.id));
       return `<div class="csec${s.on ? '' : ' off'}">
-        <label class="check csech"><input type="checkbox" data-cs="${esc(s.key)}"${s.on ? ' checked' : ''}${s.locked ? ' disabled' : ''}> <b>${esc(s.h)}</b>${s.locked ? ' <span class="muted">(always)</span>' : ''}${added ? ` <button type="button" class="forget" data-forget="${esc(s.key)}" data-kind="section" aria-label="Forget this section">×</button>` : ''}</label>
-        <div class="clines">${s.p.map((l) => `<label class="check cline${l.on ? '' : ' off'}"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span>${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}</span></label>`).join('')}</div>
-        ${spare.length ? `<div class="chips">${spare.map(chip).join('')}</div>` : ''}
-        ${lib.missing ? '' : `<form class="cadd" data-newline="${esc(s.key)}"><input type="text" placeholder="A new line for this section" maxlength="600" aria-label="New line for ${esc(s.h)}"><button type="submit">Add</button></form>`}
+        <div class="csech"><label class="check"><input type="checkbox" data-cs="${esc(s.key)}"${s.on ? ' checked' : ''}${s.locked ? ' disabled' : ''}> <b>${esc(s.h)}</b>${s.locked ? ' <span class="muted">(always)</span>' : ''}${s.edited ? ' <span class="muted">(reworded)</span>' : ''}</label>${pencil(s.key, s.h, s.base, s.edited, true)}${s.added ? `<button type="button" class="forget" data-forget="${esc(s.key)}" data-kind="section" aria-label="Forget this section">×</button>` : ''}</div>
+        <div class="clines">${s.p.map((l) => line(s, l)).join('')}</div>
+        ${lib.missing ? '' : `<button type="button" class="cmore" data-more aria-expanded="false">+ Line</button><div class="cpanel" hidden>${spare.length ? `<div class="chips">${spare.map(chip).join('')}</div>` : ''}<form class="cadd" data-newline="${esc(s.key)}"><input type="text" placeholder="A new line for this section" maxlength="600" aria-label="New line for ${esc(s.h)}"><button type="submit">Add</button></form></div>`}
       </div>`;
     };
     const spareSections = lib.sections.filter((s) => !s.builtin && !c.sections.includes(s.id));
     body.innerHTML = `
-      <p class="muted">${ag.signed?.valid ? `Signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleDateString())}. A change here asks them to sign again.` : ag.reason === 'changed' ? 'Changed since it was signed: the client is asked to sign this version.' : 'Not signed yet. Untick what doesn’t apply, add what does; the client sees the result on their link.'}</p>
+      <p class="muted">${ag.signed?.valid ? `Signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleDateString())}. A change here asks them to sign again.` : ag.reason === 'changed' ? 'Changed since it was signed: the client is asked to sign this version.' : 'Not signed yet. Untick what doesn’t apply, reword or add what does; the client sees the result on their link.'}</p>
       ${lib.missing ? '<p class="error">The contract library isn’t switched on yet (migration 0016), so lines can’t be added here.</p>' : ''}
       ${ag.catalog.map(section).join('')}
-      ${spareSections.length ? `<div class="csec"><b>Sections from the library</b><div class="chips">${spareSections.map((s) => `<span class="chip"><button type="button" data-addsec="${esc(s.id)}">+ ${esc(s.heading)}</button><button type="button" class="forget" data-forget="${esc(s.id)}" data-kind="section" aria-label="Forget this section">×</button></span>`).join('')}</div></div>` : ''}
-      ${lib.missing ? '' : '<form class="cadd" id="newsec"><input type="text" placeholder="A new section’s heading" maxlength="80" aria-label="New section heading"><button type="submit">Add section</button></form>'}
+      ${lib.missing ? '' : `<div class="csec"><button type="button" class="cmore" data-more aria-expanded="false">+ Section</button><div class="cpanel" hidden>${spareSections.length ? `<div class="chips">${spareSections.map((s) => `<span class="chip"><button type="button" data-addsec="${esc(s.id)}">+ ${esc(s.heading)}</button><button type="button" class="forget" data-forget="${esc(s.id)}" data-kind="section" aria-label="Forget this section">×</button></span>`).join('')}</div>` : ''}<form class="cadd" id="newsec"><input type="text" placeholder="A new section’s heading" maxlength="80" aria-label="New section heading"><button type="submit">Add section</button></form></div></div>`}
       <details class="cpreview"><summary>Read it as they will</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>`;
   }
 

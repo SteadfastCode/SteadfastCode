@@ -223,16 +223,29 @@
   .cbody > .muted:first-child { margin-top: 0; }
   .csec { border-top: 1px solid var(--line); padding: 10px 0 12px; }
   .csec:first-of-type { border-top: 0; }
-  .csec.off .clines, .cline.off span { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
-  .csech { margin: 0 0 6px; font-weight: 600; }
+  .csec.off .clines .ctext, .cline.off .ctext { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+  .csech { display: flex; align-items: flex-start; gap: 4px; margin: 0 0 6px; flex-wrap: wrap; }
+  .csech label.check { flex: 1; margin: 0; font-weight: 600; }
   .clines { display: grid; gap: 4px; }
-  label.cline { font-weight: 400; font-size: .92rem; align-items: flex-start; margin: 0; }
+  .cline { display: flex; align-items: flex-start; gap: 4px; flex-wrap: wrap; }
+  .cline label.check { flex: 1; font-weight: 400; font-size: .92rem; align-items: flex-start; margin: 0; }
   .cline input { flex: none; margin-top: 2px; }
+  /* The ✎ beside each line and heading: quiet until pointed at, so the list reads as the contract. */
+  .cedit { border: 0; background: none; padding: 2px 6px; color: var(--muted); opacity: .55; font-size: .9rem; line-height: 1.4; }
+  .cedit:hover, .cedit:focus-visible, .cline:hover .cedit, .csech:hover .cedit { opacity: 1; color: var(--accent); background: none; }
+  .cform { flex-basis: 100%; margin: 4px 0 2px 30px; }
+  .cform textarea { width: 100%; min-height: 0; font-size: .92rem; padding: 8px 10px; }
+  .cformbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .cformbtns button { font-size: .85rem; padding: 6px 10px; }
+  /* "+ Line" and "+ Section": a quiet link; the chips and the box only show once it's pressed. */
+  .cmore { border: 0; background: none; padding: 4px 0; margin-top: 4px; color: var(--accent); font-size: .85rem; font-weight: 600; }
+  .cmore:hover, .cmore:focus-visible { background: none; text-decoration: underline; }
+  .cpanel { margin-top: 4px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chip { display: inline-flex; }
   .chip button { font-size: .82rem; padding: 4px 10px; border-radius: 999px 0 0 999px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip .forget { border-radius: 0 999px 999px 0; border-left: 0; padding: 4px 8px; }
-  .csech .forget { font-size: .85rem; padding: 2px 8px; margin-left: 6px; }
+  .csech .forget { font-size: .85rem; padding: 2px 8px; }
   .forget:hover { color: var(--bad); border-color: var(--bad); }
   .cadd { display: flex; gap: 6px; margin-top: 8px; }
   .cadd input { flex: 1; min-width: 0; padding: 8px 10px; font-size: .92rem; }

@@ -115,6 +115,17 @@ test('Daniel can switch sections and lines off, add library lines and sections, 
   assert.match(a.text, /REGIONS AND INVENTORY\nStock is tracked per fulfillment location/);
   assert.match(a.text, /• Shopify Markets set up/);
   assert.match(a.text, /sign electronically/);
+  // Any line or heading can be reworded, the locked ones too; a bullet keeps its bullet, and the standard wording is remembered.
+  const who = plain[0].p[0];
+  const reworded = { ...store, contract: { edit: { [who.key]: 'This contract is between us two.', build: 'What gets built', 'l-shop': 'Shopify Markets for every region', [plain[1].p[1].key]: 'A home page built around the game', 'x-regions': 'Regions' }, add: { build: ['l-shop'] }, sections: ['x-regions'] } };
+  const rc = contractCatalog(reworded, library);
+  assert.deepEqual([rc[0].p[0].text, rc[0].p[0].edited, rc[0].p[0].base, rc[0].p[0].locked, rc[0].p[0].on], ['This contract is between us two.', true, who.text, true, true]);
+  assert.deepEqual([rc[1].h, rc[1].edited, rc[1].base], ['What gets built', true, 'What I’ll build']);
+  assert.equal(rc[1].p[1].text, '• A home page built around the game');
+  assert.equal(rc[1].p.find((l) => l.key === 'l-shop').text, '• Shopify Markets for every region');
+  assert.equal(rc.at(-1).h, 'Regions');
+  assert.match(agreementFor(reworded, library).text, /WHAT GETS BUILT\n[^\n]*\n• A home page built around the game/);
+  assert.notEqual(termsKey(reworded), termsKey({ ...store, contract: { add: { build: ['l-shop'] }, sections: ['x-regions'] } }), 'rewording changes the signature key');
   // The edits are part of the signature's key, so a change after signing asks for a new signature; no edits, the old key.
   assert.notEqual(termsKey(edited), termsKey(store));
   assert.equal(termsKey({ ...store, contract: { off: [] } }), termsKey(store));

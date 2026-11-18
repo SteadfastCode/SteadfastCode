@@ -85,6 +85,8 @@ test('contract edits keep only well-formed keys and ids, and empty edits clear t
   const { cleanContract } = await import('../server/intake.js');
   assert.deepEqual(cleanContract({ off: ['build.1a2b', 'ownership', 'bad key!', 7, 'build.1a2b'], add: { build: ['l-abc123', 'nope!'], 'x-1': [], 'bad.sec': ['l-1'] }, sections: ['x-1', 'x-1', 'Bad'] }), { off: ['build.1a2b', 'ownership'], add: { build: ['l-abc123'] }, sections: ['x-1'] });
   assert.equal(cleanContract({ off: [], add: {}, sections: [] }), null);
+  assert.deepEqual(cleanContract({ edit: { 'build.1a2b': '  New   words ', ownership: '', 'bad key!': 'x', 'l-abc': 7 } }), { edit: { 'build.1a2b': 'New words' } });
+  assert.equal(cleanContract({ edit: { ownership: '   ' } }), null);
   assert.equal(cleanContract('all of it'), undefined);
   const { answers } = mergeAnswers({ contract: { off: ['ownership'] } }, { contract: null });
   assert.equal(answers.contract, undefined);

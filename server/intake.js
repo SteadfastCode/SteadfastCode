@@ -74,8 +74,15 @@ export function cleanContract(value) {
     if (ids.length) add[k] = ids;
   }
   const sections = [...new Set((Array.isArray(value.sections) ? value.sections : []).filter((x) => typeof x === 'string' && ID.test(x)))].slice(0, 20);
-  if (!off.length && !Object.keys(add).length && !sections.length) return null;
-  return { ...(off.length ? { off } : {}), ...(Object.keys(add).length ? { add } : {}), ...(sections.length ? { sections } : {}) };
+  // Reworded lines and headings, by key; blank wording means "back to the standard one", so it's dropped.
+  const edit = {};
+  for (const [k, v] of Object.entries(value.edit && typeof value.edit === 'object' ? value.edit : {}).slice(0, 100)) {
+    if (!CONTRACT_KEY.test(k) || typeof v !== 'string') continue;
+    const text = v.replace(/\s+/g, ' ').trim().slice(0, 600);
+    if (text) edit[k] = text;
+  }
+  if (!off.length && !Object.keys(add).length && !sections.length && !Object.keys(edit).length) return null;
+  return { ...(off.length ? { off } : {}), ...(Object.keys(add).length ? { add } : {}), ...(sections.length ? { sections } : {}), ...(Object.keys(edit).length ? { edit } : {}) };
 }
 
 export const DAYS = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
