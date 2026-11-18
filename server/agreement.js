@@ -16,11 +16,12 @@ export async function loadLibrary(env) {
   try {
     const [s, l] = await Promise.all([
       env.INTAKE.prepare('SELECT id, heading, builtin, position FROM contract_sections ORDER BY position, created_at').all(),
-      env.INTAKE.prepare('SELECT id, section_id, text FROM contract_lines ORDER BY created_at').all(),
+      env.INTAKE.prepare('SELECT id, section_id, text, standard, locked, position FROM contract_lines ORDER BY position, created_at').all(),
     ]);
     return { sections: s.results, lines: l.results };
   } catch (e) {
-    if (/no such table/i.test(e.message)) return { ...emptyLibrary, missing: true };
+    // Before migration 0016 (no tables) or 0017 (no standard column): the built-in seed stands in.
+    if (/no such (table|column)/i.test(e.message)) return { ...emptyLibrary, missing: true };
     throw e;
   }
 }
@@ -37,7 +38,10 @@ export async function agreementState(env, project, { catalog = false } = {}) {
   const library = answers.tier ? await loadLibrary(env) : emptyLibrary;
   const current = answers.tier ? agreementFor(answers, library) : null;
   const signed = await env.INTAKE.prepare('SELECT id, version, terms_key, sha256, signer_name, signed_at, portfolio_ok, emailed_to FROM agreements WHERE project_id = ? ORDER BY signed_at DESC LIMIT 1').bind(project.id).first();
-  const valid = !!(signed && current && signed.terms_key === termsKey(answers));
+  // A change after signing asks for a new signature only while the project is still active (Daniel,
+  // 2026-11-17): once it's live or closed, the signed contract is the contract, whatever changes later.
+  const active = !['live', 'closed'].includes(project.status);
+  const valid = !!(signed && current && (signed.terms_key === termsKey(answers) || !active));
   return {
     current: current ? { ...current, sha256: await sha256(current.text) } : null,
     signed: signed ? { id: signed.id, name: signed.signer_name, signedAt: signed.signed_at, version: signed.version, portfolioOk: signed.portfolio_ok, emailedTo: signed.emailed_to, valid } : null,

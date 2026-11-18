@@ -755,10 +755,8 @@ export async function mountProject(o) {
     cols.appendChild(root);
     cols.appendChild(cpane);
     document.body.classList.add('has-cpane');
-    const fab = document.createElement('button');
-    fab.type = 'button'; fab.id = 'cfab'; fab.className = 'msgfab cfab'; fab.textContent = 'Contract'; fab.setAttribute('aria-controls', 'cpane');
-    fab.addEventListener('click', () => setCpane(!cpaneOpen()));
-    document.body.appendChild(fab);
+    // No floating button: on a phone it sat over Start build (Daniel, 2026-11-17). The Getting started
+    // card's Show/Hide button opens and closes the card at every width; × closes it too.
     cpane.querySelector('#cpaneclose').addEventListener('click', () => setCpane(false));
     // The card's top sits 16px under the header while the page is at the top, and 16px from the
     // viewport once the header has scrolled away, so it lines up with the first card beside it.
@@ -907,7 +905,7 @@ export async function mountProject(o) {
     const inContract = new Set(ag.catalog.flatMap((s) => s.p.map((l) => l.key)));
     const pencil = (key, text, base, edited, heading, lib) => `<button type="button" class="cedit" data-edit="${esc(key)}" data-text="${esc(unbullet(text))}" data-base="${esc(base ?? text)}"${edited ? ' data-edited="1"' : ''}${heading ? ' data-heading="1"' : ''}${lib ? ` data-lib="${lib}"` : ''} aria-label="Reword this ${heading ? 'heading' : 'line'}">✎</button>`;
     const chip = (l) => `<span class="chip"><button type="button" data-addline="${esc(l.id)}" data-sec="${esc(l.section_id)}" title="${esc(l.text)}">+ ${esc(trunc(l.text, 70))}</button><button type="button" class="forget" data-forget="${esc(l.id)}" data-kind="line" aria-label="Forget this line">×</button></span>`;
-    const line = (s, l) => `<div class="cline${l.on ? '' : ' off'}"><label class="check"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span class="ctext">${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}${l.edited ? ' <span class="muted">(reworded)</span>' : ''}</span></label>${pencil(l.key, l.text, l.base, l.edited, false, l.added ? 'line' : '')}</div>`;
+    const line = (s, l) => `<div class="cline${l.on ? '' : ' off'}"><label class="check"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span class="ctext">${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}${l.edited ? ' <span class="muted">(reworded)</span>' : ''}</span></label>${pencil(l.key, l.text, l.base, l.edited, false, l.lib ? 'line' : '')}</div>`;
     const section = (s) => {
       const spare = lib.lines.filter((l) => l.section_id === s.key && !inContract.has(l.id));
       return `<div class="csec${s.on ? '' : ' off'}">

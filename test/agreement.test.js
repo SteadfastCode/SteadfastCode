@@ -3,7 +3,8 @@
 // change. Live signing is checked end to end with wrangler pages dev.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agreementFor, termsKey, contractCatalog, lineKey } from '../src/data/agreement.ts';
+import fs from 'node:fs';
+import { agreementFor, termsKey, contractCatalog, lineKey, standardLines, standardSections, fill } from '../src/data/agreement.ts';
 import { checkSignature, sha256 } from '../server/agreement.js';
 import { websiteTiers, launchNote, domainNote, contractCarry, contractLocalOnly } from '../src/data/site.ts';
 
@@ -96,8 +97,12 @@ test('Daniel can switch sections and lines off, add library lines and sections, 
   assert.deepEqual(plain.map((s) => s.key), ['who', 'build', 'price', 'deposit', 'timing', 'changes', 'your-part', 'ownership', 'no-promise', 'fine-print']);
   assert.ok(plain.every((s) => s.on && s.p.every((l) => l.on)), 'everything is on until Daniel says otherwise');
   const gbp = plain.find((s) => s.key === 'your-part').p[0];
-  assert.equal(gbp.key, 'your-part.' + lineKey(gbp.text));
-  const edited = { ...store, contract: { off: ['ownership', gbp.key, 'who', 'fine-print.' + lineKey(plain.at(-1).p.at(-1).text)], add: { build: ['l-shop', 'l-missing'], 'x-regions': ['l-inv'] }, sections: ['x-regions'] } };
+  assert.equal(gbp.key, 's-yours-1', 'a standard line is keyed by its library id');
+  assert.ok(gbp.lib && gbp.standard && !gbp.locked);
+  const home = plain[1].p[1];
+  assert.equal(home.key, 'build.' + lineKey(home.text), 'a package bullet is keyed by its text');
+  assert.ok(!home.lib);
+  const edited = { ...store, contract: { off: ['ownership', gbp.key, 'who', 's-fine-3'], add: { build: ['l-shop', 'l-missing'], 'x-regions': ['l-inv'] }, sections: ['x-regions'] } };
   const cat = contractCatalog(edited, library);
   assert.equal(cat.find((s) => s.key === 'ownership').on, false);
   assert.equal(cat.find((s) => s.key === 'who').on, true, 'who the contract is between can’t be switched off');
@@ -130,6 +135,40 @@ test('Daniel can switch sections and lines off, add library lines and sections, 
   assert.notEqual(termsKey(edited), termsKey(store));
   assert.equal(termsKey({ ...store, contract: { off: [] } }), termsKey(store));
   assert.equal(termsKey({ ...store, contract: { off: ['ownership'] } }), termsKey({ ...store, contract: { off: ['ownership'] } }));
+});
+
+test('the standard lines come from the library once it has them, placeholders filled, in their order; the seed and migration 0017 agree', () => {
+  const sql = fs.readFileSync('migrations/0017_contract_standard_lines.sql', 'utf8');
+  for (const l of standardLines) assert.ok(sql.includes(`('${l.id}', '${l.section}', '${l.text.replace(/'/g, "''")}', '2026-11-17T00:00:00Z', 1, ${l.locked ? 1 : 0}, ${standardLines.indexOf(l)})`), `migration 0017 lacks ${l.id} as seeded`);
+  assert.equal((sql.match(/\('s-/g) || []).length, standardLines.length, 'no extra rows in the migration');
+  // A library with the standard rows reworded: the catalog follows the library, not the seed.
+  const library = { sections: standardSections.map((s, i) => ({ ...s, builtin: 1, position: i })), lines: standardLines.map((s, i) => ({ id: s.id, section_id: s.section, text: s.id === 's-halves' ? 'Half ({half}) now, the rest ({rest}) at launch.' : s.text, standard: 1, locked: s.locked ? 1 : 0, position: i })) };
+  const a = agreementFor({ ...base, tier: 'business' }, library);
+  assert.match(a.text, /Half \(\$1,950\) now, the rest \(\$1,950\) at launch\./);
+  assert.doesNotMatch(a.text, /\{[a-zA-Z]+\}/, 'every placeholder is filled');
+  assert.match(a.text, /The Business package: up to 6 pages, and everything listed here:\n• /);
+  // A project rewording may use the placeholders too.
+  const r = agreementFor({ ...base, tier: 'business', contract: { edit: { 's-price': 'You pay {price}, taxes extra.' } } }, library);
+  assert.match(r.text, /You pay \$3,900, taxes extra\./);
+  // The library's wording isn't in the signature key: a library tweak never asks a signed client to sign again.
+  assert.equal(termsKey({ ...base, tier: 'business' }), termsKey({ ...base, tier: 'business' }));
+  assert.equal(fill('{a} and {b} and {c}', { a: 'x', b: 'y' }), 'x and y and {c}');
+});
+
+test('a change after signing asks for a new signature only while the project is active', async () => {
+  const { agreementState } = await import('../server/agreement.js');
+  const signedKey = termsKey({ tier: 'business' });
+  const db = () => ({ prepare: (sql) => { const q = { all: async () => ({ results: [] }), first: async () => (/FROM agreements/.test(sql) ? { id: 's1', version: 'v', terms_key: signedKey, sha256: 'x', signer_name: 'Joshua Smith', signed_at: '2026-11-10T12:00:00Z', portfolio_ok: 1, emailed_to: null } : null) }; return { ...q, bind: () => q }; } });
+  const env = { INTAKE: db() };
+  const same = { id: 'p', status: 'intake', answers: JSON.stringify({ tier: 'business' }) };
+  const changed = { ...same, answers: JSON.stringify({ tier: 'business', contract: { off: ['ownership'] } }) };
+  assert.equal((await agreementState(env, same)).needed, false);
+  assert.deepEqual([(await agreementState(env, changed)).needed, (await agreementState(env, changed)).reason], [true, 'changed'], 'active: the edit asks for a new signature');
+  for (const status of ['live', 'closed']) {
+    const s = await agreementState(env, { ...changed, status });
+    assert.deepEqual([s.needed, s.reason, s.signed.valid], [false, null, true], `${status}: the signed contract stands`);
+  }
+  assert.equal((await agreementState(env, { ...changed, status: 'preview' })).needed, true);
 });
 
 test('the agreement makes no claim of a track record', () => {

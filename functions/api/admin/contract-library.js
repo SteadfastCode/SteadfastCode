@@ -13,7 +13,7 @@ import { cleanLibraryText } from '../../../server/contract-library.js';
 const list = async (env) => {
   const [s, l] = await Promise.all([
     env.INTAKE.prepare('SELECT id, heading, builtin, position FROM contract_sections ORDER BY position, created_at').all(),
-    env.INTAKE.prepare('SELECT id, section_id, text, created_at FROM contract_lines ORDER BY created_at').all(),
+    env.INTAKE.prepare('SELECT id, section_id, text, created_at, standard, locked, position FROM contract_lines ORDER BY position, created_at').all(),
   ]);
   return { sections: s.results, lines: l.results };
 };
@@ -74,6 +74,9 @@ export async function onRequestPatch({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   const body = await request.json().catch(() => ({}));
   if (typeof body.lineId === 'string') {
+    // A standard line is reworded or switched off on a project, never forgotten.
+    const l = await env.INTAKE.prepare('SELECT standard FROM contract_lines WHERE id = ?').bind(body.lineId).first();
+    if (l?.standard) return json({ error: 'A standard line stays in the library; switch it off on the project instead.' }, 400);
     await env.INTAKE.prepare('DELETE FROM contract_lines WHERE id = ?').bind(body.lineId).run();
     return json({ ok: true });
   }
