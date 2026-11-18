@@ -243,6 +243,8 @@
   .cpanel { margin-top: 4px; }
   /* A standard line whose library wording dropped a placeholder the website feeds (2026-11-17). */
   .drift { color: var(--warn); }
+  /* A filled placeholder: a slight tint with rounded corners, the same words either way. */
+  mark.ph { background: color-mix(in srgb, var(--ink) 9%, transparent); color: inherit; border-radius: 4px; padding: 0 3px; margin: 0 -1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chip { display: inline-flex; }
   .chip button { font-size: .82rem; padding: 4px 10px; border-radius: 999px 0 0 999px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

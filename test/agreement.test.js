@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { agreementFor, termsKey, contractCatalog, lineKey, standardLines, standardSections, fill } from '../src/data/agreement.ts';
+import { agreementFor, termsKey, contractCatalog, lineKey, standardLines, standardSections, fill, fillParts } from '../src/data/agreement.ts';
 import { checkSignature, sha256 } from '../server/agreement.js';
 import { websiteTiers, launchNote, domainNote, contractCarry, contractLocalOnly } from '../src/data/site.ts';
 
@@ -154,6 +154,10 @@ test('the standard lines come from the library once it has them, placeholders fi
   // The library's wording isn't in the signature key: a library tweak never asks a signed client to sign again.
   assert.equal(termsKey({ ...base, tier: 'business' }), termsKey({ ...base, tier: 'business' }));
   assert.equal(fill('{a} and {b} and {c}', { a: 'x', b: 'y' }), 'x and y and {c}');
+  assert.deepEqual(fillParts('{a} and {b} and {c}', { a: 'x', b: 'y' }), [{ t: 'x', ph: 'a' }, { t: ' and ' }, { t: 'y', ph: 'b' }, { t: ' and {c}' }]);
+  const halves = contractCatalog({ ...base, tier: 'business' }, library).find((s) => s.key === 'price').p[1];
+  assert.deepEqual(halves.parts.filter((x) => x.ph).map((x) => [x.ph, x.t]), [['half', '$1,950'], ['rest', '$1,950']]);
+  assert.equal(contractCatalog({ ...base, tier: 'business' }, library).find((s) => s.key === 'deposit').p[0].parts, undefined, 'no placeholders, no parts');
   // A standard line reworded in the library without its placeholders is flagged: the website no longer feeds it.
   const drifted = { ...library, lines: library.lines.map((l) => (l.id === 's-timing-1' ? { ...l, text: 'Online stores should launch 2–6 weeks from the start. {launchNote}' } : l)) };
   const timing = contractCatalog({ ...base, tier: 'store' }, drifted).find((s) => s.key === 'timing').p[0];

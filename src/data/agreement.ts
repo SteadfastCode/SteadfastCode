@@ -112,6 +112,22 @@ export function fill(text: string, values: Record<string, string>) {
   return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? values[k] : m));
 }
 
+/** A line's text in pieces, each filled placeholder named, so the card can highlight what came from the project (Daniel, 2026-11-17). */
+export type Part = { t: string; ph?: string };
+export function fillParts(text: string, values: Record<string, string>): Part[] {
+  const parts: Part[] = [];
+  let last = 0;
+  for (const m of text.matchAll(/\{(\w+)\}/g)) {
+    const k = m[1];
+    if (!(k in values)) continue;
+    if (m.index! > last) parts.push({ t: text.slice(last, m.index) });
+    parts.push({ t: values[k], ph: k });
+    last = m.index! + m[0].length;
+  }
+  if (last < text.length) parts.push({ t: text.slice(last) });
+  return parts;
+}
+
 /** A short, stable key for a line of text (djb2, base 36): the same in the catalog and in the saved `off` list. */
 export function lineKey(text: string) {
   let h = 5381;
@@ -156,7 +172,7 @@ function priceDetail(tier: Tier, editor: boolean, p: ReturnType<typeof priceFor>
  * line is a library row (so a rewording can be saved there too); `standard` that it came with the
  * contract; `added` that Daniel put it on this project.
  */
-export type CatalogLine = { key: string; text: string; raw?: string; base?: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; lib?: boolean; standard?: boolean; fixed?: string[] };
+export type CatalogLine = { key: string; text: string; raw?: string; base?: string; parts?: Part[]; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; lib?: boolean; standard?: boolean; fixed?: string[] };
 
 /** The placeholders in a line's wording. */
 const ALIASES: Record<string, string> = { days: 'launchTime' };
@@ -172,7 +188,7 @@ export function fixedPlaceholders(row: LibraryLine) {
   const has = new Set(placeholders(row.text));
   return placeholders(seed.text).filter((p) => !has.has(p));
 }
-export type CatalogSection = { key: string; h: string; raw?: string; base?: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; p: CatalogLine[] };
+export type CatalogSection = { key: string; h: string; raw?: string; base?: string; parts?: Part[]; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; p: CatalogLine[] };
 
 const byPosition = <T extends { position?: number | null }>(a: T, b: T) => (a.position ?? 1e9) - (b.position ?? 1e9);
 
@@ -221,7 +237,14 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
   // A reworded line keeps its bullet when the standard one had it; a rewording may use the placeholders too.
   // `base` is the standard template, `raw` the wording as typed (the template, or Daniel's rewording,
   // placeholders and all: what the editor shows), `text` the wording filled in for this project.
-  const worded = (key: string, base: string) => { const raw = edit[key]; const baseText = fill(base, values); const e = raw ? fill(raw, values) : ''; const text = !e ? baseText : baseText.startsWith('• ') && !e.startsWith('• ') ? `• ${e}` : e; return { text, raw: raw ?? base, base, ...(raw ? { edited: true } : {}) }; };
+  const worded = (key: string, base: string) => {
+    const raw = edit[key]; const baseText = fill(base, values); const e = raw ? fill(raw, values) : '';
+    const bullet = !!e && baseText.startsWith('• ') && !e.startsWith('• ');
+    const text = !e ? baseText : bullet ? `• ${e}` : e;
+    // The filled placeholders, named, where the wording has any: the card highlights them.
+    const parts = fillParts(raw ?? base, values);
+    return { text, raw: raw ?? base, base, ...(raw ? { edited: true } : {}), ...(parts.some((x) => x.ph) ? { parts: bullet ? [{ t: '• ' }, ...parts] : parts } : {}) };
+  };
   const byId = new Map(library.lines.map((l) => [l.id, l]));
   // Library lines Daniel added to a section, by id; one the library no longer has is simply gone.
   const added = (sectionKey: string, asBullets: boolean): CatalogLine[] => (c.add?.[sectionKey] ?? []).map((id) => byId.get(id)).filter((l): l is LibraryLine => !!l && !l.standard && l.section_id === sectionKey).map((l) => ({ key: l.id, on: true, added: true, lib: true, ...worded(l.id, asBullets && !l.text.startsWith('• ') ? `• ${l.text}` : l.text) }));
@@ -246,7 +269,7 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
     const p = lastBullet >= 0 ? [...lines.slice(0, lastBullet + 1), ...extra, ...lines.slice(lastBullet + 1)] : [...lines, ...extra];
     const h = worded(s.id, s.heading);
     const locked = s.id === 'who';
-    out.push({ key: s.id, h: h.text, raw: h.raw, base: s.heading, ...(h.edited ? { edited: true } : {}), locked, on: locked || !off.has(s.id), added: !s.builtin, p });
+    out.push({ key: s.id, h: h.text, raw: h.raw, base: s.heading, ...(h.parts ? { parts: h.parts } : {}), ...(h.edited ? { edited: true } : {}), locked, on: locked || !off.has(s.id), added: !s.builtin, p });
   }
   return out;
 }
