@@ -737,6 +737,8 @@ export async function mountProject(o) {
     document.getElementById('cfab')?.setAttribute('aria-expanded', String(open));
     if (open) { cKey = null; paintContract(); }
     if (repaint && P) paint();
+    // Opening narrows the form, which can make the bar wrap taller: measure again once laid out.
+    requestAnimationFrame(() => cpane?.dock?.());
   }
   function ensureContractPane() {
     if (!admin || cpane) return;
@@ -770,6 +772,7 @@ export async function mountProject(o) {
     dock();
     addEventListener('scroll', dock, { passive: true });
     addEventListener('resize', dock);
+    cpane.dock = dock;
     cpane.undock = () => { removeEventListener('scroll', dock); removeEventListener('resize', dock); };
     wireContract(cpane.querySelector('#cbody'));
     let was = null; try { was = sessionStorage.getItem('cpane'); } catch {}
