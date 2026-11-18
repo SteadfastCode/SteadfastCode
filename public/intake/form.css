@@ -241,6 +241,8 @@
   .cmore { border: 0; background: none; padding: 4px 0; margin-top: 4px; color: var(--accent); font-size: .85rem; font-weight: 600; }
   .cmore:hover, .cmore:focus-visible { background: none; text-decoration: underline; }
   .cpanel { margin-top: 4px; }
+  /* A standard line whose library wording dropped a placeholder the website feeds (2026-11-17). */
+  .drift { color: var(--warn); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chip { display: inline-flex; }
   .chip button { font-size: .82rem; padding: 4px 10px; border-radius: 999px 0 0 999px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

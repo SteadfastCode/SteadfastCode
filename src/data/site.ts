@@ -119,7 +119,7 @@ export const websiteTiers = [
     price: 8500,
     from: true,
     pages: 15,
-    days: '2–4 weeks',
+    days: '2–6 weeks',
     who: 'Selling products online, from a dozen items to a few hundred.',
     scope: { pages: 15, changeDays: 30, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: true },
     includes: [

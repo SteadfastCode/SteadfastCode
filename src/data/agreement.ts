@@ -153,7 +153,21 @@ function priceDetail(tier: Tier, editor: boolean, p: ReturnType<typeof priceFor>
  * line is a library row (so a rewording can be saved there too); `standard` that it came with the
  * contract; `added` that Daniel put it on this project.
  */
-export type CatalogLine = { key: string; text: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string; lib?: boolean; standard?: boolean };
+export type CatalogLine = { key: string; text: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string; lib?: boolean; standard?: boolean; fixed?: string[] };
+
+/** The placeholders in a line's wording. */
+const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+/**
+ * A standard line reworded in the library without a placeholder its seed had (Daniel wrote "2–6
+ * weeks" over {days}, 2026-11-17): the fact no longer flows from site.ts, so the website and the
+ * contract can drift. Named so the card can say so.
+ */
+export function fixedPlaceholders(row: LibraryLine) {
+  const seed = standardLines.find((s) => s.id === row.id);
+  if (!seed) return [];
+  const has = new Set(placeholders(row.text));
+  return placeholders(seed.text).filter((p) => !has.has(p));
+}
 export type CatalogSection = { key: string; h: string; on: boolean; locked?: boolean; added?: boolean; edited?: boolean; base?: string; p: CatalogLine[] };
 
 const byPosition = <T extends { position?: number | null }>(a: T, b: T) => (a.position ?? 1e9) - (b.position ?? 1e9);
@@ -217,7 +231,8 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
         continue;
       }
       const locked = !!r.locked;
-      lines.push({ key: r.id, locked, lib: true, standard: true, on: locked || !off.has(r.id), ...worded(r.id, fill(r.text, values)) });
+      const fixed = fixedPlaceholders(r);
+      lines.push({ key: r.id, locked, lib: true, standard: true, on: locked || !off.has(r.id), ...(fixed.length ? { fixed } : {}), ...worded(r.id, fill(r.text, values)) });
     }
     // Daniel's lines go after the last bullet where there are bullets, else at the end of the section.
     const lastBullet = lines.map((l) => l.text.startsWith('• ')).lastIndexOf(true);

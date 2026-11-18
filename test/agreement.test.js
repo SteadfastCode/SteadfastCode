@@ -153,6 +153,11 @@ test('the standard lines come from the library once it has them, placeholders fi
   // The library's wording isn't in the signature key: a library tweak never asks a signed client to sign again.
   assert.equal(termsKey({ ...base, tier: 'business' }), termsKey({ ...base, tier: 'business' }));
   assert.equal(fill('{a} and {b} and {c}', { a: 'x', b: 'y' }), 'x and y and {c}');
+  // A standard line reworded in the library without its placeholders is flagged: the website no longer feeds it.
+  const drifted = { ...library, lines: library.lines.map((l) => (l.id === 's-timing-1' ? { ...l, text: 'Online stores should launch 2–6 weeks from the start. {launchNote}' } : l)) };
+  const timing = contractCatalog({ ...base, tier: 'store' }, drifted).find((s) => s.key === 'timing').p[0];
+  assert.deepEqual(timing.fixed, ['package', 'days']);
+  assert.equal(contractCatalog({ ...base, tier: 'store' }, library).find((s) => s.key === 'timing').p[0].fixed, undefined);
 });
 
 test('a change after signing asks for a new signature only while the project is active', async () => {
