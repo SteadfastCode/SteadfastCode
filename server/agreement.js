@@ -1,7 +1,7 @@
 // The agreement side of a project (2026-11-02): what the client is asked to sign now, whether
 // they already have, and recording a signature. The wording lives in src/data/agreement.ts.
 
-import { agreementFor, termsKey } from '../src/data/agreement.ts';
+import { agreementFor, termsKey, contractCatalog, emptyLibrary } from '../src/data/agreement.ts';
 
 export async function sha256(text) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -9,13 +9,33 @@ export async function sha256(text) {
 }
 
 /**
+ * The contract library (2026-11-17): every section and every line Daniel has written, for the
+ * catalog and for resolving a project's added lines. Empty until migration 0016 has run.
+ */
+export async function loadLibrary(env) {
+  try {
+    const [s, l] = await Promise.all([
+      env.INTAKE.prepare('SELECT id, heading, builtin, position FROM contract_sections ORDER BY position, created_at').all(),
+      env.INTAKE.prepare('SELECT id, section_id, text FROM contract_lines ORDER BY created_at').all(),
+    ]);
+    return { sections: s.results, lines: l.results };
+  } catch (e) {
+    if (/no such table/i.test(e.message)) return { ...emptyLibrary, missing: true };
+    throw e;
+  }
+}
+
+/**
  * Where the project stands: `current` is the agreement as it would read today (null until a package
  * is picked), `signed` the latest signature, and `needed` whether the client must sign before going on
- * (no signature, or one for a different package, add-on or price).
+ * (no signature, or one for a different package, add-on, price or set of lines). With `catalog`
+ * (Daniel's side), every section and line, switched off ones included, plus the library, for the
+ * Contract pane.
  */
-export async function agreementState(env, project) {
+export async function agreementState(env, project, { catalog = false } = {}) {
   const answers = typeof project.answers === 'string' ? JSON.parse(project.answers) : project.answers;
-  const current = answers.tier ? agreementFor(answers) : null;
+  const library = answers.tier ? await loadLibrary(env) : emptyLibrary;
+  const current = answers.tier ? agreementFor(answers, library) : null;
   const signed = await env.INTAKE.prepare('SELECT id, version, terms_key, sha256, signer_name, signed_at, portfolio_ok, emailed_to FROM agreements WHERE project_id = ? ORDER BY signed_at DESC LIMIT 1').bind(project.id).first();
   const valid = !!(signed && current && signed.terms_key === termsKey(answers));
   return {
@@ -25,6 +45,7 @@ export async function agreementState(env, project) {
     reason: !current ? 'no-package' : !signed ? 'unsigned' : valid ? null : 'changed',
     // Daniel can let a client read it early and sign at the meeting (0 = review only).
     signingOpen: project.signing_open !== 0,
+    ...(catalog && current ? { catalog: contractCatalog(answers, library), library: { sections: library.sections, lines: library.lines, missing: !!library.missing } } : {}),
   };
 }
 

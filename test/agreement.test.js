@@ -3,7 +3,7 @@
 // change. Live signing is checked end to end with wrangler pages dev.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agreementFor, termsKey } from '../src/data/agreement.ts';
+import { agreementFor, termsKey, contractCatalog, lineKey } from '../src/data/agreement.ts';
 import { checkSignature, sha256 } from '../server/agreement.js';
 import { websiteTiers, launchNote, domainNote, contractCarry, contractLocalOnly } from '../src/data/site.ts';
 
@@ -84,6 +84,41 @@ test('signing needs a full typed name, the ticked box, and the exact text that w
   const ok = checkSignature({ name: '  Joshua   Smith ', agreed: true, sha256: current.sha256, portfolio: false }, current);
   assert.deepEqual(ok, { name: 'Joshua Smith', portfolioOk: 0 });
   assert.equal(checkSignature({ name: 'Joshua Smith', agreed: true, sha256: current.sha256 }, current).portfolioOk, null, 'not asked is not a no');
+});
+
+test('Daniel can switch sections and lines off, add library lines and sections, and the client signs what is left', () => {
+  const library = {
+    sections: [{ id: 'build', heading: 'What I’ll build', builtin: 1 }, { id: 'x-regions', heading: 'Regions and inventory', builtin: 0 }],
+    lines: [{ id: 'l-shop', section_id: 'build', text: 'Shopify Markets set up for each region you sell in' }, { id: 'l-inv', section_id: 'x-regions', text: 'Stock is tracked per fulfillment location in Shopify.' }, { id: 'l-else', section_id: 'price', text: 'Not added anywhere' }],
+  };
+  const store = { ...base, tier: 'store' };
+  const plain = contractCatalog(store, library);
+  assert.deepEqual(plain.map((s) => s.key), ['who', 'build', 'price', 'deposit', 'timing', 'changes', 'your-part', 'ownership', 'no-promise', 'fine-print']);
+  assert.ok(plain.every((s) => s.on && s.p.every((l) => l.on)), 'everything is on until Daniel says otherwise');
+  const gbp = plain.find((s) => s.key === 'your-part').p[0];
+  assert.equal(gbp.key, 'your-part.' + lineKey(gbp.text));
+  const edited = { ...store, contract: { off: ['ownership', gbp.key, 'who', 'fine-print.' + lineKey(plain.at(-1).p.at(-1).text)], add: { build: ['l-shop', 'l-missing'], 'x-regions': ['l-inv'] }, sections: ['x-regions'] } };
+  const cat = contractCatalog(edited, library);
+  assert.equal(cat.find((s) => s.key === 'ownership').on, false);
+  assert.equal(cat.find((s) => s.key === 'who').on, true, 'who the contract is between can’t be switched off');
+  assert.equal(cat.at(-2).p.at(-1).on, true, 'the e-signature paragraph can’t be switched off');
+  assert.equal(cat.find((s) => s.key === 'your-part').p[0].on, false);
+  const build = cat.find((s) => s.key === 'build');
+  const addedAt = build.p.findIndex((l) => l.key === 'l-shop');
+  assert.ok(build.p[addedAt].added && build.p[addedAt].text === '• Shopify Markets set up for each region you sell in', 'a library line joins the bullets, as a bullet');
+  assert.ok(build.p[addedAt - 1].text.startsWith('• ') && !build.p[addedAt + 1].text.startsWith('• '), 'after the last bullet, before the closing sentence');
+  assert.ok(!build.p.some((l) => l.key === 'l-missing'), 'a line the library no longer has is gone');
+  const regions = cat.at(-1);
+  assert.deepEqual([regions.key, regions.h, regions.added, regions.p.map((l) => l.text)], ['x-regions', 'Regions and inventory', true, ['Stock is tracked per fulfillment location in Shopify.']]);
+  const a = agreementFor(edited, library);
+  assert.doesNotMatch(a.text, /WHO OWNS WHAT|Google Business Profile when it’s time to launch/);
+  assert.match(a.text, /REGIONS AND INVENTORY\nStock is tracked per fulfillment location/);
+  assert.match(a.text, /• Shopify Markets set up/);
+  assert.match(a.text, /sign electronically/);
+  // The edits are part of the signature's key, so a change after signing asks for a new signature; no edits, the old key.
+  assert.notEqual(termsKey(edited), termsKey(store));
+  assert.equal(termsKey({ ...store, contract: { off: [] } }), termsKey(store));
+  assert.equal(termsKey({ ...store, contract: { off: ['ownership'] } }), termsKey({ ...store, contract: { off: ['ownership'] } }));
 });
 
 test('the agreement makes no claim of a track record', () => {

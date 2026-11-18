@@ -53,7 +53,8 @@ export async function projectView(env, p, { mode }) {
     db.prepare('SELECT who, name, field FROM presence WHERE project_id = ? AND at > ? AND who != ?').bind(p.id, since, mode === 'admin' ? 'daniel' : 'client').all(),
     db.prepare('SELECT finished_at FROM builds WHERE project_id = ? AND ok = 1 ORDER BY finished_at DESC LIMIT 1').bind(p.id).first(),
     mode === 'admin' ? db.prepare('SELECT created_at, expires_at, last_used_at, token_enc FROM client_links WHERE project_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1').bind(p.id, new Date().toISOString()).first() : null,
-    agreementState(env, p),
+    // Daniel's pane also gets the whole contract and the library (2026-11-17); the client only the text to sign.
+    agreementState(env, p, { catalog: mode === 'admin' }),
     careState(env, p, mode),
     unreadFor(env, p.id, mode === 'admin' ? 'daniel' : 'client'),
   ]);

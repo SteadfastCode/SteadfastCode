@@ -33,6 +33,7 @@ export function cleanValue(field, value) {
     case 'fieldset': return Array.isArray(value) ? [...new Set(value.filter((id) => fields[id] && fields[id].ask !== 'always'))] : undefined;
     case 'hours': return cleanHours(value);
     case 'pricing': return cleanPricing(value);
+    case 'contract': return cleanContract(value);
     // The address the site's form relay sends to: an address, or blank, never anything else.
     case 'email': { if (typeof value !== 'string') return undefined; const v = value.trim().slice(0, 200); return v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : undefined; }
     // A link: blank, or an http(s) address (a bare host gets https://), never anything that isn't one.
@@ -53,6 +54,28 @@ export function cleanPricing(value) {
   if (value.price != null) return Number.isFinite(price) && price >= 1 && price <= 1_000_000 ? { price: Math.round(price) } : undefined;
   if (value.discountPct != null) return Number.isFinite(pct) && pct > 0 && pct < 100 ? { discountPct: Math.round(pct * 10) / 10 } : undefined;
   return null;
+}
+
+// A contract key: a section id ('build', or a library section's id) or a standard line ('build.1a2b3c').
+const CONTRACT_KEY = /^[a-z0-9][a-z0-9-]{0,40}(\.[a-z0-9]{1,12})?$/;
+const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;
+
+/**
+ * Daniel's contract edits (2026-11-17): keys switched off, library lines added per section (ids),
+ * library sections added (ids). Empty edits clear the field. Anything else in shape is ignored.
+ */
+export function cleanContract(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const off = [...new Set((Array.isArray(value.off) ? value.off : []).filter((k) => typeof k === 'string' && CONTRACT_KEY.test(k)))].slice(0, 200);
+  const add = {};
+  for (const [k, v] of Object.entries(value.add && typeof value.add === 'object' ? value.add : {})) {
+    if (!ID.test(k) || !Array.isArray(v)) continue;
+    const ids = [...new Set(v.filter((x) => typeof x === 'string' && ID.test(x)))].slice(0, 40);
+    if (ids.length) add[k] = ids;
+  }
+  const sections = [...new Set((Array.isArray(value.sections) ? value.sections : []).filter((x) => typeof x === 'string' && ID.test(x)))].slice(0, 20);
+  if (!off.length && !Object.keys(add).length && !sections.length) return null;
+  return { ...(off.length ? { off } : {}), ...(Object.keys(add).length ? { add } : {}), ...(sections.length ? { sections } : {}) };
 }
 
 export const DAYS = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];

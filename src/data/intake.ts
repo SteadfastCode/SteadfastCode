@@ -70,6 +70,8 @@ export const intakeSections = [
       // The kind of site and the questions asked: both painted by the Questions menu on /admin, not as fields.
       { id: 'siteType', label: 'Kind of site', type: 'choice', options: siteTypes.map((t) => t.id), owner: 'daniel', clientHidden: true, ask: 'always', menu: true },
       { id: 'asked', label: 'Questions asked', type: 'fieldset', owner: 'daniel', clientHidden: true, ask: 'always', menu: true },
+      // Daniel's edits to the contract (src/data/agreement.ts), made in the Contract pane on /admin.
+      { id: 'contract', label: 'Contract', type: 'contract', owner: 'daniel', clientHidden: true, ask: 'always', menu: true },
       // A mock-up built for the lead (2026-11-09) comes along when the project starts from it; both sides
       // see "Open the mock-up" on the status card, and the look-and-feel questions start from it.
       { id: 'mockUrl', label: 'Mock-up link', type: 'url', help: 'Filled in from the lead when there is one. Both sides get an Open the mock-up button, and Look and feel asks what to change from it.', owner: 'daniel', clientHidden: true, ask: 'always' },

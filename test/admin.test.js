@@ -81,6 +81,18 @@ test('Daniel’s own question list replaces the preset, keeps what is always ask
   assert.deepEqual(check({ ...store, siteType: 'local', asked: [] }).missing, []);
 });
 
+test('contract edits keep only well-formed keys and ids, and empty edits clear the field', async () => {
+  const { cleanContract } = await import('../server/intake.js');
+  assert.deepEqual(cleanContract({ off: ['build.1a2b', 'ownership', 'bad key!', 7, 'build.1a2b'], add: { build: ['l-abc123', 'nope!'], 'x-1': [], 'bad.sec': ['l-1'] }, sections: ['x-1', 'x-1', 'Bad'] }), { off: ['build.1a2b', 'ownership'], add: { build: ['l-abc123'] }, sections: ['x-1'] });
+  assert.equal(cleanContract({ off: [], add: {}, sections: [] }), null);
+  assert.equal(cleanContract('all of it'), undefined);
+  const { answers } = mergeAnswers({ contract: { off: ['ownership'] } }, { contract: null });
+  assert.equal(answers.contract, undefined);
+  const { cleanLibraryText } = await import('../server/contract-library.js');
+  assert.equal(cleanLibraryText('  Two\tlines\n of  text \u0007', 12), 'Two lines of');
+  assert.equal(cleanLibraryText(42, 10), '');
+});
+
 test('a mock-up link is kept as a link, and comes along from the lead', () => {
   assert.equal(mergeAnswers({}, { mockUrl: 'stdfst-deliverance.pages.dev' }).answers.mockUrl, 'https://stdfst-deliverance.pages.dev');
   assert.deepEqual(mergeAnswers({}, { mockUrl: 'not a link' }).dropped, ['mockUrl']);

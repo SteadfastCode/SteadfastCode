@@ -563,7 +563,7 @@ export async function mountProject(o) {
 
   function paint() {
     paintPricing();
-    if (admin) paintQuestionsMenu();
+    if (admin) { paintQuestionsMenu(); ensureContractPane(); paintContract(); }
     ensureDrawer();
     paintQuestions();
     paintMessages();
@@ -592,6 +592,8 @@ export async function mountProject(o) {
       fr.disabled = true;
       try { await flush(); await api(routes.build, { method: 'POST', body: JSON.stringify({ full: true }) }); await refresh(); } catch (e) { alert(e.message); fr.disabled = false; }
     };
+    const oc = root.querySelector('#opencontract');
+    if (oc) oc.onclick = () => { setCpane(true); cpane?.scrollTo(0, 0); };
     const so = root.querySelector('#signingopen');
     if (so) so.onchange = async () => { so.disabled = true; try { await api(routes.signing, { method: 'POST', body: JSON.stringify({ open: so.checked }) }); await refresh(); } catch (e) { alert(e.message); so.checked = !so.checked; } so.disabled = false; };
     const view = root.querySelector('[data-signed]');
@@ -716,7 +718,125 @@ export async function mountProject(o) {
     if (!admin) return '';
     if (ag.reason === 'no-package') return '<p class="muted">Contract: picks up the package once it’s set.</p>';
     const toggle = `<label class="check"><input type="checkbox" id="signingopen"${ag.signingOpen ? ' checked' : ''}> Let them sign now</label><span class="help">${ag.signingOpen ? 'Turn off to let them read it ahead of the meeting without signing.' : 'Review only: they can read it, and sign once you turn this on.'}</span>`;
-    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The package changed since the contract was signed; the client will be asked to sign the updated one.' : 'Contract not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}${ag.current ? `<details><summary>Preview what they’ll sign</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>` : ''}`;
+    return `<p class="${ag.reason === 'changed' ? 'error' : 'muted'}">${ag.reason === 'changed' ? 'The contract changed since it was signed; the client will be asked to sign the updated one.' : 'Contract not signed yet. It shows first on the client’s link; the build waits for it.'}</p>${toggle}${ag.current ? '<p><button type="button" id="opencontract">Open the contract</button></p>' : ''}`;
+  }
+
+  // ---- the Contract pane (2026-11-17), Daniel's side: the whole contract as a column on the right
+  // (always there on a wide screen; slid in over a button on anything narrower), every section and
+  // line with a checkbox, lines and sections added from the library or written new (a new one joins
+  // the library for next time). Saved as answers.contract; the client's contract follows.
+  let cpane = null;
+  let cKey = null;
+  const cpaneOpen = () => document.body.classList.contains('cpane-open');
+  function setCpane(open) {
+    document.body.classList.toggle('cpane-open', open);
+    try { sessionStorage.setItem('cpane', open ? '1' : ''); } catch {}
+    document.getElementById('cfab')?.setAttribute('aria-expanded', String(open));
+    if (open) { cKey = null; paintContract(); }
+  }
+  function ensureContractPane() {
+    if (!admin || cpane) return;
+    cpane = document.createElement('aside');
+    cpane.id = 'cpane';
+    cpane.className = 'cpane';
+    cpane.setAttribute('aria-label', 'Contract');
+    cpane.innerHTML = `<div class="drawer-head"><h2>Contract</h2><button type="button" id="cpaneclose" aria-label="Close the contract">×</button></div><div class="cbody" id="cbody"><p class="muted">Loading…</p></div>`;
+    document.body.appendChild(cpane);
+    const fab = document.createElement('button');
+    fab.type = 'button'; fab.id = 'cfab'; fab.className = 'msgfab cfab'; fab.textContent = 'Contract'; fab.setAttribute('aria-controls', 'cpane');
+    fab.addEventListener('click', () => setCpane(!cpaneOpen()));
+    document.body.appendChild(fab);
+    cpane.querySelector('#cpaneclose').addEventListener('click', () => setCpane(false));
+    wireContract(cpane.querySelector('#cbody'));
+    let was = false; try { was = sessionStorage.getItem('cpane') === '1'; } catch {}
+    setCpane(was);
+  }
+  const contract = () => ({ off: [], add: {}, sections: [], ...(P.answers.contract || {}) });
+  function saveContract(c) {
+    const next = { off: [...new Set(c.off)], add: Object.fromEntries(Object.entries(c.add).filter(([, v]) => v.length)), sections: c.sections };
+    const empty = !next.off.length && !Object.keys(next.add).length && !next.sections.length;
+    queue('contract', empty ? null : next, true);
+  }
+  const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+  function wireContract(body) {
+    body.addEventListener('change', (e) => {
+      const t = e.target, c = contract();
+      if (t.dataset.cs) {
+        // An added section unticked leaves the contract; a standard one is switched off.
+        if (c.sections.includes(t.dataset.cs)) c.sections = c.sections.filter((x) => x !== t.dataset.cs);
+        else c.off = t.checked ? c.off.filter((x) => x !== t.dataset.cs) : [...c.off, t.dataset.cs];
+        saveContract(c);
+      }
+      if (t.dataset.cl) {
+        const sec = t.dataset.sec;
+        if ((c.add[sec] || []).includes(t.dataset.cl)) c.add[sec] = c.add[sec].filter((x) => x !== t.dataset.cl);
+        else c.off = t.checked ? c.off.filter((x) => x !== t.dataset.cl) : [...c.off, t.dataset.cl];
+        saveContract(c);
+      }
+    });
+    body.addEventListener('click', async (e) => {
+      const add = e.target.closest('[data-addline]'), sec = e.target.closest('[data-addsec]'), forget = e.target.closest('[data-forget]');
+      const c = contract();
+      if (add) { c.add[add.dataset.sec] = [...(c.add[add.dataset.sec] || []), add.dataset.addline]; saveContract(c); }
+      if (sec) { c.sections = [...c.sections, sec.dataset.addsec]; saveContract(c); }
+      if (forget) {
+        const isSec = forget.dataset.kind === 'section';
+        if (!confirm(isSec ? 'Forget this section and its lines? Projects using them lose them.' : 'Forget this line? Projects using it lose it.')) return;
+        try { await api(routes.library, { method: 'DELETE', body: JSON.stringify(isSec ? { sectionId: forget.dataset.forget } : { lineId: forget.dataset.forget }) }); cKey = null; await refresh(); } catch (err) { alert(err.message); }
+      }
+    });
+    body.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target, input = form.querySelector('input'), text = input.value.trim(), c = contract();
+      if (!text) return;
+      form.querySelector('button').disabled = true;
+      try {
+        if (form.dataset.newline) {
+          const r = await api(routes.library, { method: 'POST', body: JSON.stringify({ sectionId: form.dataset.newline, text }) });
+          if (!(c.add[form.dataset.newline] || []).includes(r.line.id)) c.add[form.dataset.newline] = [...(c.add[form.dataset.newline] || []), r.line.id];
+        } else {
+          const r = await api(routes.library, { method: 'POST', body: JSON.stringify({ heading: text }) });
+          c.sections = [...c.sections, r.section.id];
+        }
+        input.value = '';
+        saveContract(c);
+        await flush();
+      } catch (err) { alert(err.message); }
+      form.querySelector('button').disabled = false;
+    });
+  }
+  function paintContract() {
+    const body = cpane?.querySelector('#cbody');
+    if (!body) return;
+    const ag = P.agreement;
+    const fab = document.getElementById('cfab');
+    if (fab) fab.classList.toggle('attention', !!ag?.needed && ag.reason === 'changed');
+    const key = JSON.stringify([ag?.catalog, ag?.library, ag?.signed, ag?.reason, P.answers.contract]);
+    if (key === cKey) return;
+    cKey = key;
+    if (!ag?.catalog) { body.innerHTML = '<p class="muted">Pick a package and the contract appears here.</p>'; return; }
+    const lib = ag.library || { sections: [], lines: [] };
+    const c = contract();
+    const inContract = new Set(ag.catalog.flatMap((s) => s.p.map((l) => l.key)));
+    const chip = (l) => `<span class="chip"><button type="button" data-addline="${esc(l.id)}" data-sec="${esc(l.section_id)}" title="${esc(l.text)}">+ ${esc(trunc(l.text, 70))}</button><button type="button" class="forget" data-forget="${esc(l.id)}" data-kind="line" aria-label="Forget this line">×</button></span>`;
+    const section = (s) => {
+      const added = s.added;
+      const spare = lib.lines.filter((l) => l.section_id === s.key && !inContract.has(l.id));
+      return `<div class="csec${s.on ? '' : ' off'}">
+        <label class="check csech"><input type="checkbox" data-cs="${esc(s.key)}"${s.on ? ' checked' : ''}${s.locked ? ' disabled' : ''}> <b>${esc(s.h)}</b>${s.locked ? ' <span class="muted">(always)</span>' : ''}${added ? ` <button type="button" class="forget" data-forget="${esc(s.key)}" data-kind="section" aria-label="Forget this section">×</button>` : ''}</label>
+        <div class="clines">${s.p.map((l) => `<label class="check cline${l.on ? '' : ' off'}"><input type="checkbox" data-cl="${esc(l.key)}" data-sec="${esc(s.key)}"${l.on ? ' checked' : ''}${l.locked ? ' disabled' : ''}> <span>${esc(l.text)}${l.added ? ' <span class="muted">(yours)</span>' : ''}</span></label>`).join('')}</div>
+        ${spare.length ? `<div class="chips">${spare.map(chip).join('')}</div>` : ''}
+        ${lib.missing ? '' : `<form class="cadd" data-newline="${esc(s.key)}"><input type="text" placeholder="A new line for this section" maxlength="600" aria-label="New line for ${esc(s.h)}"><button type="submit">Add</button></form>`}
+      </div>`;
+    };
+    const spareSections = lib.sections.filter((s) => !s.builtin && !c.sections.includes(s.id));
+    body.innerHTML = `
+      <p class="muted">${ag.signed?.valid ? `Signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleDateString())}. A change here asks them to sign again.` : ag.reason === 'changed' ? 'Changed since it was signed: the client is asked to sign this version.' : 'Not signed yet. Untick what doesn’t apply, add what does; the client sees the result on their link.'}</p>
+      ${lib.missing ? '<p class="error">The contract library isn’t switched on yet (migration 0016), so lines can’t be added here.</p>' : ''}
+      ${ag.catalog.map(section).join('')}
+      ${spareSections.length ? `<div class="csec"><b>Sections from the library</b><div class="chips">${spareSections.map((s) => `<span class="chip"><button type="button" data-addsec="${esc(s.id)}">+ ${esc(s.heading)}</button><button type="button" class="forget" data-forget="${esc(s.id)}" data-kind="section" aria-label="Forget this section">×</button></span>`).join('')}</div></div>` : ''}
+      ${lib.missing ? '' : '<form class="cadd" id="newsec"><input type="text" placeholder="A new section’s heading" maxlength="80" aria-label="New section heading"><button type="submit">Add section</button></form>'}
+      <details class="cpreview"><summary>Read it as they will</summary><div class="agreement">${agreementHtml(ag.current)}</div></details>`;
   }
 
   function paintBar() {
@@ -922,6 +1042,8 @@ export async function mountProject(o) {
   function stop() {
     stopped = true;
     clearInterval(pollTimer); clearInterval(heartbeat); clearInterval(tick);
+    // The contract pane belongs to this project: gone with it (Daniel's page mounts the next one fresh).
+    if (cpane) { cpane.remove(); cpane = null; document.getElementById('cfab')?.remove(); document.body.classList.remove('cpane-open'); }
   }
   const tick = setInterval(() => { const el = progress.querySelector('#elapsed'); if (el && P?.buildStartedAt && building()) el.textContent = since(P.buildStartedAt); }, 1000);
 
