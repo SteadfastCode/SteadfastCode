@@ -168,9 +168,12 @@ export const intakeSections = [
     id: 'content',
     title: 'Content',
     fields: [
-      { id: 'copy', label: 'Who writes the words', type: 'choice', options: [{ value: 'They do', you: 'I’ll write it myself' }, { value: 'I draft, they edit', you: 'Daniel drafts, I edit' }, { value: 'I write it', you: 'Daniel writes it' }], you: 'Who writes the words' },
+      // "Mostly from the current site" (Daniel, 2026-11-17, for a rebuild like Deliverance): the words
+      // and pictures already exist; the build reuses what came in with the mock-up or from Daniel,
+      // tidied, and asks only for what's new. A build never fetches the old site itself.
+      { id: 'copy', label: 'Who writes the words', type: 'choice', options: [{ value: 'Mostly from the current site', you: 'Mostly from my current site, tidied up' }, { value: 'They do', you: 'I’ll write it myself' }, { value: 'I draft, they edit', you: 'Daniel drafts, I edit' }, { value: 'I write it', you: 'Daniel writes it' }], you: 'Who writes the words', help: '“Mostly from the current site” keeps what’s there, tidied; anything new is asked for in Notes.', youHelp: '“Mostly from my current site” keeps what’s there, tidied; tell Daniel what’s new in Notes.' },
       { id: 'ownWords', label: 'In their own words', type: 'textarea', help: 'Anything they want the site to say, however rough: about them, how they work, what to promise.', you: 'Anything you want the site to say', youHelp: 'However rough: about you, how you work, what you promise.' },
-      { id: 'photos', label: 'Photos', type: 'choice', options: [{ value: 'They have good ones', you: 'I have good ones' }, { value: 'Some, need more', you: 'Some, but I need more' }, 'None yet'], you: 'Your photos', wording: { store: { label: 'Product photos and art', you: 'Your product photos and art' }, creative: { label: 'Photos of the work', you: 'Photos of your work' } } },
+      { id: 'photos', label: 'Photos', type: 'choice', options: [{ value: 'Use the ones on the current site', you: 'Use the ones on my current site' }, { value: 'They have good ones', you: 'I have good ones' }, { value: 'Some, need more', you: 'Some, but I need more' }, 'None yet'], you: 'Your photos', wording: { store: { label: 'Product photos and art', you: 'Your product photos and art' }, creative: { label: 'Photos of the work', you: 'Photos of your work' } } },
       { id: 'videos', label: 'Videos to include', type: 'list', help: 'Links, one per line. Embedded without tracking.', youHelp: 'Links, one per line.', ask: ['church', 'creative', 'store'] },
       { id: 'reviews', label: 'Where their reviews are', type: 'text', help: 'Google, Facebook, Yelp…', you: 'Where your reviews are', wording: { store: { label: 'Where product reviews live', help: 'The current store, Amazon, a reviews app…', you: 'Where your product reviews live', youHelp: 'The current store, Amazon, a reviews app…' } } },
     ],
