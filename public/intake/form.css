@@ -188,8 +188,10 @@
   body.cpane-open .cpane { transform: none; visibility: visible; }
   body.cpane-open { padding-right: 456px; }
   body.cpane-open footer.bar { right: 456px; }
-  /* The header still runs the full width; only the cards move over to make the column. */
-  body.cpane-open .admin-head { margin-right: -456px; padding-right: 456px; }
+  /* The header still runs the full width; only the cards move over to make room. Only where the body
+     is padded for the card (a phone isn't): on a phone this rule pushed the header 456px past the
+     screen and the browser zoomed the whole page out (Daniel, 2026-11-17). */
+  @media (min-width: 601px) { body.cpane-open .admin-head { margin-right: -456px; padding-right: 456px; } }
   body.cpane-open .cfab { display: none; }
   .cpane .drawer-head { padding: 14px 14px 8px; border-bottom: 0; }
   .cpane .drawer-head h2 { font-size: 1.3rem; }
