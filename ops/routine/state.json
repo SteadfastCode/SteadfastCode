@@ -54,6 +54,24 @@
       "claimedAtUtc": null,
       "runId": null,
       "lastFail": null
+    },
+    "SCS-004": {
+      "order": 4,
+      "title": "Readable scripts: contact.astro, Base.astro, SpeedProof.astro",
+      "status": "pending",
+      "attempts": 0,
+      "cluster": null,
+      "branch": null,
+      "dependsOn": [],
+      "needsHuman": false,
+      "proposed": true,
+      "priority": false,
+      "distribute": null,
+      "coldReview": false,
+      "notBefore": null,
+      "claimedAtUtc": null,
+      "runId": null,
+      "lastFail": null
     }
   },
   "openCluster": null

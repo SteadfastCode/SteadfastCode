@@ -63,6 +63,22 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
   every control the script touches, with no page errors. Prior art: the client template
   ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
 
+- [ ] **(SCS-004) Readable scripts: contact.astro, Base.astro, SpeedProof.astro** [proposed]
+  Rewrite the dense inline scripts in src/pages/contact.astro (the form ladder's client side; keep
+  the mail-app fallback), src/layouts/Base.astro (the theme pin and the html.js line must stay
+  is:inline in <head> but written readably; the 530- and 661-char one-liners) and check
+  src/components/SpeedProof.astro, which is already mostly readable.
+  Rule (Daniel 2026-11-18, now in CLAUDE.md "Rules that override taste"): code is written to be
+  read: plain names, one statement per line, comments that say why, never hand-minified; the build
+  minifies. Prefer Astro processed <script> (bundled + minified; TypeScript is fine) over is:inline.
+  Keep is:inline only where a script must run in place (before paint, html.js for the reveal rule)
+  or uses define:vars, and write it just as readably. Behavior must not change: same IDs, same
+  events, same text, same fetch calls. Watch test/perf.test.js: the 6 KB inline-script cap and the
+  200 KB page budget (Astro may inline a small processed script; check the built page). Verify: yarn
+  gate, then drive each rewritten page in Playwright (desktop and phone width, both themes) through
+  every control the script touches, with no page errors. Prior art: the client template
+  ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
+
 ## Blocked Items
 
 ## Completed Items
