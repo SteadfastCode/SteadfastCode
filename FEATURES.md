@@ -16,9 +16,7 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
 
 ## Workqueue Items
 
-## Proposed
-
-- [ ] **(SCS-001) Readable scripts: admin/leads.astro** [proposed]
+- [ ] **(SCS-001) Readable scripts: admin/leads.astro**
   Rewrite the dense inline script in src/pages/admin/leads.astro (about 21 KB, 44 lines over 140
   chars) into readable, commented code. It's the biggest one, so it gets its own item; split it into
   named functions by job (loading, rendering rows, editing, filters).
@@ -32,6 +30,8 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
   gate, then drive each rewritten page in Playwright (desktop and phone width, both themes) through
   every control the script touches, with no page errors. Prior art: the client template
   ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
+
+## Proposed
 
 - [ ] **(SCS-002) Readable scripts: admin/care.astro and admin/usage.astro** [proposed]
   Rewrite the dense inline scripts in src/pages/admin/care.astro (about 9.6 KB, 27 long lines) and

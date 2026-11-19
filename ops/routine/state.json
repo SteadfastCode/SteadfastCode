@@ -10,7 +10,7 @@
       "branch": null,
       "dependsOn": [],
       "needsHuman": false,
-      "proposed": true,
+      "proposed": false,
       "priority": false,
       "distribute": null,
       "coldReview": false,

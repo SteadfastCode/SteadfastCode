@@ -2,3 +2,4 @@
 {"event":"note","text":"bridge queue.add filed SCS-002 under Proposed","source":"bridge","command":"queue.add","item":"SCS-002","atUtc":"2026-11-19T04:13:10.310Z"}
 {"event":"note","text":"bridge queue.add filed SCS-003 under Proposed","source":"bridge","command":"queue.add","item":"SCS-003","atUtc":"2026-11-19T04:13:11.965Z"}
 {"event":"note","text":"bridge queue.add filed SCS-004 under Proposed","source":"bridge","command":"queue.add","item":"SCS-004","atUtc":"2026-11-19T04:13:13.774Z"}
+{"event":"note","text":"bridge queue.promote moved SCS-001 from Proposed to Workqueue Items","source":"bridge","command":"queue.promote","item":"SCS-001","atUtc":"2026-11-19T04:13:19.277Z"}
