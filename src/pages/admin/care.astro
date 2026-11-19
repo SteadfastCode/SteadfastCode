@@ -53,105 +53,447 @@ const config = {
 <header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care" aria-current="page">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
 <main id="app"><p class="muted">Loading…</p></main>
 <script type="application/json" id="care-config" set:html={JSON.stringify(config)}></script>
-<script is:inline>
-(() => {
-  const C = JSON.parse(document.getElementById('care-config').textContent);
-  const app = document.getElementById('app');
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const money = (n) => '$' + Number(n).toLocaleString('en-US');
-  const date = (s) => (s ? new Date(s.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—');
-  const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  const STATUS = { draft: 'Draft', offered: 'Offered, not signed', signed: 'Signed, no card yet', active: 'Active', past_due: 'Payment past due', canceled: 'Canceled' };
-  async function api(path, opts = {}) {
-    const r = await fetch('/api/admin' + path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
-    return j;
+<script>
+  // /admin/care, written to be read; Astro bundles and minifies it for the build. Two views, picked
+  // by the hash: every client with a preview and where their plan stands (no hash), and one
+  // client's plan (#p/<project id>). Each renders its HTML into <main id="app">, then wires up the
+  // controls it just painted.
+  //
+  // The plans, the hosting-move checklist and the length of the changes window come from the JSON
+  // tag above, which the page built from src/data, so nothing here keeps a second copy of them.
+
+  /** The plans, the checklist and the window, straight from src/data via the JSON tag. */
+  type Config = {
+    plans: { id: string; name: string; price: number; who: string }[];
+    checklist: { id: string; label: string }[];
+    windowDays: number;
+  };
+
+  type Plan = Config['plans'][number];
+
+  /** Where one client's plan stands, as a row of /api/admin/care carries it. */
+  type RowCare = {
+    plan: string;
+    planName: string;
+    price: number;
+    status: string;
+    launchedAt: string | null;
+    firstBill: string | null;
+    signedAt: string | null;
+    stripeStatus: string | null;
+    paidThrough: string | null;
+    endsAt: string | null;
+    done: number;
+  };
+
+  /** One client on the list: a project with a preview, with a care plan, or both. */
+  type Row = {
+    id: string;
+    business: string | null;
+    contact: string | null;
+    previewUrl: string | null;
+    projectStatus: string;
+    firstPreview: string | null;
+    care: RowCare | null;
+  };
+
+  /** /api/admin/care: the list, with what the signed plans bring in a month. */
+  type CareList = { rows: Row[]; monthly: number; count: number; stripeReady: boolean };
+
+  /** One client's plan in full, as server/care.js careState() sends it to admin. */
+  type Care = {
+    exists: boolean;
+    plan?: string;
+    planName?: string;
+    price?: number;
+    status?: string;
+    launchedAt?: string | null;
+    firstPreview?: string | null;
+    windowEnds?: string | null;
+    firstBill?: string | null;
+    terms?: { sections: { h: string; p: string[] }[] } | null;
+    signed?: { name: string; at: string; version: string } | null;
+    billing?: { hasCard: boolean; stripeStatus: string | null; paidThrough: string | null };
+    endsAt?: string | null;
+    checklist?: Record<string, string | null>;
+    notes?: string;
+    stripeCustomer?: string | null;
+    stripeSubscription?: string | null;
+    stripeReady?: boolean;
+  };
+
+  /** One change Daniel makes, sent as a PUT; the server checks it and sends the plan back. */
+  type CarePatch = {
+    plan?: string;
+    price?: number;
+    launchedAt?: string | null;
+    checklist?: Record<string, string | null>;
+    notes?: string;
+    offer?: boolean;
+    reset?: boolean;
+  };
+
+  const config: Config = JSON.parse(document.getElementById('care-config')!.textContent!);
+  const app = document.getElementById('app')!;
+
+  // ---- the small jobs both views need ----
+
+  const HTML_ESCAPES: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+
+  /** Everything written into the page goes through here: a client's own words are not markup. */
+  function escapeHtml(value: unknown): string {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => HTML_ESCAPES[character]);
   }
 
-  async function list() {
+  /** Whole dollars: every figure on this page is a plan's price for a month. */
+  function money(amount: number | string): string {
+    return '$' + Number(amount).toLocaleString('en-US');
+  }
+
+  // A stored day is a day, not a moment: read at noon UTC so no time zone can shift it either way.
+  function day(stored: string | null | undefined): string {
+    if (!stored) return '—';
+    const noon = new Date(stored.slice(0, 10) + 'T12:00:00Z');
+    return noon.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  }
+
+  /** Today where Daniel is: a launch day and a ticked box are days on his own calendar. */
+  function today(): string {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  }
+
+  /** The plan's status in Daniel's words; the server's own value is the fallback. */
+  const STATUS_LABEL: Record<string, string> = {
+    draft: 'Draft',
+    offered: 'Offered, not signed',
+    signed: 'Signed, no card yet',
+    active: 'Active',
+    past_due: 'Payment past due',
+    canceled: 'Canceled',
+  };
+
+  const statusLabel = (status: string) => STATUS_LABEL[status] || status;
+
+  /** One call to the admin API. Throws with the server's own message, which the views show. */
+  async function callApi(path: string, init: RequestInit = {}): Promise<any> {
+    const response = await fetch('/api/admin' + path, {
+      ...init,
+      headers: { 'content-type': 'application/json', ...(init.headers || {}) },
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Error ${response.status}`);
+    return body;
+  }
+
+  /** What to tell the reader when a call failed. */
+  function reasonFor(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  /** A view that could not load says why, in place of itself. */
+  function showProblem(error: unknown) {
+    app.innerHTML = `<p class="error">${escapeHtml(reasonFor(error))}</p>`;
+  }
+
+  // ---- the list: every client, their plan, and what the signed plans bring in ----
+
+  async function showList() {
     app.innerHTML = '<p class="muted">Loading…</p>';
-    let d;
-    try { d = await api('/care'); } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
-    app.innerHTML = `
+    let list: CareList;
+    try {
+      list = await callApi('/care');
+    } catch (error) {
+      showProblem(error);
+      return;
+    }
+    app.innerHTML = listHtml(list);
+  }
+
+  function listHtml(list: CareList): string {
+    const plural = list.count === 1 ? '' : 's';
+    // Clients can sign without Stripe; only the card step needs the keys, so say which are missing.
+    const stripeNote = list.stripeReady
+      ? ''
+      : '<p class="muted">Stripe isn’t connected yet: clients can sign, and the card step waits for the <code>STRIPE_SECRET_KEY</code> (or <code>STRIPE_TEST_KEY</code>) and <code>STRIPE_WEBHOOK_SECRET</code> Pages secrets.</p>';
+    const columns = '<div class="crow cols"><div>Client</div><div>Plan</div><div>First bill</div><div>Hosting move</div></div>';
+    const rows = list.rows.length
+      ? columns + list.rows.map(rowHtml).join('')
+      : '<p class="muted">No clients with a preview yet.</p>';
+    return `
       <h1>Care plans</h1>
-      <section class="card"><div><b>${money(d.monthly)} a month</b> <span class="muted">from ${d.count} signed plan${d.count === 1 ? '' : 's'}</span></div>
-        ${d.stripeReady ? '' : '<p class="muted">Stripe isn’t connected yet: clients can sign, and the card step waits for the <code>STRIPE_SECRET_KEY</code> (or <code>STRIPE_TEST_KEY</code>) and <code>STRIPE_WEBHOOK_SECRET</code> Pages secrets.</p>'}</section>
-      <section class="card">${d.rows.length ? `<div class="crow cols"><div>Client</div><div>Plan</div><div>First bill</div><div>Hosting move</div></div>` + d.rows.map((r) => `
-        <div class="crow"><div><a href="#p/${esc(r.id)}"><b>${esc(r.business || 'Untitled')}</b></a><div class="sub">${esc(r.contact || '')}${r.firstPreview ? ` · first preview ${date(r.firstPreview)}` : ''}</div></div>
-          <div>${r.care ? `${esc(r.care.planName)} · ${money(r.care.price)}/mo <span class="badge st-${esc(r.care.status)}">${esc(STATUS[r.care.status] || r.care.status)}</span>${r.care.endsAt && r.care.status !== 'canceled' ? ` <span class="badge st-offered">ends ${date(r.care.endsAt)}</span>` : ''}` : '<span class="muted">No plan yet</span>'}</div>
-          <div>${r.care?.firstBill ? date(r.care.firstBill) : '<span class="muted">—</span>'}${r.care?.paidThrough ? `<div class="sub">${r.care.endsAt ? 'paid through' : 'next charge'} ${date(r.care.paidThrough)}</div>` : ''}</div>
-          <div>${r.care ? `${r.care.done} of ${C.checklist.length}` : '<span class="muted">—</span>'}</div></div>`).join('') : '<p class="muted">No clients with a preview yet.</p>'}</section>`;
+      <section class="card"><div><b>${money(list.monthly)} a month</b> <span class="muted">from ${list.count} signed plan${plural}</span></div>
+        ${stripeNote}</section>
+      <section class="card">${rows}</section>`;
   }
 
-  let current = null;
-  async function detail(id) {
+  /** One client's row: who they are, their plan, their first bill, how far the hosting move got. */
+  function rowHtml(row: Row): string {
+    const checklist = row.care ? `${row.care.done} of ${config.checklist.length}` : '<span class="muted">—</span>';
+    return `
+        <div class="crow"><div>${nameCellHtml(row)}</div>
+          <div>${planCellHtml(row.care)}</div>
+          <div>${billCellHtml(row.care)}</div>
+          <div>${checklist}</div></div>`;
+  }
+
+  /** The client's name, linked to their plan, with who to talk to and when they first saw a preview. */
+  function nameCellHtml(row: Row): string {
+    const name = `<a href="#p/${escapeHtml(row.id)}"><b>${escapeHtml(row.business || 'Untitled')}</b></a>`;
+    const preview = row.firstPreview ? ` · first preview ${day(row.firstPreview)}` : '';
+    return `${name}<div class="sub">${escapeHtml(row.contact || '')}${preview}</div>`;
+  }
+
+  /** The plan cell: the plan and price, its status, and the end date once one is set. */
+  function planCellHtml(care: RowCare | null): string {
+    if (!care) return '<span class="muted">No plan yet</span>';
+    const badge = `<span class="badge st-${escapeHtml(care.status)}">${escapeHtml(statusLabel(care.status))}</span>`;
+    // A plan already canceled says so in the badge; the date would only repeat it.
+    const ending = care.endsAt && care.status !== 'canceled'
+      ? ` <span class="badge st-offered">ends ${day(care.endsAt)}</span>`
+      : '';
+    return `${escapeHtml(care.planName)} · ${money(care.price)}/mo ${badge}${ending}`;
+  }
+
+  /** The first bill, and under it what Stripe has been paid for. */
+  function billCellHtml(care: RowCare | null): string {
+    const first = care?.firstBill ? day(care.firstBill) : '<span class="muted">—</span>';
+    if (!care?.paidThrough) return first;
+    const label = care.endsAt ? 'paid through' : 'next charge';
+    return `${first}<div class="sub">${label} ${day(care.paidThrough)}</div>`;
+  }
+
+  // ---- one client: the plan, the dates, where it stands, the hosting move ----
+
+  /** The client on screen: their plan, and their list row, which is where the name comes from. */
+  let shown: { id: string; care: Care; row: Row | null } | null = null;
+
+  async function showClient(id: string) {
     app.innerHTML = '<p class="muted">Loading…</p>';
-    let d, rows;
-    try { [d, rows] = await Promise.all([api(`/projects/${id}/care`), api('/care')]); } catch (e) { app.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
-    current = { id, care: d.care, row: rows.rows.find((r) => r.id === id) };
-    paint();
+    try {
+      // The list comes along for the client's name: the care endpoint knows the plan, not the business.
+      const [detail, list] = await Promise.all([callApi(`/projects/${id}/care`), callApi('/care')]);
+      shown = { id, care: detail.care, row: list.rows.find((row: Row) => row.id === id) ?? null };
+    } catch (error) {
+      showProblem(error);
+      return;
+    }
+    paintClient();
   }
-  async function save(patch) {
+
+  /** Save one change, repaint from what the server sends back, and say so under the plan. */
+  async function saveCare(patch: CarePatch) {
+    setNote('Saving…');
+    try {
+      const saved = await callApi(`/projects/${shown!.id}/care`, { method: 'PUT', body: JSON.stringify(patch) });
+      shown!.care = saved.care;
+      // The repaint replaces the note along with the rest of the view, so it is set again after.
+      paintClient();
+      setNote('Saved');
+    } catch (error) {
+      setNote(reasonFor(error), true);
+    }
+  }
+
+  /** The line under the plan buttons: "Saving…", "Saved", or why it did not save. */
+  function setNote(text: string, bad = false) {
     const note = document.getElementById('savenote');
-    if (note) { note.textContent = 'Saving…'; note.className = 'muted'; }
-    try { const d = await api(`/projects/${current.id}/care`, { method: 'PUT', body: JSON.stringify(patch) }); current.care = d.care; paint(); const n = document.getElementById('savenote'); if (n) n.textContent = 'Saved'; }
-    catch (e) { const n = document.getElementById('savenote'); if (n) { n.textContent = e.message; n.className = 'error'; } }
+    if (!note) return;
+    note.textContent = text;
+    note.className = bad ? 'error' : 'muted';
   }
-  function paint() {
-    const c = current.care, r = current.row || {};
-    const signed = !!c.signed, plan = c.exists ? c.plan : null;
-    const checks = c.checklist || {};
+
+  function paintClient() {
+    const care = shown!.care;
+    const row: Partial<Row> = shown!.row ?? {};
+    // Until a plan exists there is nothing to date, offer or move: the picker is the whole view.
+    const rest = care.exists ? datesSectionHtml(care) + statusSectionHtml(care, row) + hostingSectionHtml(care) : '';
     app.innerHTML = `
       <p><a class="back" href="#"><span aria-hidden="true">‹</span> All care plans</a></p>
-      <h1>${esc(r.business || 'Client')}</h1>
-      <section class="card"><h2>Plan</h2>
-        <div class="plans">${C.plans.map((p) => `<button type="button" data-plan="${p.id}" aria-pressed="${plan === p.id}"${signed ? ' disabled' : ''}><b>${esc(p.name)}</b><span>${money(p.price)} a month</span></button>`).join('')}</div>
-        ${c.exists ? `<p class="inline" style="margin-top:12px"><label for="price">Price a month</label> $<input type="number" id="price" min="1" step="1" value="${esc(c.price)}"${signed ? ' disabled' : ''}> ${signed ? '' : '<button type="button" id="pricesave">Set price</button>'} <span class="muted">${(() => { const p = C.plans.find((x) => x.id === plan); return p && p.price !== c.price ? `list ${money(p.price)}` : ''; })()}</span></p>` : '<p class="muted">Pick a plan to start. It stays a draft until you offer it.</p>'}
-        <p class="muted" id="savenote" role="status"></p>
-      </section>
-      ${c.exists ? `
-      <section class="card"><h2>Dates</h2>
-        <p class="inline"><label for="launched">Launch day</label><input type="date" id="launched" value="${esc(c.launchedAt || '')}"${signed ? ' disabled' : ''}>${signed ? '' : ' <button type="button" id="launchtoday">Today</button>'}</p>
-        <dl class="dates">
-          <div><dt>First preview</dt><dd>${date(c.firstPreview)}</dd></div>
-          <div><dt>Changes window ends</dt><dd>${c.windowEnds ? date(c.windowEnds) : signed ? '—' : 'after the first preview'}</dd></div>
-          <div><dt>First bill</dt><dd>${c.firstBill ? date(c.firstBill) : '—'}</dd></div>
-          <div><dt>${c.endsAt ? 'Paid through' : 'Next charge'}</dt><dd>${date(c.billing?.paidThrough)}</dd></div>
-          ${c.endsAt ? `<div><dt>${c.status === 'canceled' ? 'Ended' : 'Set to end'}</dt><dd>${date(c.endsAt)}</dd></div>` : ''}
-        </dl>
-        <p class="muted">Billing starts the 1st on or after the later of launch and ${C.windowDays} days from the first preview; nothing before.</p>
-      </section>
-      <section class="card"><h2>Status <span class="badge st-${esc(c.status)}">${esc(STATUS[c.status] || c.status)}</span></h2>
-        ${c.status === 'draft' ? `<p>Offer it when you launch: it shows on ${esc(r.contact || 'the client')}’s portal to read and sign, then add a card.</p><p><button type="button" class="primary" id="offer">Offer this plan to sign</button></p>` : ''}
-        ${c.status === 'offered' ? `<p>Waiting on their signature on the portal.</p><p><button type="button" id="withdraw">Take the offer back</button></p>` : ''}
-        ${c.signed ? `<p>Signed by ${esc(c.signed.name)}, ${esc(new Date(c.signed.at).toLocaleString())} (terms ${esc(c.signed.version)}).</p>` : ''}
-        ${c.status === 'signed' ? `<p class="muted">They still need to add a card on the portal.${c.stripeReady ? '' : ' Stripe isn’t connected yet.'}</p>` : ''}
-        ${c.status === 'canceled' ? `<p>This plan ended${c.endsAt ? ` ${date(c.endsAt)}` : ''}. A new one starts over as a draft at the plan and price you pick; the old signature and subscription stay in the project’s history and in Stripe.</p><p><button type="button" id="reset">Start a new plan</button></p>` : ''}
-        ${c.stripeSubscription ? `<p><a href="https://dashboard.stripe.com/subscriptions/${esc(c.stripeSubscription)}" target="_blank" rel="noopener">Open in Stripe</a> <span class="muted">Stripe status: ${esc(c.billing?.stripeStatus || '—')}</span></p>` : ''}
-        ${c.terms ? `<details><summary>Preview what they’ll sign</summary><div class="terms">${c.terms.sections.map((s) => `<h3>${esc(s.h)}</h3>${s.p.map((t) => `<p>${esc(t)}</p>`).join('')}`).join('')}</div></details>` : ''}
-      </section>
-      <section class="card"><h2>Hosting move</h2>
-        <ul class="checks">${C.checklist.map((x) => `<li><label class="check"><input type="checkbox" data-check="${x.id}"${checks[x.id] ? ' checked' : ''}> ${esc(x.label)}</label>${checks[x.id] ? `<span class="when">${date(checks[x.id])}</span>` : ''}</li>`).join('')}</ul>
-        <label for="notes" style="margin-top:12px">Notes</label><textarea id="notes" placeholder="Registrar, who has access, records to watch (email), anything to remember">${esc(c.notes || '')}</textarea>
-      </section>` : ''}`;
-    app.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => save({ plan: b.dataset.plan })));
-    const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
-    on('pricesave', 'click', () => save({ price: Number(document.getElementById('price').value) }));
-    on('price', 'keydown', (e) => { if (e.key === 'Enter') save({ price: Number(e.target.value) }); });
-    on('launched', 'change', (e) => save({ launchedAt: e.target.value || null }));
-    on('launchtoday', 'click', () => save({ launchedAt: today() }));
-    on('offer', 'click', () => save({ offer: true }));
-    on('withdraw', 'click', () => save({ offer: false }));
-    on('reset', 'click', () => { if (confirm('Start a new care plan for this client? The canceled one stays in Stripe and in the history.')) save({ reset: true }); });
-    on('notes', 'change', (e) => save({ notes: e.target.value }));
-    app.querySelectorAll('[data-check]').forEach((b) => b.addEventListener('change', () => save({ checklist: { ...(current.care.checklist || {}), [b.dataset.check]: b.checked ? today() : null } })));
+      <h1>${escapeHtml(row.business || 'Client')}</h1>
+      ${planSectionHtml(care)}
+      ${rest}`;
+    wireClientControls();
   }
 
-  const route = () => { const m = location.hash.match(/^#p\/([\w-]+)$/); m ? detail(m[1]) : list(); };
+  /** The plan and the price. Once it is signed both are fixed: changing them is Stripe's business. */
+  function planSectionHtml(care: Care): string {
+    const signed = !!care.signed;
+    const chosen = care.exists ? care.plan : null;
+    const buttons = config.plans.map((plan) => planButtonHtml(plan, chosen, signed)).join('');
+    const price = care.exists
+      ? priceLineHtml(care, signed)
+      : '<p class="muted">Pick a plan to start. It stays a draft until you offer it.</p>';
+    return `
+      <section class="card"><h2>Plan</h2>
+        <div class="plans">${buttons}</div>
+        ${price}
+        <p class="muted" id="savenote" role="status"></p>
+      </section>`;
+  }
+
+  function planButtonHtml(plan: Plan, chosen: string | null | undefined, signed: boolean): string {
+    const disabled = signed ? ' disabled' : '';
+    return `<button type="button" data-plan="${plan.id}" aria-pressed="${chosen === plan.id}"${disabled}><b>${escapeHtml(plan.name)}</b><span>${money(plan.price)} a month</span></button>`;
+  }
+
+  /** The price box, with the plan's list price beside it when this client is paying another. */
+  function priceLineHtml(care: Care, signed: boolean): string {
+    const disabled = signed ? ' disabled' : '';
+    const setButton = signed ? '' : '<button type="button" id="pricesave">Set price</button>';
+    const plan = config.plans.find((p) => p.id === care.plan);
+    const listPrice = plan && plan.price !== care.price ? `list ${money(plan.price)}` : '';
+    const label = '<label for="price">Price a month</label>';
+    const box = `<input type="number" id="price" min="1" step="1" value="${escapeHtml(care.price)}"${disabled}>`;
+    return `<p class="inline" style="margin-top:12px">${label} $${box} ${setButton} <span class="muted">${listPrice}</span></p>`;
+  }
+
+  /** The dates billing hangs on: the launch day Daniel sets, and what the server works out from it. */
+  function datesSectionHtml(care: Care): string {
+    const signed = !!care.signed;
+    const disabled = signed ? ' disabled' : '';
+    const todayButton = signed ? '' : ' <button type="button" id="launchtoday">Today</button>';
+    // Before a launch date the window is still open-ended; on a signed plan the server has settled it.
+    const windowEnds = care.windowEnds ? day(care.windowEnds) : signed ? '—' : 'after the first preview';
+    const charge = care.endsAt ? 'Paid through' : 'Next charge';
+    const ending = care.endsAt
+      ? `<div><dt>${care.status === 'canceled' ? 'Ended' : 'Set to end'}</dt><dd>${day(care.endsAt)}</dd></div>`
+      : '';
+    const launchBox = `<input type="date" id="launched" value="${escapeHtml(care.launchedAt || '')}"${disabled}>`;
+    return `
+      <section class="card"><h2>Dates</h2>
+        <p class="inline"><label for="launched">Launch day</label>${launchBox}${todayButton}</p>
+        <dl class="dates">
+          <div><dt>First preview</dt><dd>${day(care.firstPreview)}</dd></div>
+          <div><dt>Changes window ends</dt><dd>${windowEnds}</dd></div>
+          <div><dt>First bill</dt><dd>${care.firstBill ? day(care.firstBill) : '—'}</dd></div>
+          <div><dt>${charge}</dt><dd>${day(care.billing?.paidThrough)}</dd></div>
+          ${ending}
+        </dl>
+        <p class="muted">Billing starts the 1st on or after the later of launch and ${config.windowDays} days from the first preview; nothing before.</p>
+      </section>`;
+  }
+
+  /** Where the plan stands, and the one move open from here: offer it, take it back, start over. */
+  function statusSectionHtml(care: Care, row: Partial<Row>): string {
+    const lines: string[] = [];
+    if (care.status === 'draft') {
+      const who = escapeHtml(row.contact || 'the client');
+      lines.push(`<p>Offer it when you launch: it shows on ${who}’s portal to read and sign, then add a card.</p>`);
+      lines.push('<p><button type="button" class="primary" id="offer">Offer this plan to sign</button></p>');
+    }
+    if (care.status === 'offered') {
+      lines.push('<p>Waiting on their signature on the portal.</p>');
+      lines.push('<p><button type="button" id="withdraw">Take the offer back</button></p>');
+    }
+    if (care.signed) {
+      const when = escapeHtml(new Date(care.signed.at).toLocaleString());
+      lines.push(`<p>Signed by ${escapeHtml(care.signed.name)}, ${when} (terms ${escapeHtml(care.signed.version)}).</p>`);
+    }
+    if (care.status === 'signed') {
+      const stripe = care.stripeReady ? '' : ' Stripe isn’t connected yet.';
+      lines.push(`<p class="muted">They still need to add a card on the portal.${stripe}</p>`);
+    }
+    if (care.status === 'canceled') {
+      const ended = care.endsAt ? ` ${day(care.endsAt)}` : '';
+      lines.push(`<p>This plan ended${ended}. A new one starts over as a draft at the plan and price you pick; the old signature and subscription stay in the project’s history and in Stripe.</p>`);
+      lines.push('<p><button type="button" id="reset">Start a new plan</button></p>');
+    }
+    if (care.stripeSubscription) {
+      const href = `https://dashboard.stripe.com/subscriptions/${escapeHtml(care.stripeSubscription)}`;
+      const status = escapeHtml(care.billing?.stripeStatus || '—');
+      lines.push(`<p><a href="${href}" target="_blank" rel="noopener">Open in Stripe</a> <span class="muted">Stripe status: ${status}</span></p>`);
+    }
+    if (care.terms) lines.push(termsPreviewHtml(care.terms));
+    const badge = `<span class="badge st-${escapeHtml(care.status)}">${escapeHtml(statusLabel(care.status!))}</span>`;
+    return `
+      <section class="card"><h2>Status ${badge}</h2>
+        ${lines.join('\n        ')}
+      </section>`;
+  }
+
+  /** What the client will read before signing, as the server renders it; collapsed until asked for. */
+  function termsPreviewHtml(terms: NonNullable<Care['terms']>): string {
+    const sections = terms.sections
+      .map((section) => `<h3>${escapeHtml(section.h)}</h3>` + section.p.map((text) => `<p>${escapeHtml(text)}</p>`).join(''))
+      .join('');
+    return `<details><summary>Preview what they’ll sign</summary><div class="terms">${sections}</div></details>`;
+  }
+
+  /** The hosting move: a box per step, the day it was ticked, and whatever Daniel wrote down. */
+  function hostingSectionHtml(care: Care): string {
+    const done = care.checklist || {};
+    const steps = config.checklist
+      .map((step) => {
+        const checked = done[step.id] ? ' checked' : '';
+        const when = done[step.id] ? `<span class="when">${day(done[step.id])}</span>` : '';
+        return `<li><label class="check"><input type="checkbox" data-check="${step.id}"${checked}> ${escapeHtml(step.label)}</label>${when}</li>`;
+      })
+      .join('');
+    const placeholder = 'Registrar, who has access, records to watch (email), anything to remember';
+    return `
+      <section class="card"><h2>Hosting move</h2>
+        <ul class="checks">${steps}</ul>
+        <label for="notes" style="margin-top:12px">Notes</label><textarea id="notes" placeholder="${placeholder}">${escapeHtml(care.notes || '')}</textarea>
+      </section>`;
+  }
+
+  /** Wire one control by id, if this painting of the view has it. */
+  function onControl(id: string, event: string, handler: (event: Event) => void) {
+    const element = document.getElementById(id);
+    if (element) element.addEventListener(event, handler);
+  }
+
+  /** The price box as a number; the server checks the range and says so if it is out of it. */
+  function priceTyped(): number {
+    return Number((document.getElementById('price') as HTMLInputElement).value);
+  }
+
+  /** Every control the client view paints. Each one saves the single field it changes. */
+  function wireClientControls() {
+    app.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((button) => {
+      button.addEventListener('click', () => saveCare({ plan: button.dataset.plan }));
+    });
+    onControl('pricesave', 'click', () => saveCare({ price: priceTyped() }));
+    onControl('price', 'keydown', (event) => {
+      if ((event as KeyboardEvent).key === 'Enter') saveCare({ price: priceTyped() });
+    });
+    onControl('launched', 'change', (event) => {
+      saveCare({ launchedAt: (event.target as HTMLInputElement).value || null });
+    });
+    onControl('launchtoday', 'click', () => saveCare({ launchedAt: today() }));
+    onControl('offer', 'click', () => saveCare({ offer: true }));
+    onControl('withdraw', 'click', () => saveCare({ offer: false }));
+    onControl('reset', 'click', () => {
+      if (confirm('Start a new care plan for this client? The canceled one stays in Stripe and in the history.')) {
+        saveCare({ reset: true });
+      }
+    });
+    onControl('notes', 'change', (event) => saveCare({ notes: (event.target as HTMLTextAreaElement).value }));
+    // A box records the day it was ticked, so the patch carries the other boxes along as they are.
+    app.querySelectorAll<HTMLInputElement>('[data-check]').forEach((box) => {
+      box.addEventListener('change', () => {
+        const ticked = { ...(shown!.care.checklist || {}), [box.dataset.check!]: box.checked ? today() : null };
+        saveCare({ checklist: ticked });
+      });
+    });
+  }
+
+  // ---- which view the hash asks for ----
+
+  function route() {
+    const client = location.hash.match(/^#p\/([\w-]+)$/);
+    if (client) showClient(client[1]);
+    else showList();
+  }
+
   addEventListener('hashchange', route);
   route();
-})();
 </script>
 </body>
 </html>
