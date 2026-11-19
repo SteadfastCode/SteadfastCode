@@ -61,9 +61,7 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
   every control the script touches, with no page errors. Prior art: the client template
   ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
 
-## Proposed
-
-- [ ] **(SCS-004) Readable scripts: contact.astro, Base.astro, SpeedProof.astro** [proposed]
+- [ ] **(SCS-004) Readable scripts: contact.astro, Base.astro, SpeedProof.astro**
   Rewrite the dense inline scripts in src/pages/contact.astro (the form ladder's client side; keep
   the mail-app fallback), src/layouts/Base.astro (the theme pin and the html.js line must stay
   is:inline in <head> but written readably; the 530- and 661-char one-liners) and check
@@ -78,6 +76,8 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
   gate, then drive each rewritten page in Playwright (desktop and phone width, both themes) through
   every control the script touches, with no page errors. Prior art: the client template
   ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
+
+## Proposed
 
 ## Blocked Items
 
