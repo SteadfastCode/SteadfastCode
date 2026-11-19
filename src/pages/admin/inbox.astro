@@ -57,95 +57,316 @@ const v = Date.now().toString(36);
   <section class="convos" aria-label="Conversations"><h1>Inbox</h1><div id="list"><p class="muted" style="padding:16px">Loading…</p></div></section>
   <section class="pane" aria-label="Conversation" id="pane"><div class="empty">Pick a conversation.</div></section>
 </main>
-<script is:inline>
-(() => {
-  const listEl = document.getElementById('list'), pane = document.getElementById('pane'), box = document.getElementById('inbox');
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const ago = (t) => { const s = (Date.now() - Date.parse(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${Math.round(s / 3600)} h` : new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
-  async function api(path, opts = {}) {
-    const r = await fetch('/api/admin' + path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(/no such table/.test(j.error || '') ? 'Messages are being switched on (the database migration hasn’t run yet).' : j.error || `Error ${r.status}`);
-    return j;
-  }
-  let rows = [], open = null, lastThread = '', lastList = '';
+<script>
+  // /admin/inbox, written to be read; Astro bundles and minifies it for the build. Two panes, one
+  // state: the conversations on the left come from /api/admin/inbox, and the hash says which one is
+  // open (#p/<project id>), so the back button walks back out of a conversation. Each pane paints
+  // its own HTML and then wires the controls it just painted.
 
-  async function loadList() {
-    try { rows = (await api('/inbox')).rows; } catch (e) { listEl.innerHTML = `<p class="error" style="padding:16px">${esc(e.message)}</p>`; return; }
-    // Only redraw when something changed, so a click isn't lost to a list replaced under the pointer.
-    const key = JSON.stringify([rows, open, Math.floor(Date.now() / 60000)]);
-    if (key === lastList) return;
-    lastList = key;
-    const talked = rows.filter((r) => r.last), others = rows.filter((r) => !r.last);
-    const item = (r) => `<button type="button" class="convo${r.unread ? ' unread' : ''}" data-id="${esc(r.id)}" aria-current="${r.id === open}"><span class="top"><b>${esc(r.business || 'Untitled')}</b>${r.last ? `<span class="when">${esc(ago(r.last.at))}</span>` : ''}</span><span class="last">${r.last ? `${r.last.sender === 'daniel' ? 'You: ' : ''}${esc(r.last.body)}` : esc(r.contact || '')}</span></button>`;
-    listEl.innerHTML = (talked.length ? talked.map(item).join('') : '<p class="muted" style="padding:16px">No messages yet.</p>') + (others.length ? `<div class="group">Start a conversation</div>${others.map(item).join('')}` : '');
-    listEl.querySelectorAll('.convo').forEach((b) => b.addEventListener('click', () => { location.hash = 'p/' + b.dataset.id; }));
+  /** One client on the left: a project, with its last message when there is one. */
+  type Conversation = {
+    id: string;
+    business: string | null;
+    contact: string | null;
+    unread: number;
+    last: { at: string; sender: string; body: string } | null;
+  };
+
+  /** One message in the open conversation, as server/messages.js thread() sends it. */
+  type Message = {
+    id: number;
+    at: string;
+    sender: string;
+    name: string | null;
+    body: string;
+    read_at: string | null;
+  };
+
+  const conversationList = document.getElementById('list')!;
+  const pane = document.getElementById('pane')!;
+  const inbox = document.getElementById('inbox')!;
+
+  let conversations: Conversation[] = [];
+  let openId: string | null = null;
+  // What the two panes last painted. A redraw that would change nothing is skipped, so a poll
+  // can't replace the list under Daniel's pointer and swallow the click he was making.
+  let paintedList = '';
+  let paintedThread = '';
+
+  // ---- the small jobs both panes need ----
+
+  const HTML_ESCAPES: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+
+  /** Everything written into the page goes through here: a client's own words are not markup. */
+  function escapeHtml(value: unknown): string {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => HTML_ESCAPES[character]);
   }
 
-  function openPane(id) {
-    open = id;
-    lastThread = '';
-    const r = rows.find((x) => x.id === id) || {};
-    box.classList.add('open');
-    pane.innerHTML = `<div class="pane-head"><button type="button" class="back" id="back" aria-label="All conversations">‹</button><div class="peer"><b>${esc(r.business || 'Client')}</b><span class="muted">${esc(r.contact || '')}</span></div><a href="/admin#p/${esc(id)}">Project</a></div>
-      <div class="thread" id="thread"><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol></div>
-      <div class="composer" id="composer"><div class="in"><label for="msgbody" class="sr">Reply</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message ${esc((r.contact || 'them').split(' ')[0])}" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
-    document.getElementById('back').addEventListener('click', () => { history.pushState(null, '', '#'); route(); });
-    const body = document.getElementById('msgbody'), btn = document.getElementById('msgsend'), note = document.getElementById('msgnote');
-    const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 160) + 'px'; };
-    body.addEventListener('input', grow);
-    // Enter sends on a keyboard; on a touch screen it's a new line and Send sends, as in any messaging app.
-    body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && !matchMedia('(hover: none) and (pointer: coarse)').matches) { e.preventDefault(); btn.click(); } });
-    btn.addEventListener('pointerdown', (e) => { if (document.activeElement === body) e.preventDefault(); });
-    btn.addEventListener('click', async () => {
-      if (!body.value.trim()) { note.textContent = 'Write a message first.'; return; }
-      btn.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
-      const text = body.value;
-      // Clear only what was sent: anything typed while it was sending stays.
-      try { const d = await api(`/projects/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: text }) }); body.value = body.value.startsWith(text) ? body.value.slice(text.length).replace(/^\n/, '') : body.value; grow(); if (open === id) show(d.messages, true); note.textContent = d.emailed ? 'Sent · emailed' : 'Sent · no email went out'; loadList(); }
-      catch (e) { note.className = 'error'; note.textContent = e.message; }
-      btn.disabled = false;
+  /** How long ago, the way a messages app says it: minutes, then hours, then the date. */
+  function ago(at: string): string {
+    const seconds = (Date.now() - Date.parse(at)) / 1000;
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)} h`;
+    return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  /** One call to the admin API. Throws with the message the pane should show. */
+  async function callApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await fetch('/api/admin' + path, {
+      ...init,
+      headers: { 'content-type': 'application/json', ...(init.headers || {}) },
     });
-    listEl.querySelectorAll('.convo').forEach((b) => b.setAttribute('aria-current', String(b.dataset.id === id)));
-    lastList = '';
-    loadThread(true);
-    if (matchMedia('(min-width: 761px)').matches) body.focus();
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(problemFrom(body, response.status));
+    return body;
   }
 
-  function show(ms, toEnd) {
-    const t = document.getElementById('thread'), list = document.getElementById('msglist');
+  // The one failure worth its own words: the messages tables live in a migration, so a database
+  // without it answers "no such table" and the page would otherwise read like a bug.
+  function problemFrom(body: { error?: string }, status: number): string {
+    if (/no such table/.test(body.error || '')) return 'Messages are being switched on (the database migration hasn’t run yet).';
+    return body.error || `Error ${status}`;
+  }
+
+  /** What to tell the reader when a call failed. */
+  function reasonFor(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  // ---- the left pane: every conversation ----
+
+  async function loadConversations() {
+    try {
+      conversations = (await callApi<{ rows: Conversation[] }>('/inbox')).rows;
+    } catch (error) {
+      conversationList.innerHTML = `<p class="error" style="padding:16px">${escapeHtml(reasonFor(error))}</p>`;
+      return;
+    }
+    // The minute is part of the key because the times read "4 min": at the turn of a minute the
+    // same conversations are a different list.
+    const painting = JSON.stringify([conversations, openId, Math.floor(Date.now() / 60000)]);
+    if (painting === paintedList) return;
+    paintedList = painting;
+    conversationList.innerHTML = conversationsHtml();
+    conversationList.querySelectorAll<HTMLButtonElement>('.convo').forEach((button) => {
+      // The hash is the route, so opening a conversation is a place the back button can leave.
+      button.addEventListener('click', () => { location.hash = 'p/' + button.dataset.id; });
+    });
+  }
+
+  /** The conversations he has, then every other client, so he can start one with anybody. */
+  function conversationsHtml(): string {
+    const talked = conversations.filter((c) => c.last);
+    const others = conversations.filter((c) => !c.last);
+    const talkedHtml = talked.length ? talked.map(conversationHtml).join('') : '<p class="muted" style="padding:16px">No messages yet.</p>';
+    const othersHtml = others.length ? `<div class="group">Start a conversation</div>${others.map(conversationHtml).join('')}` : '';
+    return talkedHtml + othersHtml;
+  }
+
+  /** One button on the left: who, how long ago, and the start of the last message. */
+  function conversationHtml(conversation: Conversation): string {
+    const last = conversation.last;
+    const when = last ? `<span class="when">${escapeHtml(ago(last.at))}</span>` : '';
+    // No message yet: their contact's name stands in, so the row isn't a blank line.
+    const preview = last ? `${last.sender === 'daniel' ? 'You: ' : ''}${escapeHtml(last.body)}` : escapeHtml(conversation.contact || '');
+    const unread = conversation.unread ? ' unread' : '';
+    return `<button type="button" class="convo${unread}" data-id="${escapeHtml(conversation.id)}" aria-current="${conversation.id === openId}"><span class="top"><b>${escapeHtml(conversation.business || 'Untitled')}</b>${when}</span><span class="last">${preview}</span></button>`;
+  }
+
+  // ---- the right pane: the open conversation ----
+
+  function openConversation(id: string) {
+    openId = id;
+    paintedThread = '';
+    inbox.classList.add('open');
+    pane.innerHTML = paneHtml(id, conversations.find((c) => c.id === id));
+    wirePane(id);
+    // The highlight moves without redrawing the list, which would lose a click mid-press.
+    conversationList.querySelectorAll<HTMLButtonElement>('.convo').forEach((button) => {
+      button.setAttribute('aria-current', String(button.dataset.id === id));
+    });
+    // That highlight is not what the list last painted, so the next poll paints it properly.
+    paintedList = '';
+    loadThread(true);
+    // Only a real keyboard gets the focus: on a phone it would open over the conversation.
+    if (matchMedia('(min-width: 761px)').matches) document.getElementById('msgbody')!.focus();
+  }
+
+  /** Who this is, the thread, and the message box pinned under it. */
+  function paneHtml(id: string, conversation: Conversation | undefined): string {
+    const business = escapeHtml(conversation?.business || 'Client');
+    const contact = escapeHtml(conversation?.contact || '');
+    // "Message Pat": their first name, or "them" before the project has a contact name.
+    const firstName = escapeHtml((conversation?.contact || 'them').split(' ')[0]);
+    return `<div class="pane-head"><button type="button" class="back" id="back" aria-label="All conversations">‹</button><div class="peer"><b>${business}</b><span class="muted">${contact}</span></div><a href="/admin#p/${escapeHtml(id)}">Project</a></div>
+      <div class="thread" id="thread"><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol></div>
+      <div class="composer" id="composer"><div class="in"><label for="msgbody" class="sr">Reply</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message ${firstName}" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
+  }
+
+  /** Every control the pane paints: the way back on a phone, the box, and Send. */
+  function wirePane(id: string) {
+    const back = document.getElementById('back')!;
+    const box = document.getElementById('msgbody') as HTMLTextAreaElement;
+    const sendButton = document.getElementById('msgsend') as HTMLButtonElement;
+    const note = document.getElementById('msgnote')!;
+
+    // Back is a step in the history, not a reload: the list is still painted underneath.
+    back.addEventListener('click', () => {
+      history.pushState(null, '', '#');
+      route();
+    });
+
+    /** The box grows with the message, up to a few lines, then scrolls inside itself. */
+    function fitBox() {
+      box.style.height = 'auto';
+      box.style.height = Math.min(box.scrollHeight, 160) + 'px';
+    }
+
+    box.addEventListener('input', fitBox);
+    box.addEventListener('keydown', (event) => {
+      if (!sendsOnEnter(event)) return;
+      event.preventDefault();
+      sendButton.click();
+    });
+    // Tapping Send must not blur the box first: on a phone the keyboard would close, the page
+    // would reflow, and the tap would land somewhere else.
+    sendButton.addEventListener('pointerdown', (event) => {
+      if (document.activeElement === box) event.preventDefault();
+    });
+
+    /** Send what's in the box, and say what became of it. */
+    async function send() {
+      if (!box.value.trim()) {
+        note.textContent = 'Write a message first.';
+        return;
+      }
+      sendButton.disabled = true;
+      note.className = 'muted';
+      note.textContent = 'Sending…';
+      const text = box.value;
+      try {
+        const sent = await callApi<{ emailed: boolean; messages: Message[] }>(`/projects/${id}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({ body: text }),
+        });
+        // Clear only what was sent: anything typed while it was sending stays.
+        box.value = box.value.startsWith(text) ? box.value.slice(text.length).replace(/^\n/, '') : box.value;
+        fitBox();
+        if (openId === id) showThread(sent.messages, true);
+        note.textContent = sent.emailed ? 'Sent · emailed' : 'Sent · no email went out';
+        loadConversations();
+      } catch (error) {
+        note.className = 'error';
+        note.textContent = reasonFor(error);
+      }
+      sendButton.disabled = false;
+    }
+
+    sendButton.addEventListener('click', send);
+  }
+
+  /**
+   * Enter sends on a keyboard; on a touch screen it's a new line and Send sends, as in any
+   * messaging app. An Enter that is finishing a word in an input method belongs to that method
+   * (keyCode 229 is how the older browsers say so).
+   */
+  function sendsOnEnter(event: KeyboardEvent): boolean {
+    if (event.key !== 'Enter' || event.shiftKey) return false;
+    if (event.isComposing || event.keyCode === 229) return false;
+    return !matchMedia('(hover: none) and (pointer: coarse)').matches;
+  }
+
+  // ---- the thread itself ----
+
+  function showThread(messages: Message[], toEnd: boolean) {
+    const list = document.getElementById('msglist');
+    // The pane was replaced while this was in flight: there is nothing to paint into.
     if (!list) return;
-    const key = JSON.stringify(ms.map((m) => [m.id, m.read_at]));
-    if (key === lastThread) return;
-    lastThread = key;
-    const atEnd = toEnd || t.scrollHeight - t.scrollTop - t.clientHeight < 40;
-    list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === 'daniel' ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === 'daniel' ? 'You' : esc(m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === 'daniel' && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : '<li class="muted">No messages yet. Say hello; they’ll get an email with their link.</li>';
-    if (atEnd) t.scrollTop = t.scrollHeight;
+    // Read receipts are the only thing that changes about a message, so they are the key with it.
+    const painting = JSON.stringify(messages.map((m) => [m.id, m.read_at]));
+    if (painting === paintedThread) return;
+    paintedThread = painting;
+    const thread = document.getElementById('thread')!;
+    // Stay where he is reading, unless he's at the bottom, where a new message should scroll in.
+    const atEnd = toEnd || thread.scrollHeight - thread.scrollTop - thread.clientHeight < 40;
+    list.innerHTML = messages.length
+      ? messages.map(messageHtml).join('')
+      : '<li class="muted">No messages yet. Say hello; they’ll get an email with their link.</li>';
+    if (atEnd) thread.scrollTop = thread.scrollHeight;
   }
+
+  /** One message: his on the right, theirs on the left. */
+  function messageHtml(message: Message): string {
+    const mine = message.sender === 'daniel';
+    const who = mine ? 'You' : escapeHtml(message.name || 'Client');
+    // Only his own messages say "read": theirs are read by the time they are on his screen.
+    const read = mine && message.read_at ? ' <span class="muted">· read</span>' : '';
+    return `<li class="msg ${mine ? 'mine' : 'theirs'}"><div class="meta"><b>${who}</b> <span class="muted">${escapeHtml(ago(message.at))}</span>${read}</div><div class="body">${escapeHtml(message.body)}</div></li>`;
+  }
+
   // Opening a conversation marks the client's messages read, but only while this window is the one
-  // Daniel is looking at: a poll from an inbox left open on the desk only peeks, so the message stays
-  // unread and the box still tells his phone.
-  async function loadThread(toEnd) {
-    if (!open) return;
-    const id = open;
-    try { const d = await api(`/projects/${id}/messages${document.hasFocus() ? '' : '?peek=1'}`); if (open === id) show(d.messages, toEnd); } catch (e) { const l = document.getElementById('msglist'); if (l) l.innerHTML = `<li class="error">${esc(e.message)}</li>`; }
+  // Daniel is looking at: a poll from an inbox left open on the desk only peeks, so the message
+  // stays unread and the box still tells his phone.
+  async function loadThread(toEnd: boolean) {
+    if (!openId) return;
+    const id = openId;
+    const peek = document.hasFocus() ? '' : '?peek=1';
+    try {
+      const loaded = await callApi<{ messages: Message[] }>(`/projects/${id}/messages${peek}`);
+      // He moved on while this was in flight: those messages are another conversation's.
+      if (openId === id) showThread(loaded.messages, toEnd);
+    } catch (error) {
+      const list = document.getElementById('msglist');
+      if (list) list.innerHTML = `<li class="error">${escapeHtml(reasonFor(error))}</li>`;
+    }
   }
-  addEventListener('focus', () => { loadThread(false); loadList(); });
+
+  // ---- which conversation the hash asks for ----
 
   async function route() {
-    const m = location.hash.match(/^#p\/([\w-]+)$/);
-    if (!rows.length) await loadList();
-    if (m) { openPane(m[1]); setTimeout(loadList, 600); }
-    else { open = null; box.classList.remove('open'); pane.innerHTML = '<div class="empty">Pick a conversation.</div>'; loadList(); }
+    const open = location.hash.match(/^#p\/([\w-]+)$/);
+    // The first route needs the list: the pane's header is a row out of it.
+    if (!conversations.length) await loadConversations();
+    if (open) {
+      openConversation(open[1]);
+      // Opening it marked their messages read; the list catches up once the server has.
+      setTimeout(loadConversations, 600);
+      return;
+    }
+    openId = null;
+    inbox.classList.remove('open');
+    pane.innerHTML = '<div class="empty">Pick a conversation.</div>';
+    loadConversations();
   }
+
   // iPhones don't resize the page for the keyboard: size it to what's visible, so the box rides up.
-  const fit = () => { const vv = window.visualViewport; document.body.style.height = vv ? `${vv.height}px` : ''; };
-  window.visualViewport?.addEventListener('resize', fit);
-  fit();
+  function fitToVisibleArea() {
+    const visible = window.visualViewport;
+    document.body.style.height = visible ? `${visible.height}px` : '';
+  }
+
+  window.visualViewport?.addEventListener('resize', fitToVisibleArea);
+  fitToVisibleArea();
+  // Back to this window: a message that only peeked while it sat in the background is read now.
+  addEventListener('focus', () => {
+    loadThread(false);
+    loadConversations();
+  });
   addEventListener('hashchange', route);
   route();
-  setInterval(() => { if (document.visibilityState !== 'visible') return; loadList(); loadThread(false); }, 5000);
-})();
+  // A message that arrives while he has the Inbox open shows up on its own.
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    loadConversations();
+    loadThread(false);
+  }, 5000);
 </script>
 </body>
 </html>
