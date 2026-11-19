@@ -74,226 +74,755 @@ const config = {
 <header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads" aria-current="page">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
 <main id="app"><p class="muted">Loading…</p></main>
 <script type="application/json" id="leads-config" set:html={JSON.stringify(config)}></script>
-<script type="module" is:inline>
-const C = JSON.parse(document.getElementById('leads-config').textContent);
-const app = document.getElementById('app');
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const api = async (path, init = {}) => { const r = await fetch('/api/admin' + path, { credentials: 'same-origin', headers: { 'content-type': 'application/json' }, ...init }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status); return j; };
-const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return !isFinite(m) ? '' : m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
-const tierName = (id) => C.tiers.find((t) => t.id === id)?.name || '';
-// Dates on the board are days Daniel typed, read against his own calendar, not UTC.
-const localDate = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-const today = localDate(new Date());
-const inWeek = localDate(new Date(Date.now() + 7 * 86400_000));
-const due = (l) => (!l.nextAt || !(C.active.includes(l.status) || l.status === 'hold')) ? null : l.nextAt < today ? 'overdue' : l.nextAt === today ? 'today' : l.nextAt <= inWeek ? 'soon' : null;
-const dueRank = { overdue: 0, today: 1, soon: 2 };
-const order = (l) => (dueRank[l.due] ?? 3) * 100 + (C.active.includes(l.status) ? C.statuses.indexOf(l.status) : 10 + C.statuses.indexOf(l.status));
-// A lead's website as a link, only when it is a web address: the contact form takes any text for
-// "current site", and this page runs as Daniel, so anything else is shown as plain text.
-const link = (url) => {
-  const shown = esc(url.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
-  try { const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`); if (!/^https?:$/.test(u.protocol) || !u.hostname.includes('.')) return shown; return `<a href="${esc(u.href)}" target="_blank" rel="noopener">${shown}</a>`; }
-  catch { return shown; }
-};
-const kindBadge = (l) => (l.kind === 'prospect' ? '' : ` <span class="badge kind">${esc(C.kindLabel[l.kind])}</span>`);
-// A mock-up built for the lead opens in a new tab straight from the board (a phone in a meeting).
-const mockBadge = (l) => (l.mockUrl ? ` ${link(l.mockUrl).replace('<a ', '<a class="badge mock" ').replace(/>[^<]*<\/a>$/, '>Mock-up</a>')}` : '');
+<script>
+  // The leads board, written to be read; Astro bundles and minifies it for the build. One page with
+  // four views, picked by the hash — the board (no hash), one lead (#l/<id>), add (#new) and import
+  // (#import). Each view renders its HTML into <main id="app"> and then wires up its controls.
+  //
+  // The statuses, kinds, site states, touch kinds and packages come from the JSON above, which the
+  // page built from server/leads.js, so nothing here keeps a second copy of them.
 
-// The lead's fields, once, for the Add and Details forms.
-const FIELDS = [
-  { id: 'business', label: 'Business, church or organization', required: true, wide: true, max: 160 },
-  { id: 'kind', label: 'Kind', options: C.kinds.map((k) => [k, C.kindLabel[k]]) },
-  { id: 'category', label: 'Category', placeholder: 'plumber, church, chamber…', max: 60 },
-  { id: 'town', label: 'Town', max: 80 },
-  { id: 'website', label: 'Website', placeholder: 'example.com, or blank', max: 300 },
-  { id: 'siteState', label: 'Their site today', options: C.siteStates.map((s) => [s, C.siteStateLabel[s]]) },
-  { id: 'mockUrl', label: 'Mock-up preview (a Pages link, if you built one)', placeholder: 'https://stdfst-….pages.dev', wide: true, max: 300 },
-  { id: 'contact', label: 'Contact', max: 120 },
-  { id: 'role', label: 'Role', max: 80 },
-  { id: 'email', label: 'Email', type: 'email', max: 200 },
-  { id: 'phone', label: 'Phone', type: 'tel', max: 40 },
-  { id: 'fit', label: 'Likely package', options: [['', 'Not sure yet'], ...C.tiers.map((t) => [t.id, t.name])] },
-  { id: 'status', label: 'Status', options: C.statuses.map((s) => [s, C.statusLabel[s]]) },
-  { id: 'nextStep', label: 'Next step', max: 300 },
-  { id: 'nextAt', label: 'By', type: 'date' },
-  { id: 'source', label: 'Where this lead came from', placeholder: 'a directory, a referral, the research…', wide: true, max: 300 },
-  { id: 'why', label: 'Why reach out', type: 'textarea', wide: true, max: 1500 },
-];
-const fieldsHtml = (v = {}) => FIELDS.map((f) => {
-  const id = 'f-' + f.id;
-  const val = v[f.id] ?? '';
-  const ctl = f.options ? `<select id="${id}" name="${f.id}">${f.options.map(([o, l]) => `<option value="${esc(o)}"${o === val ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`
-    : f.type === 'textarea' ? `<textarea id="${id}" name="${f.id}" maxlength="${f.max}">${esc(val)}</textarea>`
-    : `<input id="${id}" name="${f.id}" type="${f.type || 'text'}" value="${esc(val)}"${f.max ? ` maxlength="${f.max}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}${f.required ? ' required' : ''}>`;
-  return `<div${f.wide ? ' class="wide"' : ''}><label for="${id}">${esc(f.label)}${f.required ? ' *' : ''}</label>${ctl}</div>`;
-}).join('');
-const formValues = (form) => Object.fromEntries([...form.elements].filter((e) => e.name).map((e) => [e.name, e.value]));
-const note = (id, text, bad = false) => { const el = document.getElementById(id); if (el) { el.textContent = text; el.classList.toggle('error', bad); } };
+  /** [value, label]: one <option>, or one filter chip. */
+  type Choice = [value: string, label: string];
 
-// ---- the board ----
-async function viewBoard() {
-  app.innerHTML = '<h1>Leads</h1><p class="muted">Loading…</p>';
-  const { leads: raw, seedAvailable } = await api('/leads');
-  const leads = raw.map((l) => ({ ...l, due: due(l) })).sort((a, b) => order(a) - order(b) || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  const active = leads.filter((l) => C.active.includes(l.status)).length;
-  const dueCount = leads.filter((l) => l.due === 'overdue' || l.due === 'today').length;
-  const won = leads.filter((l) => l.status === 'won').length;
-  const counts = Object.fromEntries(C.statuses.map((s) => [s, leads.filter((l) => l.status === s).length]));
-  const chips = [['active', `Active ${active}`], ['all', `All ${leads.length}`], ['inbound', `Came to us ${leads.filter((l) => l.kind === 'inbound').length}`], ['mock', `Mock-ups ${leads.filter((l) => l.mockUrl).length}`], ...C.statuses.map((s) => [s, `${C.statusLabel[s]} ${counts[s]}`]), ['partner', `Partners ${leads.filter((l) => l.kind === 'partner').length}`]];
-  const upNext = leads.filter((l) => l.due).slice(0, 12);
-  const row = (l) => `<div class="lead" data-id="${esc(l.id)}" data-status="${esc(l.status)}" data-kind="${esc(l.kind)}" data-mock="${l.mockUrl ? 1 : 0}" data-search="${esc([l.business, l.town, l.category, l.contact, l.email, l.phone, l.why, l.source, l.nextStep, C.statusLabel[l.status], C.kindLabel[l.kind], l.mockUrl ? 'mock-up' : ''].join(' ').toLowerCase())}">
-    <div class="main"><a href="#l/${esc(l.id)}"><b>${esc(l.business || l.contact || 'Untitled')}</b></a>${kindBadge(l)}${mockBadge(l)}<div class="sub">${[esc(l.town), esc(l.category), l.website ? link(l.website) : '', l.siteState !== 'unknown' ? esc(C.siteStateLabel[l.siteState]) : '', l.fit ? esc(tierName(l.fit)) : ''].filter(Boolean).join(' · ')}</div></div>
-    <div class="contact"><span class="head">Contact</span>${esc(l.contact) || '<span class="muted">—</span>'}${l.role ? ` <span class="muted">${esc(l.role)}</span>` : ''}<div class="sub">${[l.phone ? `<a href="tel:${esc(l.phone.replace(/[^\d+]/g, ''))}">${esc(l.phone)}</a>` : '', l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : ''].filter(Boolean).join(' · ')}</div></div>
-    <div class="st"><span class="head">Status</span><select class="status s-${esc(l.status)}" data-id="${esc(l.id)}" aria-label="Status of ${esc(l.business)}">${C.statuses.map((s) => `<option value="${s}"${s === l.status ? ' selected' : ''}>${esc(C.statusLabel[s])}</option>`).join('')}</select></div>
-    <div class="touch"><span class="head">Last touch</span>${l.lastTouch ? `${esc(C.touchLabel[l.lastTouch.kind] || l.lastTouch.kind)} <span class="muted">${esc(ago(l.lastTouch.at))}</span><div class="sub">${esc(l.lastTouch.text.slice(0, 400))}</div>` : '<span class="muted">nothing yet</span>'}</div>
-    <div class="next"><span class="head">Next</span>${l.nextAt ? `<span class="${l.due ? `due-${l.due}` : ''}">${esc(l.nextAt)}</span>` : !l.nextStep && !l.projects.length ? '<span class="muted">—</span>' : ''}<div class="sub">${esc(l.nextStep)}</div>${l.projects.map((p) => `<div class="sub"><a href="/admin#p/${esc(p.id)}">Project: ${esc(p.status)}</a>${p.previewUrl ? ` · <a href="${esc(p.previewUrl)}" target="_blank" rel="noopener">preview</a>` : ''}</div>`).join('')}</div>
-  </div>`;
-  app.innerHTML = `
-    <h1>Leads</h1>
-    <div class="toolbar"><span class="muted">${active} active · ${dueCount} due · ${won} won</span><span class="spacer"></span><a class="btn" href="#new">Add a lead</a><a class="btn" href="#import">Import${seedAvailable ? ` · research list (${seedAvailable} new)` : ''}</a><a class="btn" href="/api/admin/leads/export">CSV</a></div>
-    <p class="muted">A lead is a business, church or nonprofit that could buy a site (a <b>prospect</b>), one that came to us through the contact form (<b>came to us</b>), or a chamber, network or referral source that produces prospects (a <b>partner</b>). Open one to log what happened and set the next step; a first email or call moves it to Contacted on its own, a reply to Replied, a meeting to Meeting set. <b>Start a project</b> opens the intake with what the board knows filled in.</p>
-    ${upNext.length ? `<section class="card"><h2>Up next <span class="muted">${dueCount} due or overdue</span></h2><ul class="next">${upNext.map((l) => `<li><a href="#l/${esc(l.id)}"><b>${esc(l.business)}</b></a><span class="due-${esc(l.due)}">${esc(l.nextAt)}</span><span>${esc(l.nextStep) || '<span class="muted">no step written down</span>'}</span><span class="muted">${esc(C.statusLabel[l.status])}</span></li>`).join('')}</ul></section>` : ''}
-    <section class="card"><h2>Board</h2>
-      <div class="filters">${chips.map(([k, l]) => `<button type="button" data-filter="${k}" aria-pressed="${k === 'active'}">${esc(l)}</button>`).join('')}<input type="search" id="search" placeholder="Search the board" aria-label="Search the board"></div>
-      ${leads.length ? `<div class="lead cols"><div>Business</div><div>Contact</div><div>Status</div><div>Last touch</div><div>Next</div></div>${leads.map(row).join('')}<p class="muted" id="nomatch" hidden>Nothing matches this filter.</p>` : '<p class="muted">No leads yet. <a href="#new">Add one</a>, <a href="#import">import a list</a>, or load the research list from the import page: the organizations the research named, each with where it came from and why.</p>'}
-    </section>`;
-  let filter = 'active', query = '';
-  const apply = () => {
-    let shown = 0;
-    app.querySelectorAll('.lead[data-id]').forEach((el) => {
-      const okStatus = filter === 'all' || (filter === 'active' ? C.active.includes(el.dataset.status) : filter === 'mock' ? el.dataset.mock === '1' : filter === 'partner' || filter === 'inbound' ? el.dataset.kind === filter : el.dataset.status === filter);
-      const ok = okStatus && (!query || el.dataset.search.includes(query));
-      el.hidden = !ok;
-      if (ok) shown++;
-    });
-    const nm = document.getElementById('nomatch');
-    if (nm) nm.hidden = shown > 0;
+  type Config = {
+    tiers: { id: string; name: string }[];
+    statuses: string[];
+    statusLabel: Record<string, string>;
+    active: string[];
+    kinds: string[];
+    kindLabel: Record<string, string>;
+    siteStates: string[];
+    siteStateLabel: Record<string, string>;
+    touchKinds: string[];
+    touchLabel: Record<string, string>;
   };
-  app.querySelectorAll('.filters button').forEach((b) => b.addEventListener('click', () => { filter = b.dataset.filter; app.querySelectorAll('.filters button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); apply(); }));
-  document.getElementById('search')?.addEventListener('input', (e) => { query = e.target.value.trim().toLowerCase(); apply(); });
-  app.querySelectorAll('select.status').forEach((s) => s.addEventListener('change', async () => {
-    s.disabled = true;
-    try { await api('/leads/' + encodeURIComponent(s.dataset.id), { method: 'PATCH', body: JSON.stringify({ patch: { status: s.value } }) }); await viewBoard(); }
-    catch (e) { alert('Could not change the status: ' + e.message); s.disabled = false; }
-  }));
-  apply();
-}
 
-// ---- one lead ----
-async function viewLead(id) {
-  app.innerHTML = '<p class="muted">Loading…</p>';
-  const { lead: l, touches } = await api('/leads/' + encodeURIComponent(id));
-  const meta = [esc(l.town), esc(l.category), l.website ? link(l.website) : '', l.siteState !== 'unknown' ? esc(C.siteStateLabel[l.siteState]) : '', l.fit ? esc(tierName(l.fit)) : ''].filter(Boolean).join(' · ');
-  const projects = l.projects.length
-    ? l.projects.map((p) => `<div class="row"><div><a href="/admin#p/${esc(p.id)}"><b>${esc(p.business || l.business)}</b></a><div class="muted">${esc(p.status)}${p.previewUrl ? ` · <a href="${esc(p.previewUrl)}" target="_blank" rel="noopener">preview</a>` : ''}</div></div><a class="btn" href="/admin#p/${esc(p.id)}">Open</a></div>`).join('')
-    : l.kind === 'partner' ? '<p class="muted">A partner sends prospects; projects start from those.</p>'
-    : '<button type="button" class="primary" id="start">Start a project from this lead</button><span class="help">Opens the intake with the business, contact, phone, email, current site, town and the notes here already filled in, and marks the lead Won.</span>';
-  app.innerHTML = `
-    <p><a class="back" href="#">← Leads</a></p>
-    <h1>${esc(l.business || l.contact || 'Untitled')}${kindBadge(l)}</h1>
-    ${meta ? `<p class="muted">${meta}</p>` : ''}
-    ${l.mockUrl ? `<p class="mockrow"><a class="btn" href="${esc(l.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="help">Built before any project, on a private preview. If they say yes: push its folder (<code>~/repos/clients/client-&lt;slug&gt;</code> on the box) to GitHub under that name and start the project from this lead with the same business name. The link comes along: both sides get an Open the mock-up button, the intake asks what to change from it, and the first build carries it on instead of starting over.</span></p>` : ''}
-    ${l.why ? `<p>${esc(l.why)}</p>` : ''}
-    ${l.message ? `<p><span class="muted">They wrote:</span> ${esc(l.message)}</p>` : ''}
-    ${l.source ? `<p class="muted">Source: ${esc(l.source)}</p>` : ''}
-    <section class="card"><h2>Project</h2>${projects}<span class="muted" id="startnote"></span></section>
-    <section class="card"><h2>Log</h2>
-      <form class="touch" id="touch">
-        <div><label for="t-kind">What</label><select id="t-kind" name="kind">${C.touchKinds.map((k) => `<option value="${k}">${esc(C.touchLabel[k])}</option>`).join('')}</select></div>
-        <div><label for="t-text">Happened</label><input id="t-text" name="text" type="text" placeholder="What you did, what they said" maxlength="2000"></div>
-        <div><label for="t-status">Status after</label><select id="t-status" name="status"><option value="">follows the entry</option>${C.statuses.map((s) => `<option value="${s}">${esc(C.statusLabel[s])}</option>`).join('')}</select></div>
-        <div><label for="t-step">Next step</label><input id="t-step" name="nextStep" type="text" value="${esc(l.nextStep)}" maxlength="300"></div>
-        <div><label for="t-at">By</label><input id="t-at" name="nextAt" type="date" value="${esc(l.nextAt)}"></div>
-        <div class="btns wide"><button type="submit" class="primary">Add entry</button><span class="muted" id="touchnote"></span></div>
-      </form>
-      ${touches.length ? `<ul class="log">${touches.map((t) => `<li><span class="when">${esc(String(t.at).slice(0, 16).replace('T', ' '))} · ${esc(C.touchLabel[t.kind] || t.kind)}${t.status ? ` → ${esc(C.statusLabel[t.status] || t.status)}` : ''}${t.who && t.who !== 'daniel' ? ` · ${esc(t.who)}` : ''}</span><br>${esc(t.text)}</li>`).join('')}</ul>` : '<p class="muted">Nothing logged yet.</p>'}
-    </section>
-    <section class="card"><h2>Details</h2><form class="fields" id="edit">${fieldsHtml(l)}</form>
-      <div class="btns"><button type="button" class="primary" id="save">Save details</button><button type="button" class="danger" id="delete">Delete</button><span class="muted" id="editnote"></span></div>
+  /** How close a lead's next step is, or null when there is nothing to chase. */
+  type Due = 'overdue' | 'today' | 'soon' | null;
+
+  type Touch = { kind: string; at: string; text: string; status?: string; who?: string };
+  type Project = { id: string; status: string; business?: string; previewUrl?: string };
+
+  /** A lead as /api/admin/leads sends it, plus `due`, which this page works out for itself. */
+  type Lead = {
+    id: string;
+    business: string;
+    contact: string;
+    role: string;
+    email: string;
+    phone: string;
+    website: string;
+    town: string;
+    category: string;
+    kind: string;
+    siteState: string;
+    fit: string;
+    status: string;
+    nextStep: string;
+    nextAt: string;
+    source: string;
+    why: string;
+    message: string;
+    mockUrl: string;
+    updatedAt: string;
+    lastTouch: Touch | null;
+    projects: Project[];
+    due: Due;
+  };
+
+  const config: Config = JSON.parse(document.getElementById('leads-config')!.textContent!);
+  const app = document.getElementById('app')!;
+
+  // ---- the small jobs every view needs ----
+
+  const HTML_ESCAPES: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+
+  /** Everything written into the page goes through here: a lead's own words are not markup. */
+  function escapeHtml(value: unknown): string {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => HTML_ESCAPES[character]);
+  }
+
+  /** One call to the admin API. Throws with the server's own message, which the views show. */
+  async function callApi(path: string, init: RequestInit = {}): Promise<any> {
+    const response = await fetch('/api/admin' + path, {
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      ...init,
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'HTTP ' + response.status);
+    return body;
+  }
+
+  /** What to tell the reader when a call failed. */
+  function reasonFor(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  /** How long ago something was logged, in the roughest unit that still says something. */
+  function timeAgo(iso: string): string {
+    const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (!isFinite(minutes)) return '';
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 1440) return `${Math.round(minutes / 60)} h ago`;
+    return `${Math.round(minutes / 1440)} d ago`;
+  }
+
+  const tierName = (id: string) => config.tiers.find((tier) => tier.id === id)?.name || '';
+
+  /** Live means still being worked: not won, lost or on hold. */
+  const isLive = (lead: Lead) => config.active.includes(lead.status);
+
+  // Dates on the board are days Daniel typed, read against his own calendar, not UTC.
+  function localDay(date: Date): string {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  const today = localDay(new Date());
+  const inAWeek = localDay(new Date(Date.now() + 7 * 86400_000));
+
+  /** A date only counts as due while the lead is live or on hold; on a won lead it is history. */
+  function dueState(lead: Lead): Due {
+    const chasing = isLive(lead) || lead.status === 'hold';
+    if (!lead.nextAt || !chasing) return null;
+    if (lead.nextAt < today) return 'overdue';
+    if (lead.nextAt === today) return 'today';
+    if (lead.nextAt <= inAWeek) return 'soon';
+    return null;
+  }
+
+  const DUE_RANK: Record<string, number> = { overdue: 0, today: 1, soon: 2 };
+
+  /** The board's order: what is due first, then by status, with won, lost and hold at the end. */
+  function boardRank(lead: Lead): number {
+    const byDue = (DUE_RANK[lead.due ?? ''] ?? 3) * 100;
+    const byStatus = config.statuses.indexOf(lead.status) + (isLive(lead) ? 0 : 10);
+    return byDue + byStatus;
+  }
+
+  /** Same rank: whichever was touched most recently goes first. */
+  function byBoardOrder(a: Lead, b: Lead): number {
+    return boardRank(a) - boardRank(b) || (b.updatedAt || '').localeCompare(a.updatedAt || '');
+  }
+
+  // ---- websites, links and badges ----
+
+  // A lead's website becomes a link only when it really is a web address: the contact form takes
+  // any text for "current site", and this page runs as Daniel, so anything else stays plain text.
+  function webAddress(url: string): { shown: string; href: string | null } {
+    const shown = escapeHtml(url.replace(/^https?:\/\//i, '').replace(/\/$/, ''));
+    try {
+      const parsed = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+      if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname.includes('.')) return { shown, href: null };
+      return { shown, href: escapeHtml(parsed.href) };
+    } catch {
+      return { shown, href: null };
+    }
+  }
+
+  function asLink(url: string): string {
+    const { shown, href } = webAddress(url);
+    if (!href) return shown;
+    return `<a href="${href}" target="_blank" rel="noopener">${shown}</a>`;
+  }
+
+  /** A prospect is the usual kind, so only the other two wear a badge. */
+  function kindBadge(lead: Lead): string {
+    if (lead.kind === 'prospect') return '';
+    return ` <span class="badge kind">${escapeHtml(config.kindLabel[lead.kind])}</span>`;
+  }
+
+  /** A mock-up built for the lead opens in a new tab straight from the board (a phone in a meeting). */
+  function mockBadge(lead: Lead): string {
+    if (!lead.mockUrl) return '';
+    const { shown, href } = webAddress(lead.mockUrl);
+    if (!href) return ` ${shown}`;
+    return ` <a class="badge mock" href="${href}" target="_blank" rel="noopener">Mock-up</a>`;
+  }
+
+  /** The line under a lead's name: where they are, what they do, their site today, the package. */
+  function summaryLine(lead: Lead): string {
+    return [
+      escapeHtml(lead.town),
+      escapeHtml(lead.category),
+      lead.website ? asLink(lead.website) : '',
+      lead.siteState !== 'unknown' ? escapeHtml(config.siteStateLabel[lead.siteState]) : '',
+      lead.fit ? escapeHtml(tierName(lead.fit)) : '',
+    ].filter(Boolean).join(' · ');
+  }
+
+  /** The status list, used on every board row and in the log form. */
+  function statusOptionsHtml(selected: string): string {
+    return config.statuses
+      .map((status) => {
+        const chosen = status === selected ? ' selected' : '';
+        return `<option value="${status}"${chosen}>${escapeHtml(config.statusLabel[status])}</option>`;
+      })
+      .join('');
+  }
+
+  /** The note next to a button: "Saving…", or why it did not save. */
+  function setNote(id: string, text: string, bad = false) {
+    const note = document.getElementById(id);
+    if (!note) return;
+    note.textContent = text;
+    note.classList.toggle('error', bad);
+  }
+
+  /** Every named control in a form, as the API's own field names. */
+  function formValues(form: HTMLFormElement): Record<string, string> {
+    const controls = [...form.elements] as (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[];
+    return Object.fromEntries(controls.filter((control) => control.name).map((control) => [control.name, control.value]));
+  }
+
+  // ---- the lead's fields, written once for both the Add and the Details forms ----
+
+  type Field = {
+    id: string;
+    label: string;
+    options?: Choice[];
+    type?: string;
+    max?: number;
+    placeholder?: string;
+    wide?: boolean;
+    required?: boolean;
+  };
+
+  const FIELDS: Field[] = [
+    { id: 'business', label: 'Business, church or organization', required: true, wide: true, max: 160 },
+    { id: 'kind', label: 'Kind', options: config.kinds.map((kind) => [kind, config.kindLabel[kind]]) },
+    { id: 'category', label: 'Category', placeholder: 'plumber, church, chamber…', max: 60 },
+    { id: 'town', label: 'Town', max: 80 },
+    { id: 'website', label: 'Website', placeholder: 'example.com, or blank', max: 300 },
+    { id: 'siteState', label: 'Their site today', options: config.siteStates.map((s) => [s, config.siteStateLabel[s]]) },
+    {
+      id: 'mockUrl',
+      label: 'Mock-up preview (a Pages link, if you built one)',
+      placeholder: 'https://stdfst-….pages.dev',
+      wide: true,
+      max: 300,
+    },
+    { id: 'contact', label: 'Contact', max: 120 },
+    { id: 'role', label: 'Role', max: 80 },
+    { id: 'email', label: 'Email', type: 'email', max: 200 },
+    { id: 'phone', label: 'Phone', type: 'tel', max: 40 },
+    { id: 'fit', label: 'Likely package', options: [['', 'Not sure yet'], ...config.tiers.map((t): Choice => [t.id, t.name])] },
+    { id: 'status', label: 'Status', options: config.statuses.map((s) => [s, config.statusLabel[s]]) },
+    { id: 'nextStep', label: 'Next step', max: 300 },
+    { id: 'nextAt', label: 'By', type: 'date' },
+    { id: 'source', label: 'Where this lead came from', placeholder: 'a directory, a referral, the research…', wide: true, max: 300 },
+    { id: 'why', label: 'Why reach out', type: 'textarea', wide: true, max: 1500 },
+  ];
+
+  function fieldControlHtml(field: Field, value: string): string {
+    const id = 'f-' + field.id;
+    if (field.options) {
+      const options = field.options
+        .map(([option, label]) => {
+          const chosen = option === value ? ' selected' : '';
+          return `<option value="${escapeHtml(option)}"${chosen}>${escapeHtml(label)}</option>`;
+        })
+        .join('');
+      return `<select id="${id}" name="${field.id}">${options}</select>`;
+    }
+    if (field.type === 'textarea') {
+      return `<textarea id="${id}" name="${field.id}" maxlength="${field.max}">${escapeHtml(value)}</textarea>`;
+    }
+    const extras = [
+      field.max ? ` maxlength="${field.max}"` : '',
+      field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : '',
+      field.required ? ' required' : '',
+    ].join('');
+    return `<input id="${id}" name="${field.id}" type="${field.type || 'text'}" value="${escapeHtml(value)}"${extras}>`;
+  }
+
+  function fieldsHtml(values: Record<string, unknown> = {}): string {
+    return FIELDS
+      .map((field) => {
+        const value = String(values[field.id] ?? '');
+        const wide = field.wide ? ' class="wide"' : '';
+        const star = field.required ? ' *' : '';
+        const label = `<label for="f-${field.id}">${escapeHtml(field.label)}${star}</label>`;
+        return `<div${wide}>${label}${fieldControlHtml(field, value)}</div>`;
+      })
+      .join('');
+  }
+
+  // ---- the board ----
+
+  async function showBoard() {
+    app.innerHTML = '<h1>Leads</h1><p class="muted">Loading…</p>';
+    const { leads: loaded, seedAvailable } = await callApi('/leads');
+    const leads: Lead[] = loaded.map((lead: Lead) => ({ ...lead, due: dueState(lead) })).sort(byBoardOrder);
+    app.innerHTML = boardHtml(leads, seedAvailable);
+    wireFilters();
+    wireStatusSelects();
+  }
+
+  /** One lead as a row. data-* is what the filters and the search box match against. */
+  function boardRowHtml(lead: Lead): string {
+    const searchable = [
+      lead.business, lead.town, lead.category, lead.contact, lead.email, lead.phone,
+      lead.why, lead.source, lead.nextStep, config.statusLabel[lead.status],
+      config.kindLabel[lead.kind], lead.mockUrl ? 'mock-up' : '',
+    ].join(' ').toLowerCase();
+    const data = [
+      `data-id="${escapeHtml(lead.id)}"`,
+      `data-status="${escapeHtml(lead.status)}"`,
+      `data-kind="${escapeHtml(lead.kind)}"`,
+      `data-mock="${lead.mockUrl ? 1 : 0}"`,
+      `data-search="${escapeHtml(searchable)}"`,
+    ].join(' ');
+    return `<div class="lead" ${data}>
+    ${boardNameCellHtml(lead)}
+    ${boardContactCellHtml(lead)}
+    ${boardStatusCellHtml(lead)}
+    ${boardTouchCellHtml(lead)}
+    ${boardNextCellHtml(lead)}
+  </div>`;
+  }
+
+  function boardNameCellHtml(lead: Lead): string {
+    const name = escapeHtml(lead.business || lead.contact || 'Untitled');
+    const title = `<a href="#l/${escapeHtml(lead.id)}"><b>${name}</b></a>${kindBadge(lead)}${mockBadge(lead)}`;
+    return `<div class="main">${title}<div class="sub">${summaryLine(lead)}</div></div>`;
+  }
+
+  function boardContactCellHtml(lead: Lead): string {
+    const who = escapeHtml(lead.contact) || '<span class="muted">—</span>';
+    const role = lead.role ? ` <span class="muted">${escapeHtml(lead.role)}</span>` : '';
+    const reach = [
+      lead.phone ? `<a href="tel:${escapeHtml(lead.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(lead.phone)}</a>` : '',
+      lead.email ? `<a href="mailto:${escapeHtml(lead.email)}">${escapeHtml(lead.email)}</a>` : '',
+    ].filter(Boolean).join(' · ');
+    return `<div class="contact"><span class="head">Contact</span>${who}${role}<div class="sub">${reach}</div></div>`;
+  }
+
+  function boardStatusCellHtml(lead: Lead): string {
+    const select = [
+      `<select class="status s-${escapeHtml(lead.status)}"`,
+      `data-id="${escapeHtml(lead.id)}"`,
+      `aria-label="Status of ${escapeHtml(lead.business)}">`,
+    ].join(' ');
+    return `<div class="st"><span class="head">Status</span>${select}${statusOptionsHtml(lead.status)}</select></div>`;
+  }
+
+  function boardTouchCellHtml(lead: Lead): string {
+    const touch = lead.lastTouch;
+    if (!touch) return '<div class="touch"><span class="head">Last touch</span><span class="muted">nothing yet</span></div>';
+    const what = escapeHtml(config.touchLabel[touch.kind] || touch.kind);
+    // Clamped to three lines in CSS; 400 characters is more than those lines can hold.
+    const said = escapeHtml(touch.text.slice(0, 400));
+    const when = `<span class="muted">${escapeHtml(timeAgo(touch.at))}</span>`;
+    return `<div class="touch"><span class="head">Last touch</span>${what} ${when}<div class="sub">${said}</div></div>`;
+  }
+
+  function boardNextCellHtml(lead: Lead): string {
+    const nothingToSay = !lead.nextStep && !lead.projects.length;
+    const date = lead.nextAt
+      ? `<span class="${lead.due ? `due-${lead.due}` : ''}">${escapeHtml(lead.nextAt)}</span>`
+      : nothingToSay ? '<span class="muted">—</span>' : '';
+    const projects = lead.projects
+      .map((project) => {
+        const open = `<a href="/admin#p/${escapeHtml(project.id)}">Project: ${escapeHtml(project.status)}</a>`;
+        const preview = project.previewUrl
+          ? ` · <a href="${escapeHtml(project.previewUrl)}" target="_blank" rel="noopener">preview</a>`
+          : '';
+        return `<div class="sub">${open}${preview}</div>`;
+      })
+      .join('');
+    const step = `<div class="sub">${escapeHtml(lead.nextStep)}</div>`;
+    return `<div class="next"><span class="head">Next</span>${date}${step}${projects}</div>`;
+  }
+
+  /** The filter chips across the top of the board, each with its own count. */
+  function filterChips(leads: Lead[]): Choice[] {
+    const countOf = (matches: (lead: Lead) => boolean) => leads.filter(matches).length;
+    const byStatus = config.statuses.map((status): Choice => {
+      const count = countOf((lead) => lead.status === status);
+      return [status, `${config.statusLabel[status]} ${count}`];
+    });
+    return [
+      ['active', `Active ${countOf(isLive)}`],
+      ['all', `All ${leads.length}`],
+      ['inbound', `Came to us ${countOf((lead) => lead.kind === 'inbound')}`],
+      ['mock', `Mock-ups ${countOf((lead) => Boolean(lead.mockUrl))}`],
+      ...byStatus,
+      ['partner', `Partners ${countOf((lead) => lead.kind === 'partner')}`],
+    ];
+  }
+
+  function boardHtml(leads: Lead[], seedAvailable: number): string {
+    const liveCount = leads.filter(isLive).length;
+    const dueCount = leads.filter((lead) => lead.due === 'overdue' || lead.due === 'today').length;
+    const wonCount = leads.filter((lead) => lead.status === 'won').length;
+    const importLabel = seedAvailable ? `Import · research list (${seedAvailable} new)` : 'Import';
+    const counts = `<span class="muted">${liveCount} active · ${dueCount} due · ${wonCount} won</span>`;
+    const buttons = [
+      '<a class="btn" href="#new">Add a lead</a>',
+      `<a class="btn" href="#import">${importLabel}</a>`,
+      '<a class="btn" href="/api/admin/leads/export">CSV</a>',
+    ].join('');
+    const toolbar = `<div class="toolbar">${counts}<span class="spacer"></span>${buttons}</div>`;
+    const what = '<p class="muted">A lead is a business, church or nonprofit that could buy a site (a <b>prospect</b>), one that came to us through the contact form (<b>came to us</b>), or a chamber, network or referral source that produces prospects (a <b>partner</b>). Open one to log what happened and set the next step; a first email or call moves it to Contacted on its own, a reply to Replied, a meeting to Meeting set. <b>Start a project</b> opens the intake with what the board knows filled in.</p>';
+    const chips = filterChips(leads)
+      .map(([key, label]) => `<button type="button" data-filter="${key}" aria-pressed="${key === 'active'}">${escapeHtml(label)}</button>`)
+      .join('');
+    const search = '<input type="search" id="search" placeholder="Search the board" aria-label="Search the board">';
+    return `
+    <h1>Leads</h1>
+    ${toolbar}
+    ${what}
+    ${upNextHtml(leads, dueCount)}
+    <section class="card"><h2>Board</h2>
+      <div class="filters">${chips}${search}</div>
+      ${leads.length ? boardRowsHtml(leads) : EMPTY_BOARD}
     </section>`;
-  document.getElementById('touch').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    note('touchnote', 'Saving…');
-    try { await api('/leads/' + encodeURIComponent(id) + '/touches', { method: 'POST', body: JSON.stringify(formValues(e.target)) }); viewLead(id); }
-    catch (err) { note('touchnote', 'Could not save: ' + err.message, true); }
-  });
-  document.getElementById('save').addEventListener('click', async () => {
-    const form = document.getElementById('edit');
-    if (!form.reportValidity()) return;
-    note('editnote', 'Saving…');
-    try { await api('/leads/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ patch: formValues(form) }) }); viewLead(id); }
-    catch (err) { note('editnote', 'Could not save: ' + err.message, true); }
-  });
-  document.getElementById('delete').addEventListener('click', async () => {
-    if (!confirm(`Delete ${l.business} from the board, with its log? There is no undo.`)) return;
-    try { await api('/leads/' + encodeURIComponent(id), { method: 'DELETE' }); location.hash = ''; }
-    catch (err) { note('editnote', 'Could not delete: ' + err.message, true); }
-  });
-  document.getElementById('start')?.addEventListener('click', async (e) => {
-    e.target.disabled = true;
-    note('startnote', 'Starting the project…');
-    try { const p = await api('/projects', { method: 'POST', body: JSON.stringify({ leadId: id }) }); location.href = '/admin#p/' + p.id; }
-    catch (err) { note('startnote', 'Could not start the project: ' + err.message, true); e.target.disabled = false; }
-  });
-}
+  }
 
-// ---- add one ----
-function viewNew() {
-  app.innerHTML = `
+  const EMPTY_BOARD = '<p class="muted">No leads yet. <a href="#new">Add one</a>, <a href="#import">import a list</a>, or load the research list from the import page: the organizations the research named, each with where it came from and why.</p>';
+
+  function boardRowsHtml(leads: Lead[]): string {
+    const headings = '<div class="lead cols"><div>Business</div><div>Contact</div><div>Status</div><div>Last touch</div><div>Next</div></div>';
+    const rows = leads.map(boardRowHtml).join('');
+    return `${headings}${rows}<p class="muted" id="nomatch" hidden>Nothing matches this filter.</p>`;
+  }
+
+  /** The dozen leads with a date on them, so the day's work is readable without scrolling. */
+  function upNextHtml(leads: Lead[], dueCount: number): string {
+    const soon = leads.filter((lead) => lead.due).slice(0, 12);
+    if (!soon.length) return '';
+    const items = soon
+      .map((lead) => {
+        const name = `<a href="#l/${escapeHtml(lead.id)}"><b>${escapeHtml(lead.business)}</b></a>`;
+        const when = `<span class="due-${escapeHtml(lead.due)}">${escapeHtml(lead.nextAt)}</span>`;
+        const step = escapeHtml(lead.nextStep) || '<span class="muted">no step written down</span>';
+        const status = `<span class="muted">${escapeHtml(config.statusLabel[lead.status])}</span>`;
+        return `<li>${name}${when}<span>${step}</span>${status}</li>`;
+      })
+      .join('');
+    const heading = `<h2>Up next <span class="muted">${dueCount} due or overdue</span></h2>`;
+    return `<section class="card">${heading}<ul class="next">${items}</ul></section>`;
+  }
+
+  /** The chips and the search box hide rows in place; the board itself is only fetched once. */
+  function wireFilters() {
+    let chip = 'active';
+    let query = '';
+
+    const matchesChip = (row: HTMLElement) => {
+      if (chip === 'all') return true;
+      if (chip === 'active') return config.active.includes(row.dataset.status ?? '');
+      if (chip === 'mock') return row.dataset.mock === '1';
+      if (chip === 'partner' || chip === 'inbound') return row.dataset.kind === chip;
+      return row.dataset.status === chip;
+    };
+
+    const apply = () => {
+      let shown = 0;
+      app.querySelectorAll<HTMLElement>('.lead[data-id]').forEach((row) => {
+        const matches = matchesChip(row) && (!query || (row.dataset.search ?? '').includes(query));
+        row.hidden = !matches;
+        if (matches) shown++;
+      });
+      const nothingMatches = document.getElementById('nomatch');
+      if (nothingMatches) nothingMatches.hidden = shown > 0;
+    };
+
+    const buttons = app.querySelectorAll<HTMLButtonElement>('.filters button');
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        chip = button.dataset.filter ?? 'all';
+        buttons.forEach((other) => other.setAttribute('aria-pressed', String(other === button)));
+        apply();
+      });
+    });
+
+    document.getElementById('search')?.addEventListener('input', (event) => {
+      query = (event.target as HTMLInputElement).value.trim().toLowerCase();
+      apply();
+    });
+
+    apply();
+  }
+
+  /** Changing a row's status saves it and loads the board again, so the order and counts follow. */
+  function wireStatusSelects() {
+    app.querySelectorAll<HTMLSelectElement>('select.status').forEach((select) => {
+      select.addEventListener('change', async () => {
+        select.disabled = true;
+        const path = '/leads/' + encodeURIComponent(select.dataset.id ?? '');
+        try {
+          await callApi(path, { method: 'PATCH', body: JSON.stringify({ patch: { status: select.value } }) });
+          await showBoard();
+        } catch (error) {
+          alert('Could not change the status: ' + reasonFor(error));
+          select.disabled = false;
+        }
+      });
+    });
+  }
+
+  // ---- one lead ----
+
+  async function showLead(id: string) {
+    app.innerHTML = '<p class="muted">Loading…</p>';
+    const { lead, touches } = await callApi('/leads/' + encodeURIComponent(id));
+    app.innerHTML = leadHtml(lead, touches);
+    wireLog(id);
+    wireDetails(id, lead);
+    wireStartProject(id);
+  }
+
+  function leadHtml(lead: Lead, touches: Touch[]): string {
+    const summary = summaryLine(lead);
+    return `
+    <p><a class="back" href="#">← Leads</a></p>
+    <h1>${escapeHtml(lead.business || lead.contact || 'Untitled')}${kindBadge(lead)}</h1>
+    ${summary ? `<p class="muted">${summary}</p>` : ''}
+    ${mockRowHtml(lead)}
+    ${lead.why ? `<p>${escapeHtml(lead.why)}</p>` : ''}
+    ${lead.message ? `<p><span class="muted">They wrote:</span> ${escapeHtml(lead.message)}</p>` : ''}
+    ${lead.source ? `<p class="muted">Source: ${escapeHtml(lead.source)}</p>` : ''}
+    <section class="card"><h2>Project</h2>${projectHtml(lead)}<span class="muted" id="startnote"></span></section>
+    <section class="card"><h2>Log</h2>
+      ${logFormHtml(lead)}
+      ${logHtml(touches)}
+    </section>
+    ${detailsHtml(lead)}`;
+  }
+
+  /** Every field the board keeps, editable, with Save and Delete under them. */
+  function detailsHtml(lead: Lead): string {
+    const save = '<button type="button" class="primary" id="save">Save details</button>';
+    const remove = '<button type="button" class="danger" id="delete">Delete</button>';
+    const buttons = `<div class="btns">${save}${remove}<span class="muted" id="editnote"></span></div>`;
+    return `<section class="card"><h2>Details</h2><form class="fields" id="edit">${fieldsHtml(lead)}</form>
+      ${buttons}
+    </section>`;
+  }
+
+  /** What the mock-up is for, and what to do with it if they say yes. */
+  function mockRowHtml(lead: Lead): string {
+    if (!lead.mockUrl) return '';
+    const open = `<a class="btn" href="${escapeHtml(lead.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a>`;
+    const help = '<span class="help">Built before any project, on a private preview. If they say yes: push its folder (<code>~/repos/clients/client-&lt;slug&gt;</code> on the box) to GitHub under that name and start the project from this lead with the same business name. The link comes along: both sides get an Open the mock-up button, the intake asks what to change from it, and the first build carries it on instead of starting over.</span>';
+    return `<p class="mockrow">${open} ${help}</p>`;
+  }
+
+  /** A lead's projects, or the button that starts one. A partner never becomes a project. */
+  function projectHtml(lead: Lead): string {
+    if (lead.projects.length) {
+      return lead.projects
+        .map((project) => {
+          const name = `<a href="/admin#p/${escapeHtml(project.id)}"><b>${escapeHtml(project.business || lead.business)}</b></a>`;
+          const preview = project.previewUrl
+            ? ` · <a href="${escapeHtml(project.previewUrl)}" target="_blank" rel="noopener">preview</a>`
+            : '';
+          const status = `<div class="muted">${escapeHtml(project.status)}${preview}</div>`;
+          const open = `<a class="btn" href="/admin#p/${escapeHtml(project.id)}">Open</a>`;
+          return `<div class="row"><div>${name}${status}</div>${open}</div>`;
+        })
+        .join('');
+    }
+    if (lead.kind === 'partner') return '<p class="muted">A partner sends prospects; projects start from those.</p>';
+    const start = '<button type="button" class="primary" id="start">Start a project from this lead</button>';
+    const help = '<span class="help">Opens the intake with the business, contact, phone, email, current site, town and the notes here already filled in, and marks the lead Won.</span>';
+    return `${start}${help}`;
+  }
+
+  /** One entry in the log, with the next step carried forward from the lead. */
+  function logFormHtml(lead: Lead): string {
+    const kinds = config.touchKinds
+      .map((kind) => `<option value="${kind}">${escapeHtml(config.touchLabel[kind])}</option>`)
+      .join('');
+    return `<form class="touch" id="touch">
+        <div><label for="t-kind">What</label><select id="t-kind" name="kind">${kinds}</select></div>
+        <div><label for="t-text">Happened</label><input id="t-text" name="text" type="text" placeholder="What you did, what they said" maxlength="2000"></div>
+        <div><label for="t-status">Status after</label><select id="t-status" name="status"><option value="">follows the entry</option>${statusOptionsHtml('')}</select></div>
+        <div><label for="t-step">Next step</label><input id="t-step" name="nextStep" type="text" value="${escapeHtml(lead.nextStep)}" maxlength="300"></div>
+        <div><label for="t-at">By</label><input id="t-at" name="nextAt" type="date" value="${escapeHtml(lead.nextAt)}"></div>
+        <div class="btns wide"><button type="submit" class="primary">Add entry</button><span class="muted" id="touchnote"></span></div>
+      </form>`;
+  }
+
+  function logHtml(touches: Touch[]): string {
+    if (!touches.length) return '<p class="muted">Nothing logged yet.</p>';
+    const items = touches
+      .map((touch) => {
+        // The stored timestamp, to the minute, in the plain form Daniel reads: 2026-11-19 09:12.
+        const when = escapeHtml(String(touch.at).slice(0, 16).replace('T', ' '));
+        const what = escapeHtml(config.touchLabel[touch.kind] || touch.kind);
+        const moved = touch.status ? ` → ${escapeHtml(config.statusLabel[touch.status] || touch.status)}` : '';
+        // Only a touch somebody else logged (Front Desk, say) is worth naming.
+        const who = touch.who && touch.who !== 'daniel' ? ` · ${escapeHtml(touch.who)}` : '';
+        return `<li><span class="when">${when} · ${what}${moved}${who}</span><br>${escapeHtml(touch.text)}</li>`;
+      })
+      .join('');
+    return `<ul class="log">${items}</ul>`;
+  }
+
+  function wireLog(id: string) {
+    document.getElementById('touch')!.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setNote('touchnote', 'Saving…');
+      const form = event.target as HTMLFormElement;
+      try {
+        await callApi('/leads/' + encodeURIComponent(id) + '/touches', { method: 'POST', body: JSON.stringify(formValues(form)) });
+        // Loaded again rather than patched in place: the entry can move the status and the step.
+        showLead(id);
+      } catch (error) {
+        setNote('touchnote', 'Could not save: ' + reasonFor(error), true);
+      }
+    });
+  }
+
+  function wireDetails(id: string, lead: Lead) {
+    document.getElementById('save')!.addEventListener('click', async () => {
+      const form = document.getElementById('edit') as HTMLFormElement;
+      if (!form.reportValidity()) return;
+      setNote('editnote', 'Saving…');
+      try {
+        await callApi('/leads/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ patch: formValues(form) }) });
+        showLead(id);
+      } catch (error) {
+        setNote('editnote', 'Could not save: ' + reasonFor(error), true);
+      }
+    });
+
+    document.getElementById('delete')!.addEventListener('click', async () => {
+      if (!confirm(`Delete ${lead.business} from the board, with its log? There is no undo.`)) return;
+      try {
+        await callApi('/leads/' + encodeURIComponent(id), { method: 'DELETE' });
+        location.hash = '';
+      } catch (error) {
+        setNote('editnote', 'Could not delete: ' + reasonFor(error), true);
+      }
+    });
+  }
+
+  /** Start a project: the server fills the intake from the lead and marks the lead Won. */
+  function wireStartProject(id: string) {
+    const start = document.getElementById('start') as HTMLButtonElement | null;
+    start?.addEventListener('click', async () => {
+      start.disabled = true;
+      setNote('startnote', 'Starting the project…');
+      try {
+        const project = await callApi('/projects', { method: 'POST', body: JSON.stringify({ leadId: id }) });
+        location.href = '/admin#p/' + project.id;
+      } catch (error) {
+        setNote('startnote', 'Could not start the project: ' + reasonFor(error), true);
+        start.disabled = false;
+      }
+    });
+  }
+
+  // ---- add one ----
+
+  function showNewLead() {
+    // The first note is only asked for here; on an existing lead it belongs in the log.
+    const label = '<label for="f-notes">First note</label>';
+    const box = '<textarea id="f-notes" name="notes" maxlength="2000" placeholder="How you found them, what you noticed about their site…"></textarea>';
+    const first = `<div class="wide">${label}${box}</div>`;
+    const fields = fieldsHtml({ kind: 'prospect', status: 'new', siteState: 'unknown' });
+    app.innerHTML = `
     <p><a class="back" href="#">← Leads</a></p>
     <h1>Add a lead</h1>
-    <section class="card"><form class="fields" id="add">${fieldsHtml({ kind: 'prospect', status: 'new', siteState: 'unknown' })}<div class="wide"><label for="f-notes">First note</label><textarea id="f-notes" name="notes" maxlength="2000" placeholder="How you found them, what you noticed about their site…"></textarea></div></form>
+    <section class="card"><form class="fields" id="add">${fields}${first}</form>
       <div class="btns"><button type="button" class="primary" id="addgo">Add lead</button><span class="muted" id="addnote"></span></div>
     </section>`;
-  document.getElementById('addgo').addEventListener('click', async () => {
-    const form = document.getElementById('add');
-    if (!form.reportValidity()) return;
-    note('addnote', 'Saving…');
-    try { const r = await api('/leads', { method: 'POST', body: JSON.stringify(formValues(form)) }); location.hash = 'l/' + r.lead.id; }
-    catch (err) { note('addnote', 'Could not add: ' + err.message, true); }
-  });
-}
+    document.getElementById('addgo')!.addEventListener('click', async () => {
+      const form = document.getElementById('add') as HTMLFormElement;
+      if (!form.reportValidity()) return;
+      setNote('addnote', 'Saving…');
+      try {
+        const added = await callApi('/leads', { method: 'POST', body: JSON.stringify(formValues(form)) });
+        location.hash = 'l/' + added.lead.id;
+      } catch (error) {
+        setNote('addnote', 'Could not add: ' + reasonFor(error), true);
+      }
+    });
+  }
 
-// ---- import ----
-async function viewImport() {
-  app.innerHTML = '<p class="muted">Loading…</p>';
-  const { seedAvailable } = await api('/leads');
-  app.innerHTML = `
+  // ---- import ----
+
+  async function showImport() {
+    app.innerHTML = '<p class="muted">Loading…</p>';
+    const { seedAvailable } = await callApi('/leads');
+    app.innerHTML = importHtml(seedAvailable);
+    document.getElementById('importgo')!.addEventListener('click', () => {
+      const pasted = (document.getElementById('paste') as HTMLTextAreaElement).value;
+      runImport({ text: pasted });
+    });
+    document.getElementById('seedgo')!.addEventListener('click', () => runImport({ seed: true }));
+  }
+
+  function importHtml(seedAvailable: number): string {
+    const columns = '<code>business, contact, role, email, phone, website, town, category, kind, fit, status, nextStep, nextAt, source, why, notes</code>';
+    const how = `<p class="muted">Paste CSV with a header row naming any of ${columns}, or a JSON array. A business already on the board is skipped, never changed, so a list can be pasted twice.</p>`;
+    const box = '<label for="paste">The list</label><textarea id="paste" class="paste" placeholder="business,town,website,contact,phone,why"></textarea>';
+    const seedLabel = seedAvailable ? `Load the research list (${seedAvailable} new)` : 'Load the research list (all loaded)';
+    const seed = `<button type="button" id="seedgo"${seedAvailable ? '' : ' disabled'}>${seedLabel}</button>`;
+    const buttons = `<div class="btns"><button type="button" class="primary" id="importgo">Import</button>${seed}<span class="muted" id="importnote"></span></div>`;
+    const about = '<p class="help">The research list is the organizations named in the research (steadfast-ai docs/ideas and this site\'s docs/research): chambers, church networks, nonprofits and a few retreat centers, each with its source and why. No contact details; the research recorded none.</p>';
+    return `
     <p><a class="back" href="#">← Leads</a></p>
     <h1>Import leads</h1>
     <section class="card">
-      <p class="muted">Paste CSV with a header row naming any of <code>business, contact, role, email, phone, website, town, category, kind, fit, status, nextStep, nextAt, source, why, notes</code>, or a JSON array. A business already on the board is skipped, never changed, so a list can be pasted twice.</p>
-      <label for="paste">The list</label><textarea id="paste" class="paste" placeholder="business,town,website,contact,phone,why"></textarea>
-      <div class="btns"><button type="button" class="primary" id="importgo">Import</button><button type="button" id="seedgo"${seedAvailable ? '' : ' disabled'}>Load the research list${seedAvailable ? ` (${seedAvailable} new)` : ' (all loaded)'}</button><span class="muted" id="importnote"></span></div>
-      <p class="help">The research list is the organizations named in the research (steadfast-ai docs/ideas and this site's docs/research): chambers, church networks, nonprofits and a few retreat centers, each with its source and why. No contact details; the research recorded none.</p>
+      ${how}
+      ${box}
+      ${buttons}
+      ${about}
       <pre class="result" id="result" hidden></pre>
     </section>`;
-  const run = async (body) => {
-    note('importnote', 'Importing…');
-    try {
-      const r = await api('/leads/import', { method: 'POST', body: JSON.stringify(body) });
-      const out = document.getElementById('result');
-      out.hidden = false;
-      out.textContent = `Added ${r.added}.` + (r.skipped.length ? `\nAlready on the board, left alone: ${r.skipped.join(', ')}.` : '') + (r.problems.length ? `\nNot imported:\n${r.problems.join('\n')}` : '');
-      note('importnote', r.added ? 'Done.' : 'Nothing new to add.');
-      if (r.added) setTimeout(() => { location.hash = ''; }, 1500);
-    } catch (err) { note('importnote', 'Could not import: ' + err.message, true); }
-  };
-  document.getElementById('importgo').addEventListener('click', () => run({ text: document.getElementById('paste').value }));
-  document.getElementById('seedgo').addEventListener('click', () => run({ seed: true }));
-}
+  }
 
-async function route() {
-  const h = location.hash;
-  try {
-    if (h.startsWith('#l/')) return await viewLead(h.slice(3));
-    if (h === '#new') return viewNew();
-    if (h === '#import') return await viewImport();
-    return await viewBoard();
-  } catch (e) { app.innerHTML = `<p><a class="back" href="#">← Leads</a></p><p class="error">${esc(e.message)}</p>`; }
-}
-addEventListener('hashchange', route);
-route();
+  /** The pasted list or the research list, with what came of it printed underneath. */
+  async function runImport(body: { text: string } | { seed: true }) {
+    setNote('importnote', 'Importing…');
+    try {
+      const result = await callApi('/leads/import', { method: 'POST', body: JSON.stringify(body) });
+      const output = document.getElementById('result')!;
+      output.hidden = false;
+      output.textContent = [
+        `Added ${result.added}.`,
+        result.skipped.length ? `\nAlready on the board, left alone: ${result.skipped.join(', ')}.` : '',
+        result.problems.length ? `\nNot imported:\n${result.problems.join('\n')}` : '',
+      ].join('');
+      setNote('importnote', result.added ? 'Done.' : 'Nothing new to add.');
+      // Long enough to read the result, then back to the board with the new leads on it.
+      if (result.added) setTimeout(() => { location.hash = ''; }, 1500);
+    } catch (error) {
+      setNote('importnote', 'Could not import: ' + reasonFor(error), true);
+    }
+  }
+
+  // ---- which view the hash asks for ----
+
+  async function route() {
+    const hash = location.hash;
+    try {
+      if (hash.startsWith('#l/')) await showLead(hash.slice(3));
+      else if (hash === '#new') showNewLead();
+      else if (hash === '#import') await showImport();
+      else await showBoard();
+    } catch (error) {
+      const back = '<p><a class="back" href="#">← Leads</a></p>';
+      app.innerHTML = `${back}<p class="error">${escapeHtml(reasonFor(error))}</p>`;
+    }
+  }
+
+  addEventListener('hashchange', route);
+  route();
 </script>
 </body>
 </html>
