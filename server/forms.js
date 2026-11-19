@@ -2,7 +2,7 @@
 // they're tested without D1 or Resend: what a message must have, where the visitor may be sent
 // back to, and the email the client gets.
 
-const MAX = { name: 120, email: 200, phone: 40, topic: 160, message: 5000 };
+const MAX = { name: 120, email: 200, phone: 40, topic: 160, to: 80, message: 5000 };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The visitor's message, trimmed; `problem` says what's missing (the page words it). */
@@ -38,17 +38,40 @@ export function returnTo(given, project, answers, { dev = false } = {}) {
 }
 
 const oneLine = (s) => String(s ?? '').replace(/[\r\n]+/g, ' ').replace(/["<>]/g, '').trim();
+const key = (s) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-/** The email to the client, or null when the project has no address to send it to. */
+/**
+ * The others this project's form can send to (answers.formAlso, "Name: email" per line), by name.
+ * A line that isn't a name and a valid email is skipped.
+ */
+export function formRecipients(answers) {
+  const out = new Map();
+  for (const line of answers.formAlso ?? []) {
+    const m = String(line).match(/^(.+?):\s*(\S+@\S+)\s*$/);
+    if (m && EMAIL.test(m[2]) && key(m[1])) out.set(key(m[1]), { name: oneLine(m[1]), email: m[2] });
+  }
+  return out;
+}
+
+/**
+ * The email to the client, or null when there's no address to send it to. A form names who it's
+ * for (`to`) only by a name on the project's list (formRecipients); then it goes to that address
+ * with the main email copied (unless answers.formAlone). A name not on the list, or none, is the
+ * main email: a message is never lost because a button named someone who has since been removed.
+ */
 export function formEmail(data, answers, { from, page }) {
-  const to = String(answers.email ?? '').trim();
-  if (!EMAIL.test(to)) return null;
+  const main = String(answers.email ?? '').trim();
+  const other = data.to ? formRecipients(answers).get(key(data.to)) : null;
+  const to = other ? [other.email] : EMAIL.test(main) ? [main] : [];
+  if (!to.length) return null;
+  const cc = other && !answers.formAlone && EMAIL.test(main) && main.toLowerCase() !== other.email.toLowerCase() ? [main] : [];
   // The verified sending address is Steadfast Code's; the name on it is the client's business.
   const address = (String(from ?? '').match(/<([^>]+)>/)?.[1] ?? from ?? '').trim() || 'site@steadfastcode.tech';
   const business = oneLine(answers.businessName) || 'Your';
   return {
     from: `${business} website <${address}>`,
-    to: [to],
+    to,
+    ...(cc.length ? { cc } : {}),
     ...(data.email ? { reply_to: data.email } : {}),
     subject: oneLine(`Website message from ${data.name}${data.topic ? ` · ${data.topic}` : ''}`).slice(0, 200),
     text: [
@@ -58,6 +81,7 @@ export function formEmail(data, answers, { from, page }) {
       `Email: ${data.email || '-'}`,
       `Phone: ${data.phone || '-'}`,
       ...(data.topic ? [`About: ${data.topic}`] : []),
+      ...(other ? [`Sent to: ${other.name}${cc.length ? `, copied to ${main}` : ''}`] : []),
       `Sent from: ${page}`,
       '',
       data.message,

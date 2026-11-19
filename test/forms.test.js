@@ -2,7 +2,7 @@
 // visitor only ever goes back to that client's own site, and nothing short of a sent email says sent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanForm, returnTo, formEmail } from '../server/forms.js';
+import { cleanForm, returnTo, formEmail, formRecipients } from '../server/forms.js';
 import { onRequestPost } from '../functions/api/forms/[project].js';
 
 const project = { id: 'p1', slug: 'n-and-j', status: 'preview', preview_url: 'https://stdfst-n-and-j.pages.dev', answers: JSON.stringify({ businessName: 'N & J Fusions Properties', email: 'joshua@example.com', domain: 'njfusionsproperties.com' }) };
@@ -44,6 +44,23 @@ test("the email goes to the project's address with the visitor as the reply-to, 
   assert.doesNotMatch(m.subject, /[\r\n]/);
   assert.match(m.text, /About: Short term rentals/);
   assert.equal(formEmail({ name: 'A', message: 'B' }, { email: '' }, { from: '', page: '' }), null);
+});
+
+test("a form button can name someone on the project's list, and only by name", () => {
+  const a = { ...JSON.parse(project.answers), formAlso: ['Darby manager: barbera@example.com', 'no address here', 'Bad: not-an-email'] };
+  assert.deepEqual([...formRecipients(a).keys()], ['darby manager']);
+  const opts = { from: 'site@steadfastcode.tech', page: 'https://stdfst-n-and-j.pages.dev/' };
+  const msg = (to) => ({ name: 'Pat', email: 'pat@example.com', phone: '', topic: 'The Darby rental', to, message: 'Is it free?' });
+  const m = formEmail(msg('  darby  MANAGER '), a, opts);
+  assert.deepEqual(m.to, ['barbera@example.com']);
+  assert.deepEqual(m.cc, ['joshua@example.com'], 'the main email is copied by default');
+  assert.match(m.text, /Sent to: Darby manager, copied to joshua@example.com/);
+  assert.equal(formEmail(msg('Darby manager'), { ...a, formAlone: true }, opts).cc, undefined);
+  for (const to of ['someone@evil.example', 'Bad', 'Nobody', '']) {
+    const x = formEmail(msg(to), a, opts);
+    assert.deepEqual(x.to, ['joshua@example.com'], `${to || '(none)'} falls back to the main email`);
+    assert.equal(x.cc, undefined);
+  }
 });
 
 test('posting: sent only when Resend accepts it; a bot, an unknown project or a failure are told apart', async () => {

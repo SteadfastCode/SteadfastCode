@@ -3,7 +3,8 @@
 // Client sites are static (Cloudflare Pages, no functions, no secrets), so their form posts here, a
 // plain HTML form with no script needed. The message goes by email to the address on the client's
 // project (answers.email in the intake), never to an address the form names, so this can't be used
-// to send mail anywhere else. Then the visitor goes back to the page they sent it from, with ?sent=1
+// to send mail anywhere else. A form may name one of the project's other recipients (answers.formAlso)
+// by name; the address still comes from the project, never the form (server/forms.js). Then the visitor goes back to the page they sent it from, with ?sent=1
 // (or ?sent=0 and the reason, so the page can say to call or email instead). The way back is only
 // ever to that client's own addresses: its preview on pages.dev or its domain.
 //

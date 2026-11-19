@@ -189,6 +189,12 @@ export const intakeSections = [
       { id: 'currentHost', label: 'Where the current site is hosted', type: 'text', help: 'GoDaddy, Wix, Squarespace, WordPress.com, a web designer…', you: 'Where your current site is hosted' },
       { id: 'gbp', label: 'Google Business Profile', type: 'choice', options: [{ value: 'Claimed, they have access', you: 'I have one and can log in' }, { value: 'Exists, not claimed', you: 'There’s one, but I can’t log in to it' }, { value: 'None yet', you: 'I don’t have one' }, { value: 'Not sure', you: 'I’m not sure' }], you: 'Your Google Business Profile', ask: LOCAL_KINDS },
       { id: 'formsTo', label: 'Where form messages should go', type: 'text', help: 'An email address, or a phone for texts.', you: 'Where messages from the site should go' },
+      // Who else a form button can send to (2026-11-18, N & J's Darby rental goes to its property
+      // manager). The site names one by its name, never by its address; the relay sends only to an
+      // address on this list, so a post can't be aimed anywhere else. The main email is copied
+      // unless `formAlone` is on.
+      { id: 'formAlso', label: 'Others a form button can send to', type: 'list', help: 'One per line: a short name, a colon, then the email. Example: Darby manager: name@example.com', you: 'Others a form button can send to', ask: 'off' },
+      { id: 'formAlone', label: 'Send those messages only to that person, without copying the main email', type: 'bool', you: 'Send those messages only to that person, without copying the main email', when: 'formAlso', ask: 'off' },
     ],
   },
   {
