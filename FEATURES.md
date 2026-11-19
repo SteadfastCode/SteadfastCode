@@ -18,7 +18,7 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
 
 
 
-- [ ] **(SCS-003) Readable scripts: admin/inbox.astro, admin.astro, client.astro**
+- [x] **(SCS-003) Readable scripts: admin/inbox.astro, admin.astro, client.astro**
   Rewrite the dense inline scripts in src/pages/admin/inbox.astro (about 7.6 KB),
   src/pages/admin.astro (the inline one, about 4.7 KB) and src/pages/client.astro (about 3 KB) into
   readable, commented code. admin.astro and client.astro share the intake form; keep anything they

@@ -1,13 +1,13 @@
 {
   "version": 1,
   "items": {
-    "SCS-002": {
+    "SCS-003": {
       "order": 1,
-      "title": "Readable scripts: admin/care.astro and admin/usage.astro",
-      "status": "done",
+      "title": "Readable scripts: admin/inbox.astro, admin.astro, client.astro",
+      "status": "claimed",
       "attempts": 1,
       "cluster": null,
-      "branch": "routine/item/SCS-002",
+      "branch": "routine/item/SCS-003",
       "dependsOn": [],
       "needsHuman": false,
       "proposed": false,
@@ -15,30 +15,12 @@
       "distribute": null,
       "coldReview": false,
       "notBefore": null,
-      "claimedAtUtc": "2026-11-19T18:07:35.429Z",
+      "claimedAtUtc": "2026-11-19T18:26:14.221Z",
       "runId": "2026-11-19T18:06:47.279Z",
       "lastFail": null
     },
-    "SCS-003": {
-      "order": 2,
-      "title": "Readable scripts: admin/inbox.astro, admin.astro, client.astro",
-      "status": "pending",
-      "attempts": 0,
-      "cluster": null,
-      "branch": null,
-      "dependsOn": [],
-      "needsHuman": false,
-      "proposed": false,
-      "priority": false,
-      "distribute": null,
-      "coldReview": false,
-      "notBefore": null,
-      "claimedAtUtc": null,
-      "runId": null,
-      "lastFail": null
-    },
     "SCS-004": {
-      "order": 3,
+      "order": 2,
       "title": "Readable scripts: contact.astro, Base.astro, SpeedProof.astro",
       "status": "pending",
       "attempts": 0,
@@ -53,6 +35,24 @@
       "notBefore": null,
       "claimedAtUtc": null,
       "runId": null,
+      "lastFail": null
+    },
+    "SCS-002": {
+      "order": null,
+      "title": "Readable scripts: admin/care.astro and admin/usage.astro",
+      "status": "done",
+      "attempts": 1,
+      "cluster": null,
+      "branch": "routine/item/SCS-002",
+      "dependsOn": [],
+      "needsHuman": false,
+      "proposed": false,
+      "priority": false,
+      "distribute": null,
+      "coldReview": false,
+      "notBefore": null,
+      "claimedAtUtc": "2026-11-19T18:07:35.429Z",
+      "runId": "2026-11-19T18:06:47.279Z",
       "lastFail": null
     },
     "SCS-001": {
