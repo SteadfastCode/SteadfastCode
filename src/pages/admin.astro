@@ -40,71 +40,242 @@ const config = {
 <main id="app"><p class="muted">Loading…</p></main>
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" disabled>Start build</button></div></footer>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
-<script type="module" is:inline>
+<script>
+  import { loadProjectForm, readIntakeConfig, type ConfigTier, type MountedProject, type ProjectForm } from '../scripts/intake-form';
 
-const C = JSON.parse(document.getElementById('intake-config').textContent);
-const { mountProject, wireProgress } = await import(C.script);
-const app = document.getElementById('app');
-const bar = document.getElementById('bar');
-const progress = document.getElementById('progress');
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const money = (n, from) => (from ? 'from ' : '') + '$' + Number(n).toLocaleString('en-US');
-const tierOf = (id) => C.tiers.find((t) => t.id === id);
-const statusLabel = { intake: 'Intake', 'build-requested': 'Build requested', building: 'Building', preview: 'Preview ready', live: 'Live', closed: 'Closed' };
-const api = async (path, init = {}) => {
-  const r = await fetch('/api/admin' + path, { credentials: 'same-origin', headers: { 'content-type': 'application/json' }, ...init });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-  return j;
-};
-wireProgress(progress);
+  // /admin, written to be read; Astro bundles and minifies it for the build. Two views, picked by
+  // the hash: what to start from (no hash) — a package, a lead that came to us, or a project
+  // already running — and one project (#p/<project id>), which is the shared form every client
+  // sees on their own page. The questions, the packages and the prices come from the JSON tag
+  // above, which the page built from src/data, so nothing here keeps a second copy of them.
 
-// ---- Home: start from a package or a lead, or open a project ----
-async function home() {
-  bar.hidden = true;
-  progress.hidden = true;
-  app.innerHTML = '<h1>Client intake</h1><p class="muted">Loading…</p>';
-  let leads = [], projects = [], err = '';
-  try { [{ leads }, { projects }] = await Promise.all([api('/leads'), api('/projects')]); } catch (e) { err = e.message; }
-  // The board (/admin/leads) holds every lead; here, only the ones that came to us and aren't started.
-  leads = leads.filter((l) => l.kind === 'inbound' && l.status === 'new');
-  app.innerHTML = `
+  /** A lead as /api/admin/leads sends it; the board (/admin/leads) shows all of them. */
+  type Lead = {
+    id: string;
+    kind: string;
+    status: string;
+    business: string | null;
+    contact: string | null;
+    /** The package it looks like, if one was picked. */
+    fit: string | null;
+    source: string | null;
+    createdAt: string;
+  };
+
+  /** A project as /api/admin/projects lists it. */
+  type Project = {
+    id: string;
+    business: string | null;
+    tier: string | null;
+    status: string;
+    updatedAt: string;
+    /** The intake has everything a build needs. */
+    ready: boolean;
+    needsReview: boolean;
+  };
+
+  const config = readIntakeConfig();
+  const app = document.getElementById('app')!;
+  const bar = document.getElementById('bar')!;
+  const progress = document.getElementById('progress')!;
+
+  // The form, from the address in the config; start() has it before the first view is painted.
+  let form: ProjectForm;
+
+  // ---- the small jobs both views need ----
+
+  const HTML_ESCAPES: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+
+  /** Everything written into the page goes through here: a client's own words are not markup. */
+  function escapeHtml(value: unknown): string {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => HTML_ESCAPES[character]);
+  }
+
+  /** Whole dollars, as the site writes them; "from" for a package that is a starting price. */
+  function money(amount: number, from: boolean): string {
+    return (from ? 'from ' : '') + '$' + Number(amount).toLocaleString('en-US');
+  }
+
+  /** Where a project stands, in Daniel's words; the server's own value is the fallback. */
+  const STATUS_LABEL: Record<string, string> = {
+    intake: 'Intake',
+    'build-requested': 'Build requested',
+    building: 'Building',
+    preview: 'Preview ready',
+    live: 'Live',
+    closed: 'Closed',
+  };
+
+  const statusLabel = (status: string) => STATUS_LABEL[status] || status;
+
+  const tierOf = (id: string | null) => config.tiers.find((tier) => tier.id === id);
+
+  /** One call to the admin API. Throws with the server's own message, which the view shows. */
+  async function callApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await fetch('/api/admin' + path, {
+      credentials: 'same-origin',
+      ...init,
+      headers: { 'content-type': 'application/json', ...(init.headers || {}) },
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'HTTP ' + response.status);
+    return body;
+  }
+
+  /** What to tell the reader when a call failed. */
+  function reasonFor(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  // ---- home: start from a package or a lead, or open a project ----
+
+  async function showHome() {
+    bar.hidden = true;
+    progress.hidden = true;
+    app.innerHTML = '<h1>Client intake</h1><p class="muted">Loading…</p>';
+    let leads: Lead[] = [];
+    let projects: Project[] = [];
+    let problem = '';
+    try {
+      const [board, list] = await Promise.all([
+        callApi<{ leads: Lead[] }>('/leads'),
+        callApi<{ projects: Project[] }>('/projects'),
+      ]);
+      leads = board.leads;
+      projects = list.projects;
+    } catch (error) {
+      problem = reasonFor(error);
+    }
+    app.innerHTML = homeHtml(waitingLeads(leads), projects, problem);
+    wireHome();
+  }
+
+  /** The board holds every lead; here, only the ones that came to us and aren't started. */
+  function waitingLeads(leads: Lead[]): Lead[] {
+    return leads.filter((lead) => lead.kind === 'inbound' && lead.status === 'new');
+  }
+
+  function homeHtml(leads: Lead[], projects: Project[], problem: string): string {
+    return `
     <h1>Client intake</h1>
-    ${err ? `<p class="error">${esc(err)}</p>` : ''}
+    ${problem ? `<p class="error">${escapeHtml(problem)}</p>` : ''}
     <section class="card"><h2>New project</h2><div class="tiers">
-      ${C.tiers.map((t) => `<button data-new="${t.id}"><b>${esc(t.name)}</b><span>${money(t.price, t.from)} · ${t.scope.pages} page${t.scope.pages === 1 ? '' : 's'}</span></button>`).join('')}
+      ${config.tiers.map(tierButtonHtml).join('')}
       <button data-new=""><b>Not sure yet</b><span>Pick the package as you talk</span></button>
     </div></section>
     <section class="card"><h2>Came to us</h2>
-      ${leads.length ? leads.map((l) => `<div class="row"><div><a href="/admin/leads#l/${esc(l.id)}"><b>${esc(l.contact || l.business)}</b></a>${l.business && l.contact ? ' · ' + esc(l.business) : ''}<div class="muted">${esc(tierOf(l.fit)?.name || 'no package picked')} · ${esc(l.source || 'contact form')} · ${esc(new Date(l.createdAt).toLocaleDateString())}</div></div><button data-lead="${esc(l.id)}">Start from this</button></div>`).join('') : '<p class="muted">No new contact-form leads.</p>'}
+      ${leads.length ? leads.map(leadRowHtml).join('') : '<p class="muted">No new contact-form leads.</p>'}
       <p class="muted">Everything else, outreach included, is on the <a href="/admin/leads">Leads board</a>.</p>
     </section>
     <section class="card"><h2>Projects</h2>
-      ${projects.length ? projects.map((p) => `<div class="row"><div><a href="#p/${esc(p.id)}"><b>${esc(p.business || 'Untitled')}</b></a><div class="muted">${esc(tierOf(p.tier)?.name || 'no package')} · ${esc(new Date(p.updatedAt).toLocaleString())}</div></div><span>${p.needsReview ? '<span class="badge review">Needs review</span> ' : ''}<span class="badge${p.ready ? ' ready' : ''}">${esc(statusLabel[p.status] || p.status)}${p.status === 'intake' && p.ready ? ' · ready' : ''}</span></span></div>`).join('') : '<p class="muted">None yet.</p>'}
+      ${projects.length ? projects.map(projectRowHtml).join('') : '<p class="muted">None yet.</p>'}
     </section>`;
-  app.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', () => create({ tier: b.dataset.new || undefined })));
-  app.querySelectorAll('[data-lead]').forEach((b) => b.addEventListener('click', () => create({ leadId: b.dataset.lead })));
-}
+  }
 
-async function create(body) {
-  try { const p = await api('/projects', { method: 'POST', body: JSON.stringify(body) }); location.hash = 'p/' + p.id; }
-  catch (e) { alert('Could not start the project: ' + e.message); }
-}
+  /** One package to start from: what it's called, its price, how many pages it covers. */
+  function tierButtonHtml(tier: ConfigTier): string {
+    const pages = `${tier.scope.pages} page${tier.scope.pages === 1 ? '' : 's'}`;
+    return `<button data-new="${tier.id}"><b>${escapeHtml(tier.name)}</b><span>${money(tier.price, tier.from)} · ${pages}</span></button>`;
+  }
 
-// ---- A project: the shared form (public/intake/project.js), Daniel's side ----
-let current = null;
-async function route() {
-  if (current) { current.stop(); current = null; }
-  const m = location.hash.match(/^#p\/([\w-]+)$/);
-  if (!m) return home();
-  const base = '/api/admin/projects/' + encodeURIComponent(m[1]);
-  current = await mountProject({
-    root: app, bar, progress, config: C, mode: 'admin', backHref: '#',
-    routes: { project: base, presence: base + '/presence', uploads: base + '/uploads', file: (id) => base + '/uploads/' + encodeURIComponent(id), build: base + '/build', link: base + '/link', review: base + '/review', agreement: base + '/agreement', signing: base + '/signing', messages: base + '/messages', library: '/api/admin/contract-library', },
-  });
-}
-addEventListener('hashchange', route);
-route();
+  /** One lead that came to us, and the button that starts its project. */
+  function leadRowHtml(lead: Lead): string {
+    // The business goes beside the name only when both are known, so neither is said twice.
+    const business = lead.business && lead.contact ? ' · ' + escapeHtml(lead.business) : '';
+    const packageName = escapeHtml(tierOf(lead.fit)?.name || 'no package picked');
+    const source = escapeHtml(lead.source || 'contact form');
+    const when = escapeHtml(new Date(lead.createdAt).toLocaleDateString());
+    return `<div class="row"><div><a href="/admin/leads#l/${escapeHtml(lead.id)}"><b>${escapeHtml(lead.contact || lead.business)}</b></a>${business}<div class="muted">${packageName} · ${source} · ${when}</div></div><button data-lead="${escapeHtml(lead.id)}">Start from this</button></div>`;
+  }
+
+  /** One project: who it's for, its package, when it last moved, and where it stands. */
+  function projectRowHtml(project: Project): string {
+    const packageName = escapeHtml(tierOf(project.tier)?.name || 'no package');
+    const when = escapeHtml(new Date(project.updatedAt).toLocaleString());
+    // A build that answered something itself gets its own badge; it is a look, not a blocker.
+    const review = project.needsReview ? '<span class="badge review">Needs review</span> ' : '';
+    // Ready is worth saying only while it's still intake: after that the status says more.
+    const ready = project.status === 'intake' && project.ready ? ' · ready' : '';
+    return `<div class="row"><div><a href="#p/${escapeHtml(project.id)}"><b>${escapeHtml(project.business || 'Untitled')}</b></a><div class="muted">${packageName} · ${when}</div></div><span>${review}<span class="badge${project.ready ? ' ready' : ''}">${escapeHtml(statusLabel(project.status))}${ready}</span></span></div>`;
+  }
+
+  /** Both ways to start a project: a bare package, or a lead that already told us something. */
+  function wireHome() {
+    app.querySelectorAll<HTMLButtonElement>('[data-new]').forEach((button) => {
+      button.addEventListener('click', () => startProject({ tier: button.dataset.new || undefined }));
+    });
+    app.querySelectorAll<HTMLButtonElement>('[data-lead]').forEach((button) => {
+      button.addEventListener('click', () => startProject({ leadId: button.dataset.lead }));
+    });
+  }
+
+  /** Start one and open it; from a lead the server fills the intake in and marks the lead Won. */
+  async function startProject(body: { tier?: string; leadId?: string }) {
+    try {
+      const started = await callApi<{ id: string }>('/projects', { method: 'POST', body: JSON.stringify(body) });
+      location.hash = 'p/' + started.id;
+    } catch (error) {
+      alert('Could not start the project: ' + reasonFor(error));
+    }
+  }
+
+  // ---- a project: the shared form (public/intake/project.js), Daniel's side ----
+
+  let shown: MountedProject | null = null;
+
+  async function showProject(id: string) {
+    const base = '/api/admin/projects/' + encodeURIComponent(id);
+    shown = await form.mountProject({
+      root: app,
+      bar,
+      progress,
+      config,
+      mode: 'admin',
+      backHref: '#',
+      routes: {
+        project: base,
+        presence: base + '/presence',
+        uploads: base + '/uploads',
+        file: (fileId) => base + '/uploads/' + encodeURIComponent(fileId),
+        build: base + '/build',
+        link: base + '/link',
+        review: base + '/review',
+        agreement: base + '/agreement',
+        signing: base + '/signing',
+        messages: base + '/messages',
+        library: '/api/admin/contract-library',
+      },
+    });
+  }
+
+  // ---- which view the hash asks for ----
+
+  async function route() {
+    // Leaving a project saves whatever it was holding, and drops its timers and its presence.
+    if (shown) {
+      shown.stop();
+      shown = null;
+    }
+    const open = location.hash.match(/^#p\/([\w-]+)$/);
+    if (open) await showProject(open[1]);
+    else await showHome();
+  }
+
+  async function start() {
+    form = await loadProjectForm(config);
+    // Once per page: the form paints the progress strip, but its taps are wired here.
+    form.wireProgress(progress);
+    addEventListener('hashchange', route);
+    await route();
+  }
+
+  start();
 </script>
 </body>
 </html>

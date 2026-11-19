@@ -35,55 +35,136 @@ const config = {
 <footer class="bar" id="bar" hidden><div class="in"><span id="saved" class="muted"></span><span id="readiness" class="muted"></span><button class="primary" id="build" hidden></button></div></footer>
 <p class="muted" id="questions" style="text-align:center;padding:0 16px 120px">Questions? Email <a href={`mailto:${business.email}`}>{business.email}</a>.</p>
 <script type="application/json" id="intake-config" set:html={JSON.stringify(config)}></script>
-<script type="module" is:inline>
+<script>
+  import { loadProjectForm, readIntakeConfig, type ProjectForm } from '../scripts/intake-form';
 
-const C = JSON.parse(document.getElementById('intake-config').textContent);
-const { mountProject, wireProgress } = await import(C.script);
-const app = document.getElementById('app');
-// The link's token is the fragment. It's kept for this browser tab too (2026-11-04), because a trip
-// to Stripe for the card comes back to /client?care=… with no fragment: the token can't go to Stripe
-// in the return address, and without it the page couldn't tell whose portal this is.
-const fromHash = location.hash.slice(1);
-const valid = (t) => /^[A-Za-z0-9_-]{20,100}$/.test(t || '');
-let token = fromHash;
-try {
-  if (valid(fromHash)) sessionStorage.setItem('clientLink', fromHash);
-  else if (valid(sessionStorage.getItem('clientLink'))) { token = sessionStorage.getItem('clientLink'); history.replaceState(null, '', location.pathname + location.search + '#' + token); }
-} catch {}
-if (!valid(token)) {
-  // No link (2026-11-04): email the one on their project to the address they give.
-  app.innerHTML = `<h1>Your website</h1>
+  // /client, written to be read; Astro bundles and minifies it for the build. The page is one of
+  // two things: their project — the shared form, live, the same one Daniel works from at /admin —
+  // when the visitor has their private link, and a box that emails them the link when they don't.
+  // The questions and the packages come from the JSON tag above, which the page built from
+  // src/data, so nothing here keeps a second copy of them.
+
+  /** A link's token: what server/client.js makes, and nothing else. */
+  const TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
+
+  /** Where the token is kept for this browser tab. */
+  const KEPT = 'clientLink';
+
+  const config = readIntakeConfig();
+  const app = document.getElementById('app')!;
+
+  function isToken(value: string | null): boolean {
+    return TOKEN.test(value || '');
+  }
+
+  /**
+   * The token for this visit. It's the fragment, which browsers never send to a server — but it's
+   * kept for this browser tab too (2026-11-04), because a trip to Stripe for the card comes back
+   * to /client?care=… with no fragment: the token can't go to Stripe in the return address, and
+   * without it the page couldn't tell whose portal this is.
+   */
+  function tokenForThisVisit(): string {
+    const fromHash = location.hash.slice(1);
+    try {
+      if (isToken(fromHash)) {
+        sessionStorage.setItem(KEPT, fromHash);
+        return fromHash;
+      }
+      const kept = sessionStorage.getItem(KEPT);
+      if (isToken(kept)) {
+        // Back from Stripe: put the link back in the address, so a reload is still their project.
+        history.replaceState(null, '', location.pathname + location.search + '#' + kept);
+        return kept!;
+      }
+    } catch {
+      // A browser that refuses storage (private mode): the fragment is all there is, which is fine.
+    }
+    return fromHash;
+  }
+
+  // ---- their project ----
+
+  /** The same form Daniel works from, with their link as the bearer token on every call. */
+  function showProject(form: ProjectForm, token: string) {
+    const progress = document.getElementById('progress')!;
+    form.wireProgress(progress);
+    // An <img> can't send the header, so a picture's address carries the token; changes don't.
+    const asQuery = '?t=' + encodeURIComponent(token);
+    form.mountProject({
+      root: app,
+      bar: document.getElementById('bar')!,
+      progress,
+      config,
+      mode: 'client',
+      headers: { authorization: 'Bearer ' + token },
+      routes: {
+        project: '/api/client/project',
+        presence: '/api/client/presence',
+        uploads: '/api/client/uploads',
+        build: '/api/client/build',
+        agreement: '/api/client/agreement',
+        care: '/api/client/care',
+        messages: '/api/client/messages',
+        file: (id, forApi) => '/api/client/uploads/' + encodeURIComponent(id) + (forApi ? '' : asQuery),
+      },
+    });
+  }
+
+  // ---- no link (2026-11-04): email the one on their project to the address they give ----
+
+  function showLinkRequest() {
+    app.innerHTML = linkRequestHtml();
+    const requestForm = document.getElementById('linkform')!;
+    const note = document.getElementById('linknote')!;
+    const button = document.getElementById('linkgo') as HTMLButtonElement;
+
+    /** Ask for the link. The server answers the same way whoever asks, so nothing leaks here. */
+    async function requestLink(event: Event) {
+      event.preventDefault();
+      button.disabled = true;
+      note.className = 'muted';
+      note.textContent = 'Sending…';
+      try {
+        const email = (document.getElementById('linkemail') as HTMLInputElement).value;
+        const response = await fetch('/api/link/request', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || 'Something went wrong. Try again in a minute.');
+        // It worked: the button stays off, because what happens next is in their email.
+        note.textContent = body.message;
+      } catch (error) {
+        note.className = 'error';
+        note.textContent = error instanceof Error ? error.message : String(error);
+        button.disabled = false;
+      }
+    }
+
+    requestForm.addEventListener('submit', requestLink);
+  }
+
+  function linkRequestHtml(): string {
+    return `<h1>Your website</h1>
     <section class="card"><h2>Get your link</h2>
       <p>Your project opens from a private link. Type the email address on your project and we'll send it to you.</p>
       <form id="linkform"><label for="linkemail">Email</label><input type="email" id="linkemail" autocomplete="email" required>
         <p><button type="submit" class="primary" id="linkgo">Email me my link</button></p>
         <p id="linknote" role="status" class="muted"></p></form>
     </section>`;
-  const form = document.getElementById('linkform'), note = document.getElementById('linknote'), go = document.getElementById('linkgo');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    go.disabled = true; note.className = 'muted'; note.textContent = 'Sending…';
-    try {
-      const r = await fetch('/api/link/request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('linkemail').value }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || 'Something went wrong. Try again in a minute.');
-      note.textContent = j.message;
-    } catch (err) { note.className = 'error'; note.textContent = err.message; go.disabled = false; }
-  });
-} else {
-  const progress = document.getElementById('progress');
-  wireProgress(progress);
-  const q = '?t=' + encodeURIComponent(token);
-  mountProject({
-    root: app, bar: document.getElementById('bar'), progress, config: C, mode: 'client',
-    headers: { authorization: 'Bearer ' + token },
-    routes: {
-      project: '/api/client/project', presence: '/api/client/presence', uploads: '/api/client/uploads', build: '/api/client/build', agreement: '/api/client/agreement', care: '/api/client/care', messages: '/api/client/messages',
-      // An <img> can't send the header, so a picture's address carries the token; changes don't.
-      file: (id, forApi) => '/api/client/uploads/' + encodeURIComponent(id) + (forApi ? '' : q),
-    },
-  });
-}
+  }
+
+  async function start() {
+    // The form comes down before either view, as it has since this page was written: with a link
+    // this page is the form, and arriving without one is the rarer way to be here.
+    const form = await loadProjectForm(config);
+    const token = tokenForThisVisit();
+    if (isToken(token)) showProject(form, token);
+    else showLinkRequest();
+  }
+
+  start();
 </script>
 </body>
 </html>
