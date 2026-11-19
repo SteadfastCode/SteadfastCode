@@ -4,7 +4,7 @@
     "SCS-002": {
       "order": 1,
       "title": "Readable scripts: admin/care.astro and admin/usage.astro",
-      "status": "claimed",
+      "status": "done",
       "attempts": 1,
       "cluster": null,
       "branch": "routine/item/SCS-002",
