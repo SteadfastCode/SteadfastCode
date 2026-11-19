@@ -74,6 +74,10 @@ under `docs/research/` and `docs/hosting.md`.
   changes from there. If what it collects changes, `/privacy` changes in the same commit. `test/perf.test.js` enforces it, along with a **200 KB over-the-wire budget per page**
   (HTML + CSS + font + eager images, gzip-measured) and a 6 KB cap on inline script. The home page
   tells visitors this; keep it true. The LeoAI waitlist is a link to Tally, not an embed.
+- **Code is written to be read** (Daniel, 2026-11-18): plain names, one statement per line, comments
+  that say why. Never hand-minify; the production build minifies. Prefer Astro's processed
+  `<script>` (bundled, minified) and keep `is:inline` for what must run in place, like the theme pin
+  in `<head>`, written just as readably.
 - **Nothing invented.** No made-up clients, reviews, logos, metrics or "founded in" dates. A case study
   is added to `work` when the site is live and the owner is happy to be shown; its `live` flag gates
   the link. Empty profile fields are not emitted into `sameAs`.
