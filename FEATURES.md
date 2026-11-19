@@ -45,9 +45,7 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
   every control the script touches, with no page errors. Prior art: the client template
   ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
 
-## Proposed
-
-- [ ] **(SCS-003) Readable scripts: admin/inbox.astro, admin.astro, client.astro** [proposed]
+- [ ] **(SCS-003) Readable scripts: admin/inbox.astro, admin.astro, client.astro**
   Rewrite the dense inline scripts in src/pages/admin/inbox.astro (about 7.6 KB),
   src/pages/admin.astro (the inline one, about 4.7 KB) and src/pages/client.astro (about 3 KB) into
   readable, commented code. admin.astro and client.astro share the intake form; keep anything they
@@ -62,6 +60,8 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
   gate, then drive each rewritten page in Playwright (desktop and phone width, both themes) through
   every control the script touches, with no page errors. Prior art: the client template
   ContactForm.astro and Base.astro rewrites (steadfast-ai 791bd6d).
+
+## Proposed
 
 - [ ] **(SCS-004) Readable scripts: contact.astro, Base.astro, SpeedProof.astro** [proposed]
   Rewrite the dense inline scripts in src/pages/contact.astro (the form ladder's client side; keep
