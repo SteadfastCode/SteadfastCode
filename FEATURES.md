@@ -17,7 +17,7 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
 ## Workqueue Items
 
 
-- [ ] **(SCS-002) Readable scripts: admin/care.astro and admin/usage.astro**
+- [x] **(SCS-002) Readable scripts: admin/care.astro and admin/usage.astro**
   Rewrite the dense inline scripts in src/pages/admin/care.astro (about 9.6 KB, 27 long lines) and
   src/pages/admin/usage.astro (about 8.9 KB, 19 long lines) into readable, commented code.
   Rule (Daniel 2026-11-18, now in CLAUDE.md "Rules that override taste"): code is written to be
