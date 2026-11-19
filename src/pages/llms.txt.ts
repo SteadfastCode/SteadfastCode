@@ -21,10 +21,10 @@ const pages = [
 export const GET: APIRoute = () => {
   const lines: string[] = [];
   lines.push(`# ${business.name}`, '');
-  lines.push(`> ${business.tagline} Run by ${business.owner} in ${business.city}, ${business.state}, serving ${business.region} and the US remotely. Fixed prices are posted; a business site can launch in ${websiteTiers.find((t) => t.id === 'business')?.days}.`, '');
+  lines.push(`> ${business.tagline} Run by ${business.owner} in ${business.city}, ${business.state}, serving ${business.region} and the US remotely. Fixed prices are posted; a business site can launch in ${websiteTiers.find((t) => t.id === 'business')?.launchTime}.`, '');
   lines.push(`Contact: ${business.email}. Location: ${business.city}, ${business.state} ${business.zip} (service-area business; no walk-in office). Service area: ${business.serviceArea}`, '');
   lines.push('## Website prices (one time)', '');
-  for (const t of websiteTiers) lines.push(`- ${t.name}: ${'from' in t && t.from ? 'from ' : ''}${money(t.price)} — ${t.pages === 1 ? 'one page' : `up to ${t.pages} pages`}, ${t.days} to launch. ${t.who}`);
+  for (const t of websiteTiers) lines.push(`- ${t.name}: ${'from' in t && t.from ? 'from ' : ''}${money(t.price)} — ${t.pages === 1 ? 'one page' : `up to ${t.pages} pages`}, ${t.launchTime} to launch. ${t.who}`);
   lines.push(launchNote);
   for (const a of addOns) lines.push(`- Add-on, ${a.name.toLowerCase()}: ${money(a.price)} — ${a.what} ${a.who}`);
   lines.push('', '## Hosting and care plans (monthly, cancel any time)', '');

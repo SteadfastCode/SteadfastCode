@@ -58,7 +58,7 @@ const description = `Custom websites, built with AI coding tools, tested on real
               name={t.name}
               price={`${"from" in t && t.from ? "from " : ""}${money(t.price)}`}
               priceNote="one time"
-              meta={`${t.pages === 1 ? "One page" : `Up to ${t.pages} pages`} · ${t.days} to launch*`}
+              meta={`${t.pages === 1 ? "One page" : `Up to ${t.pages} pages`} · ${t.launchTime} to launch*`}
               who={t.who}
               includes={t.includes}
               featured={"featured" in t && t.featured}

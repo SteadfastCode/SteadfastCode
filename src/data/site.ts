@@ -52,7 +52,7 @@ export function money(n: number, per?: string): string {
 // ------------------------------------------------------------------------------------ websites
 // A website is priced by what it has to do, not by the hour. Each tier is a fixed price with a
 // stated scope, and anything past that scope is quoted before it's built. `pages` is the ceiling
-// the price covers; `days` is the launch window, which assumes the content is ready (`launchNote`).
+// the price covers; `launchTime` is the launch window, which assumes the content is ready (`launchNote`).
 // `scope` is the same promise in a form the admin intake and a client build can check against
 // (2026-11-01): it restates what each tier's `includes` says. `changeDays`: every package gets
 // unlimited changes within the package for 30 days from the first preview (Daniel, 2026-11-01,
@@ -64,7 +64,7 @@ export const websiteTiers = [
     name: 'Starter',
     price: 1500,
     pages: 1,
-    days: '1 to 5 days',
+    launchTime: '1 to 5 days',
     who: 'A new business, a side business, or a campaign that needs one great page.',
     scope: { pages: 1, changeDays: 30, editor: 'add-on', copyHelp: false, serviceAreaPages: false, handoffCall: false, blog: false, integrations: false, accessibilityPass: false, store: false },
     includes: [
@@ -83,7 +83,7 @@ export const websiteTiers = [
     name: 'Business',
     price: 3900,
     pages: 6,
-    days: '1 day to 2 weeks',
+    launchTime: '1 day to 2 weeks',
     who: 'Most local businesses: a home page, services, about, contact, and room for a couple more.',
     featured: true,
     scope: { pages: 6, changeDays: 30, editor: 'add-on', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: false, integrations: false, accessibilityPass: false, store: false },
@@ -101,7 +101,7 @@ export const websiteTiers = [
     name: 'Growth',
     price: 6900,
     pages: 15,
-    days: '1–3 weeks',
+    launchTime: '1–3 weeks',
     who: 'A business with a lot to say: many services, locations, a blog or resources, a team.',
     scope: { pages: 15, changeDays: 30, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: false },
     includes: [
@@ -119,7 +119,7 @@ export const websiteTiers = [
     price: 8500,
     from: true,
     pages: 15,
-    days: '2–6 weeks',
+    launchTime: '2–6 weeks',
     who: 'Selling products online, from a dozen items to a few hundred.',
     scope: { pages: 15, changeDays: 30, editor: 'included', copyHelp: true, serviceAreaPages: true, handoffCall: true, blog: true, integrations: true, accessibilityPass: true, store: true },
     includes: [

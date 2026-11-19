@@ -19,7 +19,7 @@ const liveWork = work.filter((w) => w.live);
            it cost and how long does it take", so the first paragraph is all three. -->
       <p class="answer">
         I'm Daniel, and I build custom websites for small businesses, churches and nonprofits around {business.region}.
-        A one-page site starts at {money(starter.price)}, a business site can launch in {websiteTiers.find((t) => t.id === 'business')?.days}, and the prices are all posted right here.
+        A one-page site starts at {money(starter.price)}, a business site can launch in {websiteTiers.find((t) => t.id === 'business')?.launchTime}, and the prices are all posted right here.
       </p>
       <p class="lede">
         No templates, no page builders, no plugin sprawl. I build with AI coding tools and I'm upfront about it: they write most of the code, and I do the design, the refinement, the checking on real phones, and the talking with you. You get plain code that is yours outright, built to score 100 on Google's speed checks.

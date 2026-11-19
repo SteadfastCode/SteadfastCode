@@ -217,7 +217,7 @@ export function contractCatalog(a: AgreementInput, library: Library = emptyLibra
     package: tier.name, pages: tier.pages === 1 ? 'one page' : `up to ${tier.pages} pages`, date: day,
     priceLead: from && !priced.custom ? 'The price for your store, as we agreed it, starts at' : 'The price is',
     price: money(price), priceDetail: priceDetail(tier, editor, priced), half: money(half), rest: money(price - half),
-    launchTime: tier.days, days: tier.days, launchNote, domainNote,
+    launchTime: tier.launchTime, days: tier.launchTime, launchNote, domainNote,
   };
   // The package's bullets, where the {packageLines} row sits.
   const bullets = [...[...earlier, ...included].map((x) => `• ${x}`), ...(editor ? [`• The content editor add-on: ${editorAddOn.what}`] : [])];
