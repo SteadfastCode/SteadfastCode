@@ -16,7 +16,7 @@ There is no backlog-audit item here on purpose (2026-11-03): the routine does on
 
 ## Workqueue Items
 
-- [ ] **(SCS-001) Readable scripts: admin/leads.astro**
+- [x] **(SCS-001) Readable scripts: admin/leads.astro**
   Rewrite the dense inline script in src/pages/admin/leads.astro (about 21 KB, 44 lines over 140
   chars) into readable, commented code. It's the biggest one, so it gets its own item; split it into
   named functions by job (loading, rendering rows, editing, filters).

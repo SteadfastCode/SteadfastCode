@@ -4,10 +4,10 @@
     "SCS-001": {
       "order": 1,
       "title": "Readable scripts: admin/leads.astro",
-      "status": "pending",
-      "attempts": 0,
+      "status": "claimed",
+      "attempts": 1,
       "cluster": null,
-      "branch": null,
+      "branch": "routine/item/SCS-001",
       "dependsOn": [],
       "needsHuman": false,
       "proposed": false,
@@ -15,8 +15,8 @@
       "distribute": null,
       "coldReview": false,
       "notBefore": null,
-      "claimedAtUtc": null,
-      "runId": null,
+      "claimedAtUtc": "2026-11-19T09:13:35.507Z",
+      "runId": "2026-11-19T09:12:43.130Z",
       "lastFail": null
     },
     "SCS-002": {
