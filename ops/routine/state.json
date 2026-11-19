@@ -4,7 +4,7 @@
     "SCS-001": {
       "order": 1,
       "title": "Readable scripts: admin/leads.astro",
-      "status": "claimed",
+      "status": "done",
       "attempts": 1,
       "cluster": null,
       "branch": "routine/item/SCS-001",
