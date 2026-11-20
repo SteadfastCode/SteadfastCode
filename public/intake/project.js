@@ -1160,8 +1160,10 @@ export async function mountProject(o) {
   // as level as the cards allow. The order of the cards gives way to that (Daniel: order doesn't
   // matter, fill evenly), except the status card, which always comes first. The title and
   // anything else that isn't a card keeps its place across the top, full width.
-  // While a pointer is held down (a text box being dragged bigger) cards stay in their columns;
-  // the even fill runs on release, and cards that move glide there and are highlighted (showMoves).
+  // After the first fill the layout is a sponge: cards stay in their columns while the columns are
+  // within MASONRY_SPONGE of each other, and past that only a card or two moves. While a pointer
+  // is held down (a text box being dragged bigger) nothing moves at all; the check runs on
+  // release, and a card that does move glides there and is highlighted (showMoves).
   // It runs again whenever a card changes size, the cards are redrawn, the window is resized or
   // the layout is switched. The contract tab has its own two-part layout and is left alone.
   const MASONRY_ROW = 2;
@@ -1222,23 +1224,60 @@ export async function mountProject(o) {
       return;
     }
 
-    // The even fill. The status card ("Getting started", "Preview ready") always leads: top of
-    // the first column. Then the rest, tallest first, each into the shortest column.
     const status = cards.find((card) => card.id === 'status');
-    const rest = cards.filter((card) => card !== status).map((card) => ({ card, rows: rowsFor(card) })).sort((one, other) => other.rows - one.rows);
+    const sizes = new Map(cards.map((card) => [card, rowsFor(card)]));
     const changedColumn = [];
-    for (const { card, rows } of [...(status ? [{ card: status, rows: rowsFor(status) }] : []), ...rest]) {
-      const column = card === status ? 0 : columnEnds.indexOf(Math.min(...columnEnds));
-      const was = masonryPlace.get(card);
-      if (was && was.column !== column) changedColumn.push(card);
-      place(card, column, columnEnds[column], rows);
-      masonryPlace.set(card, { column, row: columnEnds[column] });
-      columnEnds[column] += rows;
+    const known = columnCount === masonryColumns && cards.some((card) => masonryPlace.has(card));
+    // Which column each card goes in, top to bottom.
+    const columns = Array.from({ length: columnCount }, () => []);
+    const heightOf = (column) => column.reduce((sum, card) => sum + sizes.get(card), 0);
+
+    if (!known) {
+      // A fresh fill (first draw, or a different number of columns). The status card ("Getting
+      // started", "Preview ready") leads the first column; the rest go tallest first, each into
+      // the shortest column, so a very long card gets a column mostly to itself.
+      if (status) columns[0].push(status);
+      const rest = cards.filter((card) => card !== status).sort((one, other) => sizes.get(other) - sizes.get(one));
+      for (const card of rest) columns.reduce((shortest, column) => (heightOf(column) < heightOf(shortest) ? column : shortest)).push(card);
+    } else {
+      // The sponge (Daniel, 2026-11-20): cards soak up a change where they are. Everyone starts in
+      // the column they were in; a card that's new goes to the shortest. Then, only while the
+      // tallest and shortest columns differ by more than MASONRY_SPONGE, one card at a time moves
+      // from the tallest to the shortest: the one that levels the two best. A small change moves
+      // nothing, and a big one moves a card or two, never the whole page.
+      const settled = cards.filter((card) => masonryPlace.has(card)).sort((one, other) => masonryPlace.get(one).row - masonryPlace.get(other).row);
+      for (const card of settled) columns[masonryPlace.get(card).column].push(card);
+      for (const card of cards.filter((one) => !masonryPlace.has(one))) columns.reduce((shortest, column) => (heightOf(column) < heightOf(shortest) ? column : shortest)).push(card);
+
+      for (let moves = 0; moves < cards.length; moves++) {
+        const tallest = columns.reduce((most, column) => (heightOf(column) > heightOf(most) ? column : most));
+        const shortest = columns.reduce((least, column) => (heightOf(column) < heightOf(least) ? column : least));
+        const gap = heightOf(tallest) - heightOf(shortest);
+        if (gap <= MASONRY_SPONGE) break;
+        // Moving a card of height h turns the gap into |gap - 2h|: it has to be shorter than the gap to help.
+        const movable = tallest.filter((card) => card !== status && sizes.get(card) < gap);
+        if (!movable.length) break;
+        const best = movable.reduce((pick, card) => (Math.abs(gap - 2 * sizes.get(card)) < Math.abs(gap - 2 * sizes.get(pick)) ? card : pick));
+        tallest.splice(tallest.indexOf(best), 1);
+        shortest.push(best);
+        changedColumn.push(best);
+      }
     }
-    const sameColumns = columnCount === masonryColumns;
+
+    columns.forEach((column, index) => {
+      for (const card of column) {
+        place(card, index, columnEnds[index], sizes.get(card));
+        masonryPlace.set(card, { column: index, row: columnEnds[index] });
+        columnEnds[index] += sizes.get(card);
+      }
+    });
     masonryColumns = columnCount;
-    showMoves(before, sameColumns ? changedColumn : []);
+    showMoves(before, changedColumn);
   }
+
+  // How uneven the columns may get before a card moves: 360px, in grid rows. Below this the page
+  // holds still; this is the "sponge".
+  const MASONRY_SPONGE = 360 / MASONRY_ROW;
 
   // Where each card was last put, and in how many columns, so the next layout can tell what moved.
   const masonryPlace = new WeakMap();
