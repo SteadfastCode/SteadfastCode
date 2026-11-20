@@ -105,21 +105,23 @@
   .head-tools button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted); white-space: nowrap; }
   .head-tools button:not(:disabled):hover { color: var(--ink); }
 
-  /* "Use the whole page": the cards fill two columns, three on a big screen, never more, so a card
-     is always wide enough to read. The title and anything that isn't a card stays full width. */
+  /* "Use the whole page" means the whole page (Daniel, 2026-11-20): no maximum width, a set
+     padding at the sides, and as many columns as fit with each card at least 420px wide: two on a
+     laptop, three or four on a big screen. The title and anything that isn't a card stays full width. */
   @media (min-width: 1000px) {
     #layouttoggle { display: inline-block; }
-    body.layout-grid main, body.layout-grid .page-tools { max-width: 1500px; }
-    body.layout-grid main { columns: 2; column-gap: 14px; }
+    body.layout-grid main, body.layout-grid .page-tools { max-width: none; padding-left: 24px; padding-right: 24px; }
+    body.layout-grid main { columns: 420px; column-gap: 14px; }
     body.layout-grid main > .card { break-inside: avoid; }
     body.layout-grid main > :not(.card) { column-span: all; }
     /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */
     body.layout-grid main > #care { column-span: all; }
-    body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: 1468px; }
-    /* On Daniel's project page the header lines up with the wider page, and with the contract card
-       open beside the form (two equal halves) the form keeps its one column. */
-    body.layout-grid .admin-head .in { max-width: 1500px; }
-    body.layout-grid.has-cpane.cpane-open .cols > main { columns: auto; }
+    body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: none; padding-left: 24px; padding-right: 24px; }
+    /* On Daniel's project page, with the contract card open beside the form, the two halves take
+       the whole page too, and the form fills its half the same way. */
+    body.layout-grid.has-cpane.cpane-open .cols { max-width: none; padding: 0 24px; }
+    body.layout-grid.has-cpane.cpane-open .cols > main { padding-left: 0; padding-right: 0; }
+    body.layout-grid.has-cpane.cpane-open .admin-head .in, body.layout-grid.has-cpane.cpane-open #progress .in, body.layout-grid.has-cpane.cpane-open footer.bar .in { max-width: none; }
 
     /* The contract tab is laid out on purpose, not filled: the contract takes two thirds, and the
        note and the signature box sit beside it. */
@@ -131,10 +133,6 @@
        (the page script measures the note, since a sticky box can't know what's above it). */
     body.layout-grid main:has(> .card.agreement) > #contractnote { position: sticky; top: 12px; }
     body.layout-grid main:has(> .card.agreement) > #signbox, body.layout-grid main:has(> .card.agreement) > #reviewonly { position: sticky; top: calc(26px + var(--contract-note-height, 0px)); }
-  }
-  @media (min-width: 1500px) {
-    body.layout-grid main { columns: 3; }
-    body.layout-grid main:has(> .card.agreement) { columns: auto; }
   }
   /* "Make a change" (2026-11-20): the button above the message box, and the block it opens. */
   .change-row { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -205,7 +203,10 @@
   /* The plain button hover would put the dark page color under this button's dark text. */
   .msgfab:hover, .msgfab:not(:disabled):hover { background: var(--accent-hover); color: var(--on-accent); }
   .msgfab.unread::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--on-accent); margin-right: 8px; vertical-align: middle; }
-  body.drawer-open .msgfab { display: none; }
+  /* With the drawer open the button stays in reach, just left of it, and closes it. */
+  .msgfab { transition: right .2s ease; }
+  body.drawer-open .msgfab { right: calc(var(--drawer-width, 400px) + 20px); }
+  body.drawer-resizing .msgfab { transition: none; }
   /* The drawer's width is the person's to set (2026-11-20): they drag its left edge, the page
      script keeps --drawer-width, and everything that makes room for the drawer reads the same value. */
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: var(--drawer-width, 400px); z-index: 9; display: flex; flex-direction: column; background: var(--card); border-left: 1px solid var(--line); box-shadow: -10px 0 30px -18px rgb(0 0 0 / .5); transform: translateX(100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
@@ -222,7 +223,8 @@
   body.drawer-resizing .drawer { transition: none; }
   .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); }
   .drawer-head h2 { margin: 0; font-size: 1.15rem; }
-  .drawer-head button { font-size: 1.4rem; line-height: 1; padding: 4px 10px; }
+  /* A square button with the × set in its middle (the glyph sits low on its own line box). */
+  .drawer-head button { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0 0 3px; font-size: 1.4rem; line-height: 1; }
   .drawer-intro { margin: 0; padding: 10px 16px; font-size: .9rem; border-bottom: 1px solid var(--line); }
   .drawer-thread { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; }
   .drawer-thread ol.msgs { margin: 0; }
@@ -261,7 +263,7 @@
   #savetoast.error { color: var(--bad); border-color: var(--bad); opacity: 1; }
   /* Admin header and nav (2026-11-02): a real header instead of bare links between the admin pages. */
   .admin-head { background: var(--card); border-bottom: 1px solid var(--line); }
-  .admin-head .in { max-width: 760px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
+  .admin-head .in { max-width: none; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; }
   /* Sticky where nothing else holds the top (the usage page); /admin keeps its sticky progress bar there. */
   .admin-head.stick { position: sticky; top: 0; z-index: 5; }
   .admin-head .mark { font-weight: 700; }

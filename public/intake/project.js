@@ -456,7 +456,10 @@ export async function mountProject(o) {
     document.body.classList.toggle('drawer-open', open);
     try { sessionStorage.setItem('drawer', open ? '1' : ''); } catch {}
     const fab = document.getElementById('msgfab');
-    if (fab) fab.setAttribute('aria-expanded', String(open));
+    if (fab) {
+      fab.setAttribute('aria-expanded', String(open));
+      fab.textContent = open ? 'Hide messages' : P?.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages';
+    }
     if (open) { msgLoaded = false; paintMessages(); setTimeout(() => document.getElementById('msgbody')?.focus(), 50); }
     placeComposer();
   }
@@ -540,7 +543,8 @@ export async function mountProject(o) {
       setDrawer(was);
     }
     const fab = document.getElementById('msgfab');
-    const label = P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages';
+    // The same button closes the drawer, and says so while it's open.
+    const label = drawerOpen() ? 'Hide messages' : P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages';
     if (fab.textContent !== label) fab.textContent = label;
     fab.classList.toggle('unread', !!P.unreadMessages);
   }
