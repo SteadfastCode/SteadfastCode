@@ -1153,10 +1153,13 @@ export async function mountProject(o) {
   }
 
   // ---- the whole-page layout is a masonry (2026-11-20) ----
-  // In "Use the whole page" the cards sit in a grid whose rows are 2px tall (form.css). This gives
-  // each card as many rows as its height needs, and the grid's dense flow then puts every card in
-  // the first gap it fits, which is the shortest column. So the page fills evenly whatever the
-  // cards' heights, and the order of the cards gives way to that (Daniel: order doesn't matter).
+  // In "Use the whole page" the cards sit in a grid whose rows are 2px tall (form.css), and this
+  // gives every card its place: a column, a starting row, and as many rows as its height needs.
+  // Cards are placed tallest first, each into whichever column is shortest so far. So a very long
+  // card ends up with a column to itself, the short ones pack into the others, and the columns end
+  // as level as the cards allow. The order of the cards gives way to that (Daniel: order doesn't
+  // matter, fill evenly), except the status card, which always comes first. The title and anything else that isn't a card keeps its place across the
+  // top, full width.
   // It runs again whenever a card changes size, the cards are redrawn, the window is resized or
   // the layout is switched. The contract tab has its own two-part layout and is left alone.
   const MASONRY_ROW = 2;
@@ -1167,14 +1170,50 @@ export async function mountProject(o) {
     const wide = matchMedia('(min-width: 1000px)').matches;
     const on = wide && document.body.classList.contains('layout-grid') && !root.querySelector(':scope > .card.agreement');
     root.classList.toggle('masonry', on);
-    for (const child of root.children) {
-      const shown = on && !child.hidden && getComputedStyle(child).display !== 'none';
-      if (!shown) { child.style.gridRowEnd = ''; continue; }
-      // A grid item's margins are part of its place, so they count toward its rows.
-      const style = getComputedStyle(child);
-      const height = child.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
-      const rows = `span ${Math.max(1, Math.ceil(height / MASONRY_ROW))}`;
-      if (child.style.gridRowEnd !== rows) child.style.gridRowEnd = rows;
+    const children = [...root.children];
+    if (!on) {
+      for (const child of children) { child.style.gridColumn = ''; child.style.gridRow = ''; }
+      return;
+    }
+
+    const shown = children.filter((child) => !child.hidden && getComputedStyle(child).display !== 'none');
+    // How many grid rows an element needs; its margins are part of its place, so they count.
+    const rowsFor = (element) => {
+      const style = getComputedStyle(element);
+      const height = element.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+      return Math.max(1, Math.ceil(height / MASONRY_ROW));
+    };
+    const place = (element, column, row, rows) => {
+      const gridColumn = column === 'all' ? '1 / -1' : String(column + 1);
+      const gridRow = `${row} / span ${rows}`;
+      if (element.style.gridColumn !== gridColumn) element.style.gridColumn = gridColumn;
+      if (element.style.gridRow !== gridRow) element.style.gridRow = gridRow;
+    };
+
+    // Full-width things first, in page order, stacked from the top.
+    const isCard = (element) => element.classList.contains('card') && element.id !== 'care';
+    let nextRow = 1;
+    for (const element of shown.filter((child) => !isCard(child))) {
+      const rows = rowsFor(element);
+      place(element, 'all', nextRow, rows);
+      nextRow += rows;
+    }
+
+    // Then the cards: tallest first, each into the shortest column.
+    const columnCount = getComputedStyle(root).gridTemplateColumns.split(' ').length;
+    const columnEnds = Array.from({ length: columnCount }, () => nextRow);
+    // The status card ("Getting started", "Preview ready") always leads: top of the first column.
+    const status = shown.find((child) => child.id === 'status');
+    if (status) {
+      const rows = rowsFor(status);
+      place(status, 0, columnEnds[0], rows);
+      columnEnds[0] += rows;
+    }
+    const cards = shown.filter((child) => isCard(child) && child !== status).map((card) => ({ card, rows: rowsFor(card) })).sort((one, other) => other.rows - one.rows);
+    for (const { card, rows } of cards) {
+      const column = columnEnds.indexOf(Math.min(...columnEnds));
+      place(card, column, columnEnds[column], rows);
+      columnEnds[column] += rows;
     }
   }
   /** Lays the cards out once before the next paint, however many things asked for it. */

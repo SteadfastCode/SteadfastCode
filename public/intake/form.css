@@ -126,12 +126,10 @@
     body.layout-grid main, body.layout-grid .page-tools { max-width: none; padding-left: 48px; padding-right: 48px; }
     body.layout-grid main { columns: 420px; column-gap: 14px; }
     body.layout-grid main > .card { break-inside: avoid; }
-    /* The real layout is a masonry (the page script, layoutMasonry): every card goes into whichever
-       column is shortest, so a tall card never leaves a hole beside it. Columns can't do that: they
-       fill top to bottom and can't split a card. The grid's rows are 2px tall and the script gives
-       each card as many as its height needs; `dense` lets a card take the first gap it fits. */
-    body.layout-grid main.masonry { columns: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); grid-auto-rows: 2px; grid-auto-flow: dense; column-gap: 14px; align-items: start; }
-    body.layout-grid main.masonry > :not(.card), body.layout-grid main.masonry > #care { grid-column: 1 / -1; }
+    /* The real layout is a masonry (the page script, layoutMasonry): the grid's rows are 2px tall
+       and the script gives every card a column and its rows, tallest cards first, each into the
+       shortest column. Columns can't do that: they fill top to bottom and can't split a card. */
+    body.layout-grid main.masonry { columns: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); grid-auto-rows: 2px; column-gap: 14px; align-items: start; }
     body.layout-grid main > :not(.card) { column-span: all; }
     /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */
     body.layout-grid main > #care { column-span: all; }
