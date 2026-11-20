@@ -1,0 +1,63 @@
+{
+  "item": "SCS-001",
+  "repo": "SteadfastCode",
+  "mergeSha": "7194ebacdbefffabe95026b214ffd9b3794734a1",
+  "localPromptVersion": "v6",
+  "localModel": "qwen2.5-coder:14b",
+  "grader": "claude-opus-5",
+  "effort": "high",
+  "gradePromptVersion": "g1",
+  "gradeRunId": "2026-11-20T18:53:06.283Z",
+  "gradedAtUtc": "2026-11-20T18:57:24.183Z",
+  "independent": [],
+  "grades": [],
+  "triageGrades": [
+    {
+      "key": "auth",
+      "correct": true,
+      "reason": "The rewrite does no authentication or authorization work — `credentials: 'same-origin'` is carried over unchanged and all access checks live in functions/api/admin/_middleware.js, which the diff does not touch."
+    },
+    {
+      "key": "secrets",
+      "correct": true,
+      "reason": "No keys, tokens or credentials appear anywhere in the diff; the only embedded data is the public statuses/kinds/tiers config that was already there."
+    },
+    {
+      "key": "money",
+      "correct": true,
+      "reason": "Only tier ids and names are used (`tierName`, the 'Likely package' select); no dollar figure is added or moved, so site.ts pricing is untouched."
+    },
+    {
+      "key": "destructive",
+      "correct": true,
+      "reason": "The change does rewrite a destructive path — the Delete button's `confirm(...)` plus `DELETE /api/admin/leads/<id>` handler moves into `wireDetails` — so 'touched' is right even though the cited line 203 is the `dueState` date comparison."
+    },
+    {
+      "key": "externalApi",
+      "correct": true,
+      "reason": "Every HTTP call site is rewritten (`api` → `callApi`, plus the PATCH/POST/DELETE/import callers and their error handling), so 'touched' is right even though the cited line 103 is a type alias."
+    },
+    {
+      "key": "release",
+      "correct": true,
+      "reason": "Pure front-end script rewrite: no migration, no new binding or secret, nothing under .github/** or ops/routine/**, and nothing requiring a go-live checklist."
+    }
+  ],
+  "missed": [],
+  "summary": "The local review reported no defects, which matches my own cold read — the rewrite is behavior-faithful (same IDs, events, text, escaping and fetch calls, and the committed build confirms it compiles to an external bundle outside the perf test's scope) — and its six triage calls are all correct, though two cite irrelevant lines as evidence.",
+  "counts": {
+    "findings": 0,
+    "confirmed": 0,
+    "falsePositive": 0,
+    "duplicate": 0,
+    "unverifiable": 0,
+    "missed": 0,
+    "independent": 0,
+    "triageChecked": 6,
+    "triageCorrect": 6
+  },
+  "costUsd": 1.8371720000000002,
+  "numTurns": 19,
+  "durationMs": 257263,
+  "sessionId": "e397a48d-3f04-4584-a11b-05ae6269d014"
+}
