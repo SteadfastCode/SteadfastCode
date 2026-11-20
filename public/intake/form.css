@@ -106,6 +106,17 @@
   .asset-where { display: block; font-weight: 600; margin: 6px 0 4px; }
   .asset textarea, .asset-add textarea { min-height: 60px; margin-bottom: 8px; }
   .asset-actions { margin-top: 8px; }
+  /* On a card: what was given (photos, files), and the inputs to give more. */
+  .asset-photos { margin: 8px 0; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .asset-files { list-style: none; margin: 8px 0; padding: 0; }
+  .asset-files li { padding: 4px 0; overflow-wrap: anywhere; }
+  .asset-remove-upload { font-size: .82rem; padding: 3px 8px; }
+  .asset-row { display: flex; gap: 8px; align-items: center; }
+  .asset-row input { flex: 1; min-width: 0; }
+  .asset-answer { white-space: pre-wrap; }
+  .asset-inputs { border: 0; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .asset-inputs legend { padding: 0; margin-bottom: 4px; font-weight: 600; }
+  .asset-inputs label { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; }
   .asset-add { padding-top: 12px; border-top: 1px solid var(--line); }
   .asset-add label { display: block; font-weight: 600; margin-bottom: 6px; }
   .asset-add input { margin-bottom: 8px; }

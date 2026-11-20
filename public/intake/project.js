@@ -1234,17 +1234,40 @@ export async function mountProject(o) {
   }
 
   // ---- what the project still needs from the client (2026-11-19, server/assets.js) ----
-  // Daniel keeps the list on his page. The client sees it on theirs, marks an item sent and says
-  // where it is (most of these are fonts and design files, not photos to upload), and Daniel marks
-  // it received. Either side can step an item back.
+  // Daniel keeps the list on his page and says, per item, how the client can give it: photos or
+  // files uploaded right on the card, a link, a typed answer (2026-11-20). The client sees the list
+  // on theirs and answers on the card; anything they give marks the item sent and tells Daniel.
+  // "I sent it another way" is always there, with a note saying where. Daniel marks it received.
+  // A photo given on a card is an ordinary photo too, so it also shows under Photos and logo.
   let assetNoteOpen = null; // the item whose "where is it?" box is open on the client's page
   let assetEditing = null; // the item Daniel is rewording on his page
+  const assetSaid = {}; // item id -> the last thing said under its inputs ("Uploading 2 of 3…")
 
   const ASSET_BADGE = {
     needed: () => '<span class="badge review">Needed</span>',
     sent: (item) => `<span class="badge">Sent ${esc(ago(item.sentAt))}</span>`,
     received: () => '<span class="badge ready">Received</span>',
   };
+  /** The inputs a card can have, as Daniel's checkboxes name them. */
+  const ASSET_INPUT = { photos: 'Photos', files: 'Files (fonts, vectors, documents)', link: 'A link', text: 'Typed text' };
+  const assetUploads = (item) => (P.uploads || []).filter((upload) => upload.assetId === item.id);
+  const fileSize = (bytes) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+
+  /** Daniel's checkboxes for what a card takes, in the add form and the edit form. */
+  const assetInputChoices = (name, chosen = []) => `<fieldset class="asset-inputs"><legend>They can give it as</legend>${Object.entries(ASSET_INPUT).map(([input, label]) => `<label><input type="checkbox" name="${name}" value="${input}"${chosen.includes(input) ? ' checked' : ''}> ${esc(label)}</label>`).join('')}</fieldset>`;
+  const chosenInputs = (scope, name) => [...scope.querySelectorAll(`input[name="${name}"]:checked`)].map((box) => box.value);
+
+  /** What has been given on a card so far: photos as thumbnails, files as downloads, the link, the answer. */
+  function assetGivenHtml(item, canRemove) {
+    const uploads = assetUploads(item);
+    const photos = uploads.filter((upload) => upload.kind !== 'file');
+    const files = uploads.filter((upload) => upload.kind === 'file');
+    const remove = (upload) => (canRemove ? ` <button type="button" class="asset-remove-upload" data-upload="${esc(upload.id)}" aria-label="Remove ${esc(upload.filename || 'this file')}">Remove</button>` : '');
+    return `${photos.length ? `<div class="grid asset-photos">${photos.map((upload) => `<figure class="thumb"><img src="${esc(routes.file(upload.id))}" alt="${esc(upload.caption || upload.filename || 'Photo')}" loading="lazy">${canRemove ? `<figcaption>${remove(upload)}</figcaption>` : ''}</figure>`).join('')}</div>` : ''}
+      ${files.length ? `<ul class="asset-files">${files.map((upload) => `<li><a href="${esc(routes.file(upload.id))}" download>${esc(upload.filename || 'File')}</a> <span class="muted">${esc(fileSize(upload.bytes))}</span>${remove(upload)}</li>`).join('')}</ul>` : ''}
+      ${item.link ? `<p class="asset-note">Link: <a href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">${esc(item.link)}</a></p>` : ''}
+      ${item.answer && admin ? `<p class="asset-note asset-answer">${esc(item.answer)}</p>` : ''}`;
+  }
 
   function assetHtmlForDaniel(item) {
     if (assetEditing === item.id) {
@@ -1253,6 +1276,7 @@ export async function mountProject(o) {
         <input type="text" id="assetedittitle" maxlength="120" value="${esc(item.title)}">
         <label class="sr" for="asseteditdetail">The format, or what it’s for</label>
         <textarea id="asseteditdetail" maxlength="600" placeholder="The format, or what it’s for (optional)">${esc(item.detail || '')}</textarea>
+        ${assetInputChoices('asseteditinput', item.inputs)}
         <p class="asset-actions"><button type="button" class="primary" data-asset-save>Save</button> <button type="button" data-asset-edit-cancel>Cancel</button> <span class="muted" id="asseteditsaid" role="status"></span></p>
       </li>`;
     }
@@ -1261,27 +1285,54 @@ export async function mountProject(o) {
       sent: '<button type="button" data-asset-status="received">Got it</button> <button type="button" data-asset-status="needed">Still needed</button>',
       received: '<button type="button" data-asset-status="needed">Still needed</button> <button type="button" data-asset-remove>Remove</button>',
     }[item.status];
+    const takes = item.inputs.length ? `They can give it as: ${item.inputs.map((input) => ASSET_INPUT[input].replace(/ \(.*/, '').toLowerCase()).join(', ')}.` : 'No inputs on the card: they mark it sent and say where it is.';
     return `<li class="asset" data-asset="${item.id}">
       <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
       ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
+      <p class="muted">${esc(takes)}</p>
+      ${assetGivenHtml(item, false)}
       ${item.clientNote ? `<p class="asset-note">They said: ${esc(item.clientNote)}</p>` : ''}
       <p class="asset-actions">${buttons} <button type="button" data-asset-edit>Edit</button></p>
     </li>`;
   }
 
+  /** The inputs on the client's card, for an item Daniel doesn't have yet. */
+  function assetInputsHtml(item) {
+    const has = (input) => item.inputs.includes(input);
+    const uploadButtons = [
+      has('photos') && P.uploadsReady ? '<label class="btn">Add photos<input type="file" accept="image/*" multiple data-asset-upload="photo" hidden></label>' : '',
+      has('files') && P.uploadsReady ? '<label class="btn">Add files<input type="file" multiple data-asset-upload="file" hidden></label>' : '',
+    ].filter(Boolean).join(' ');
+    return `${uploadButtons ? `<p class="asset-actions upl">${uploadButtons}</p>` : ''}
+      ${has('files') && P.uploadsReady ? '<p class="help">Up to 15 MB each. For anything bigger, share a link instead.</p>' : ''}
+      ${has('link') ? `<label class="asset-where" for="assetlink${item.id}">A link to it</label>
+        <div class="asset-row"><input type="text" inputmode="url" id="assetlink${item.id}" data-asset-link maxlength="500" placeholder="https://" value="${esc(item.link || '')}"><button type="button" data-asset-link-save>Save link</button></div>` : ''}
+      ${has('text') ? `<label class="asset-where" for="assetanswer${item.id}">Type it here</label>
+        <textarea id="assetanswer${item.id}" data-asset-answer maxlength="4000">${esc(item.answer || '')}</textarea>
+        <p class="asset-actions"><button type="button" data-asset-answer-save>Save</button></p>` : ''}
+      <p class="muted" data-asset-said role="status">${esc(assetSaid[item.id] || '')}</p>`;
+  }
+
   function assetHtmlForClient(item) {
     let action = '';
     if (item.status === 'received') {
-      action = '<p class="muted">Daniel has this one. Thank you!</p>';
-    } else if (item.status === 'sent') {
-      action = `${item.clientNote ? `<p class="asset-note">You said: ${esc(item.clientNote)}</p>` : ''}
-        <p class="asset-actions"><button type="button" data-asset-sent="no">Not sent yet</button></p>`;
-    } else if (assetNoteOpen === item.id) {
-      action = `<label class="asset-where" for="assetnote${item.id}">Where can Daniel find it?</label>
-        <textarea id="assetnote${item.id}" maxlength="600" placeholder="A link, or where you sent it (“in Discord”). You can leave this empty."></textarea>
-        <p class="asset-actions"><button type="button" class="primary" data-asset-sent="yes">Mark as sent</button> <button type="button" data-asset-cancel>Cancel</button></p>`;
+      action = `${assetGivenHtml(item, false)}<p class="muted">Daniel has this one. Thank you!</p>`;
     } else {
-      action = '<p class="asset-actions"><button type="button" data-asset-open>I’ve sent this</button></p>';
+      // "Sent another way": its note box when open, the way back when it's been used, or the button.
+      let anotherWay = '';
+      if (assetNoteOpen === item.id) {
+        anotherWay = `<label class="asset-where" for="assetnote${item.id}">Where can Daniel find it?</label>
+          <textarea id="assetnote${item.id}" maxlength="600" placeholder="Where you sent it (“in Discord”, “emailed Tuesday”). You can leave this empty."></textarea>
+          <p class="asset-actions"><button type="button" class="primary" data-asset-sent="yes">Mark as sent</button> <button type="button" data-asset-cancel>Cancel</button></p>`;
+      } else if (item.status === 'sent') {
+        // "Not sent yet" undoes a "sent another way"; something given on the card is removed there instead.
+        const givenOnCard = assetUploads(item).length > 0 || item.link || item.answer;
+        anotherWay = `${item.clientNote ? `<p class="asset-note">You said: ${esc(item.clientNote)}</p>` : ''}
+          ${givenOnCard ? '' : '<p class="asset-actions"><button type="button" data-asset-sent="no">Not sent yet</button></p>'}`;
+      } else {
+        anotherWay = `<p class="asset-actions"><button type="button" data-asset-open>${item.inputs.length ? 'I sent it another way' : 'I’ve sent this'}</button></p>`;
+      }
+      action = `${assetGivenHtml(item, true)}${assetInputsHtml(item)}${anotherWay}`;
     }
     return `<li class="asset" data-asset="${item.id}">
       <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
@@ -1294,57 +1345,65 @@ export async function mountProject(o) {
     const el = root.querySelector('#assets');
     if (!el) return;
     const items = P.assets || [];
-    // Redraw only when the list (or the open note box) changes, so typing isn't wiped by the refresh.
-    const key = JSON.stringify([items, assetNoteOpen, assetEditing]);
+    const given = (P.uploads || []).filter((upload) => upload.assetId).map((upload) => [upload.id, upload.assetId]);
+    // Redraw only when something on the card changes, so typing isn't wiped by the refresh.
+    const key = JSON.stringify([items, given, assetNoteOpen, assetEditing, assetSaid, P.uploadsReady]);
     if (el.dataset.key === key) return;
     // While Daniel is rewording an item, a background refresh leaves the card alone.
     if (el.querySelector('#assetedittitle') && assetEditing !== null && el.dataset.editing === String(assetEditing)) return;
-    el.dataset.editing = assetEditing === null ? '' : String(assetEditing);
     el.dataset.key = key;
+    el.dataset.editing = assetEditing === null ? '' : String(assetEditing);
 
-    // Whatever Daniel has typed into the add form survives a redraw (the client marking something sent).
-    const typed = { title: el.querySelector('#assettitle')?.value ?? '', detail: el.querySelector('#assetdetail')?.value ?? '' };
+    // Whatever is half-typed survives a redraw: Daniel's add form, and the client's link and answer.
+    const typed = { title: el.querySelector('#assettitle')?.value ?? '', detail: el.querySelector('#assetdetail')?.value ?? '', inputs: chosenInputs(el, 'assetinput') };
+    const typedOnCards = {};
+    el.querySelectorAll('[data-asset-link], [data-asset-answer]').forEach((box) => { typedOnCards[box.id] = box.value; });
     const waiting = items.filter((item) => item.status === 'needed').length;
     const list = items.length ? `<ul class="assets">${items.map(admin ? assetHtmlForDaniel : assetHtmlForClient).join('')}</ul>` : '';
 
     if (admin) {
       el.innerHTML = `<h2>Assets needed</h2>
-        <p class="muted">${items.length ? `${waiting} still needed of ${items.length}. ` : ''}What this project still needs from them. They see this list on their page and mark things sent.</p>
+        <p class="muted">${items.length ? `${waiting} still needed of ${items.length}. ` : ''}What this project still needs from them. They see this list on their page and give each thing right on its card.</p>
         ${list}
         <div class="asset-add">
           <label for="assettitle">Add something</label>
           <input type="text" id="assettitle" maxlength="120" placeholder="What’s needed: Display font">
           <textarea id="assetdetail" maxlength="600" placeholder="The format, or what it’s for (optional)"></textarea>
+          ${assetInputChoices('assetinput', typed.inputs)}
           <p><button type="button" id="assetadd">Add to the list</button> <span class="muted" id="assetsaid" role="status"></span></p>
         </div>`;
       el.querySelector('#assettitle').value = typed.title;
       el.querySelector('#assetdetail').value = typed.detail;
     } else {
       el.innerHTML = `<h2>What we still need from you</h2>
-        <p class="muted">${waiting ? `${waiting} to go. When you’ve sent one, mark it here so Daniel knows to look.` : 'That’s everything for now. Thank you!'}</p>
+        <p class="muted">${waiting ? `${waiting} to go. Add each one right here, or tell Daniel where to find it.` : 'That’s everything for now. Thank you!'}</p>
         ${list}`;
+      for (const [id, value] of Object.entries(typedOnCards)) { const box = el.querySelector(`#${id}`); if (box) box.value = value; }
     }
 
-    // One place for every change: send it, take the list the server answers with, and redraw.
-    const change = async (path, init) => {
+    const itemId = (control) => Number(control.closest('[data-asset]').dataset.asset);
+    const itemPath = (control) => `${routes.assets}/${itemId(control)}`;
+    const redraw = () => { delete el.dataset.key; delete el.dataset.editing; paintAssets(); };
+    const say = (id, message) => { assetSaid[id] = message; const line = el.querySelector(`[data-asset="${id}"] [data-asset-said]`); if (line) line.textContent = message; };
+
+    // One place for a change to the list: send it, take the list the server answers with, and redraw.
+    const change = async (path, init, onError) => {
       try {
         P.assets = (await api(path, init)).assets;
       } catch (e) {
-        const said = el.querySelector('#assetsaid');
-        if (said) said.textContent = e.message; else alert(e.message);
+        if (onError) onError(e.message); else alert(e.message);
         return false;
       }
-      paintAssets();
+      redraw();
       return true;
     };
-    const itemPath = (button) => `${routes.assets}/${button.closest('[data-asset]').dataset.asset}`;
-    const patch = (button, body) => change(itemPath(button), { method: 'PATCH', body: JSON.stringify(body) });
+    const patch = (control, body, onError) => change(itemPath(control), { method: 'PATCH', body: JSON.stringify(body) }, onError);
 
+    // ---- Daniel's controls ----
     const add = el.querySelector('#assetadd');
     if (add) add.onclick = async () => {
-      const title = el.querySelector('#assettitle');
-      const detail = el.querySelector('#assetdetail');
-      const added = await change(routes.assets, { method: 'POST', body: JSON.stringify({ title: title.value, detail: detail.value }) });
+      const body = { title: el.querySelector('#assettitle').value, detail: el.querySelector('#assetdetail').value, inputs: chosenInputs(el, 'assetinput') };
+      const added = await change(routes.assets, { method: 'POST', body: JSON.stringify(body) }, (message) => { el.querySelector('#assetsaid').textContent = message; });
       if (added) {
         const fresh = root.querySelector('#assets');
         fresh.querySelector('#assettitle').value = '';
@@ -1353,19 +1412,16 @@ export async function mountProject(o) {
       }
     };
     el.querySelectorAll('[data-asset-status]').forEach((button) => { button.onclick = () => patch(button, { status: button.dataset.assetStatus }); });
-    // Rewording an item: the row turns into its two fields, with Save and Cancel.
-    const redraw = () => { delete el.dataset.key; delete el.dataset.editing; paintAssets(); };
+    el.querySelectorAll('[data-asset-remove]').forEach((button) => {
+      button.onclick = () => { if (confirm('Take this off the list? They stop seeing it too.')) change(itemPath(button), { method: 'DELETE' }); };
+    });
     el.querySelectorAll('[data-asset-edit]').forEach((button) => {
-      button.onclick = () => {
-        assetEditing = Number(button.closest('[data-asset]').dataset.asset);
-        redraw();
-        root.querySelector('#assetedittitle')?.focus();
-      };
+      button.onclick = () => { assetEditing = itemId(button); redraw(); root.querySelector('#assetedittitle')?.focus(); };
     });
     el.querySelectorAll('[data-asset-edit-cancel]').forEach((button) => { button.onclick = () => { assetEditing = null; redraw(); }; });
     el.querySelectorAll('[data-asset-save]').forEach((button) => {
       button.onclick = async () => {
-        const body = { title: el.querySelector('#assetedittitle').value, detail: el.querySelector('#asseteditdetail').value };
+        const body = { title: el.querySelector('#assetedittitle').value, detail: el.querySelector('#asseteditdetail').value, inputs: chosenInputs(el, 'asseteditinput') };
         try {
           P.assets = (await api(itemPath(button), { method: 'PATCH', body: JSON.stringify(body) })).assets;
         } catch (e) {
@@ -1376,17 +1432,66 @@ export async function mountProject(o) {
         redraw();
       };
     });
-    el.querySelectorAll('[data-asset-remove]').forEach((button) => {
-      button.onclick = () => { if (confirm('Take this off the list? They stop seeing it too.')) change(itemPath(button), { method: 'DELETE' }); };
-    });
-    el.querySelectorAll('[data-asset-open]').forEach((button) => {
-      button.onclick = () => {
-        assetNoteOpen = Number(button.closest('[data-asset]').dataset.asset);
-        paintAssets();
-        root.querySelector(`#assetnote${assetNoteOpen}`)?.focus();
+
+    // ---- the client's controls ----
+    el.querySelectorAll('[data-asset-upload]').forEach((input) => {
+      input.onchange = async () => {
+        const id = itemId(input);
+        const files = [...input.files];
+        let done = 0;
+        for (const file of files) {
+          say(id, `Uploading ${done + 1} of ${files.length}…`);
+          const form = new FormData();
+          form.set('file', file);
+          form.set('kind', input.dataset.assetUpload);
+          form.set('asset', String(id));
+          try {
+            await api(routes.uploads, { method: 'POST', body: form });
+            done++;
+          } catch (e) {
+            assetSaid[id] = `${file.name}: ${e.message}`;
+            await refresh();
+            return;
+          }
+        }
+        assetSaid[id] = `Uploaded ${done}. Daniel can see ${done === 1 ? 'it' : 'them'} now.`;
+        await refresh();
       };
     });
-    el.querySelectorAll('[data-asset-cancel]').forEach((button) => { button.onclick = () => { assetNoteOpen = null; paintAssets(); }; });
+    el.querySelectorAll('.asset-remove-upload').forEach((button) => {
+      button.onclick = async () => {
+        if (!confirm('Remove this file?')) return;
+        await api(routes.file(button.dataset.upload, true), { method: 'DELETE' }).catch((e) => alert(e.message));
+        await refresh();
+      };
+    });
+    el.querySelectorAll('[data-asset-link-save]').forEach((button) => {
+      button.onclick = async () => {
+        const id = itemId(button);
+        const box = el.querySelector(`#assetlink${id}`);
+        try {
+          P.assets = (await api(itemPath(button), { method: 'PATCH', body: JSON.stringify({ link: box.value }) })).assets;
+        } catch (e) {
+          say(id, e.message);
+          return;
+        }
+        // Show the link as it was saved (with https:// in front), not as it was typed.
+        box.value = P.assets.find((item) => item.id === id)?.link || '';
+        assetSaid[id] = box.value ? 'Link saved. Daniel can see it now.' : 'Link removed.';
+        redraw();
+      };
+    });
+    el.querySelectorAll('[data-asset-answer-save]').forEach((button) => {
+      button.onclick = async () => {
+        const id = itemId(button);
+        const saved = await patch(button, { answer: el.querySelector(`#assetanswer${id}`).value }, (message) => say(id, message));
+        if (saved) { assetSaid[id] = 'Saved. Daniel can see it now.'; redraw(); }
+      };
+    });
+    el.querySelectorAll('[data-asset-open]').forEach((button) => {
+      button.onclick = () => { assetNoteOpen = itemId(button); redraw(); root.querySelector(`#assetnote${assetNoteOpen}`)?.focus(); };
+    });
+    el.querySelectorAll('[data-asset-cancel]').forEach((button) => { button.onclick = () => { assetNoteOpen = null; redraw(); }; });
     el.querySelectorAll('[data-asset-sent]').forEach((button) => {
       button.onclick = () => {
         const sent = button.dataset.assetSent === 'yes';

@@ -51,7 +51,8 @@ export async function projectView(env, p, { mode }) {
   const db = env.INTAKE;
   const since = new Date(Date.now() - PRESENCE_SECONDS * 1000).toISOString();
   const [uploads, events, presence, lastBuild, link, agreement, care, unread] = await Promise.all([
-    db.prepare('SELECT id, kind, filename, content_type, bytes, caption, source, uploaded_at FROM uploads WHERE project_id = ? AND deleted_at IS NULL ORDER BY uploaded_at').bind(p.id).all(),
+    // SELECT *: asset_id comes from a later migration (0022) and the list must read without it.
+    db.prepare('SELECT * FROM uploads WHERE project_id = ? AND deleted_at IS NULL ORDER BY uploaded_at').bind(p.id).all(),
     db.prepare('SELECT at, who, what FROM project_events WHERE project_id = ? ORDER BY id DESC LIMIT 20').bind(p.id).all(),
     db.prepare('SELECT who, name, field FROM presence WHERE project_id = ? AND at > ? AND who != ?').bind(p.id, since, mode === 'admin' ? 'daniel' : 'client').all(),
     db.prepare('SELECT finished_at FROM builds WHERE project_id = ? AND ok = 1 ORDER BY finished_at DESC LIMIT 1').bind(p.id).first(),
@@ -80,7 +81,7 @@ export async function projectView(env, p, { mode }) {
     // their changes come in as messages. Daniel's page shows the switch.
     intakeClosed: !intakeOpen(p),
     intakeClosedAt: mode === 'admin' ? p.intake_closed_at ?? null : undefined,
-    uploads: uploads.results,
+    uploads: uploads.results.map((u) => ({ id: u.id, kind: u.kind, filename: u.filename, content_type: u.content_type, bytes: u.bytes, caption: u.caption, source: u.source, uploaded_at: u.uploaded_at, assetId: u.asset_id ?? null })),
     // What the project still needs from the client (2026-11-19, server/assets.js); both sides see it.
     assets: await listAssets(env, p.id),
     // Change requests (2026-11-20, server/requests.js): the project's queue, and the client's own list.
