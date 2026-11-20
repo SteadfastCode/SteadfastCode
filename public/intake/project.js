@@ -251,7 +251,7 @@ export async function mountProject(o) {
     const y = scrollY;
     root.innerHTML = `
       ${o.backHref ? `<p><a class="back" href="${o.backHref}"><span aria-hidden="true">‹</span> All projects</a></p>` : ''}
-      <h1 id="title"></h1>
+      <div class="page-head"><h1 id="title"></h1>${admin ? '' : `<button type="button" id="layouttoggle" aria-pressed="${gridLayout() ? 'true' : 'false'}">${gridLayout() ? 'Single column' : 'Use the whole page'}</button>`}</div>
       ${show.intro ? `<p class="muted">${closed() ? 'These are the details your site is built from. To change anything, big or small, send Daniel a message and he’ll take care of it.' : launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${admin ? `<details class="card qmenu" id="qmenu"${qOpen ? ' open' : ''}><summary><h2>Questions</h2><span class="muted" id="qcount"></span></summary><div id="qbody"></div></details>` : ''}
@@ -270,6 +270,7 @@ export async function mountProject(o) {
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
+    wireLayoutToggle();
     wireQuestionsMenu();
     if (!wide()) wireMessages();
     root.querySelectorAll('[data-f]').forEach((el) => {
@@ -1085,6 +1086,29 @@ export async function mountProject(o) {
       finish(await send({ launch: false }), 'Back to preview. The box is putting the search-engine block back on.');
     };
   }
+
+  // ---- one column or the whole page (2026-11-20) ----
+  // The client's page is one readable column by default. On a wide screen the button beside the
+  // title lays the cards out across the whole page instead, filling columns side by side, and the
+  // choice is remembered in this browser. On a phone there's one column either way, so no button.
+  function gridLayout() {
+    try { return localStorage.getItem('clientLayout') === 'grid'; } catch { return false; }
+  }
+  function applyLayout() {
+    document.body.classList.toggle('layout-grid', !admin && gridLayout());
+  }
+  function wireLayoutToggle() {
+    const button = root.querySelector('#layouttoggle');
+    if (!button) return;
+    button.onclick = () => {
+      const grid = !gridLayout();
+      try { localStorage.setItem('clientLayout', grid ? 'grid' : 'column'); } catch { /* storage blocked: it lasts until the page is left */ }
+      document.body.classList.toggle('layout-grid', grid);
+      button.setAttribute('aria-pressed', String(grid));
+      button.textContent = grid ? 'Single column' : 'Use the whole page';
+    };
+  }
+  applyLayout();
 
   // ---- "Make a change" (2026-11-20, server/changes.js) ----
   // The client's way to change anything about their site: a button above the message box (and on
