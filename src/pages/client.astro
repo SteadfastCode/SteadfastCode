@@ -106,6 +106,7 @@ const config = {
         care: '/api/client/care',
         messages: '/api/client/messages',
         assets: '/api/client/assets',
+        requests: '/api/client/requests',
         file: (id, forApi) => '/api/client/uploads/' + encodeURIComponent(id) + (forApi ? '' : asQuery),
       },
     });

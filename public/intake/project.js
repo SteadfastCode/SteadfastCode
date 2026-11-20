@@ -102,14 +102,14 @@ export async function mountProject(o) {
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
   const tabbed = () => clientTabs().length > 0;
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}:${(P.assets || []).length ? 'assets' : ''}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}:${(P.assets || []).length ? 'assets' : ''}:${(P.requests || []).length ? 'requests' : ''}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
   // What each tab shows. Daniel's page has everything; so does the client's planning tab before signing.
   const parts = () => {
     // Daniel's messages live in /admin/inbox (2026-11-04); his project page links there.
-    if (admin) return { status: 1, scope: 1, link: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
+    if (admin) return { status: 1, scope: 1, link: 1, requests: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
     if (tab === 'messages') return { messages: 1 };
     if (gated()) return { status: 1, scope: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
-    return ({ site: { status: 1, scope: 1, assets: 1, request: launched() && !closed(), activity: 1 }, planning: { assets: 1, files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
+    return ({ site: { status: 1, scope: 1, requests: 1, assets: 1, request: launched() && !closed(), activity: 1 }, planning: { assets: 1, files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
   const fieldShown = (mode) => (f) => applies(f) && (mode === 'all' || (f.live && f.id !== 'notes'));
 
@@ -259,6 +259,7 @@ export async function mountProject(o) {
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
       ${show.link ? '<section class="card" id="linkcard"></section>' : ''}
+      ${show.requests && (admin || (P.requests || []).length) ? '<section class="card" id="requests"></section>' : ''}
       ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
       ${show.fields ? C.sections.filter(applies).map((s) => { const fs = s.fields.filter(fieldShown(show.fields)); return fs.length ? `<section class="card"><h2>${esc(secTitle(s))}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; }).join('') : ''}
@@ -438,6 +439,10 @@ export async function mountProject(o) {
 
   // ---- messages (2026-11-04) ----
   let msgLoaded = false, msgLoading = false;
+  // The conversation as last drawn, and the request statuses it was drawn with: when a status
+  // changes (the project refreshes every couple of seconds) the cards in the thread are redrawn.
+  let shownMessages = null;
+  let shownRequestStates = '';
   const MSG_INTRO = 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.';
   const composerHtml = (fixed) => `<div class="composer${fixed ? ' fixed' : ''}" id="composer"><div class="in"><label for="msgbody" class="sr">Message</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message Daniel" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
   // The drawer (wide screens): made once and kept across tab switches, so a half-typed message stays.
@@ -506,7 +511,10 @@ export async function mountProject(o) {
     const box = list.closest('.drawer-thread') || (admin ? list : null);
     const atEnd = !list.dataset.shown || (box ? box.scrollHeight - box.scrollTop - box.clientHeight < 40 : innerHeight + scrollY >= document.documentElement.scrollHeight - 80);
     const mine = admin ? 'daniel' : 'client';
-    list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === mine ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === mine ? 'You' : esc(m.sender === 'daniel' ? 'Daniel' : m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === mine && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div></li>`).join('') : `<li class="muted">No messages yet.${admin ? '' : ' Say hello!'}</li>`;
+    list.innerHTML = ms.length ? ms.map((m) => `<li class="msg ${m.sender === mine ? 'mine' : 'theirs'}"><div class="meta"><b>${m.sender === mine ? 'You' : esc(m.sender === 'daniel' ? 'Daniel' : m.name || 'Client')}</b> <span class="muted">${esc(ago(m.at))}</span>${m.sender === mine && m.read_at ? ' <span class="muted">· read</span>' : ''}</div><div class="body">${esc(m.body)}</div>${m.request ? requestCardHtml(currentRequest(m.request)) : ''}</li>`).join('') : `<li class="muted">No messages yet.${admin ? '' : ' Say hello!'}</li>`;
+    shownMessages = ms;
+    shownRequestStates = requestStates();
+    wireRequestButtons(list);
     // Like any chat: open on the latest message, and follow new ones if you were already at the end.
     list.dataset.shown = '1';
     if (atEnd) requestAnimationFrame(() => { if (box) box.scrollTop = box.scrollHeight; else scrollTo(0, document.documentElement.scrollHeight); });
@@ -621,6 +629,7 @@ export async function mountProject(o) {
       if (w) { w.hidden = false; w.textContent = `${x.name || (x.who === 'daniel' ? 'Daniel' : 'Your client')} is editing`; }
     }
     if (admin) paintLink();
+    paintRequests();
     paintAssets();
     paintFiles();
     paintActivity();
@@ -1014,11 +1023,162 @@ export async function mountProject(o) {
     if (share) share.onclick = () => navigator.share({ title: 'Your website', text: 'Here’s the page for your new website.', url }).catch(() => {});
   }
 
+  // ---- change requests (2026-11-20, server/requests.js) ----
+  // One record per thing the client asks to change. It shows twice: as a card under the message it
+  // came from, and in a list (Daniel's request queue on the project; "Your requests" on the client's
+  // Your site tab). Daniel moves a request along; the client's one move is "Looks good" on a change
+  // that's on their preview.
+
+  /** How each status reads: to the client in their own terms, to Daniel as the queue's step. */
+  const REQUEST_STATUS = {
+    received: { you: 'Received', daniel: 'Received', badge: 'review' },
+    working: { you: 'Being made', daniel: 'Working on it', badge: '' },
+    preview: { you: 'On your preview', daniel: 'On the preview', badge: '' },
+    approved: { you: 'Approved, going live', daniel: 'Approved by them', badge: 'ready' },
+    live: { you: 'Live', daniel: 'Live', badge: 'ready' },
+    closed: { you: 'Closed', daniel: 'Closed', badge: '' },
+  };
+  const REQUEST_KIND = { details: 'Business details', photos: 'Photos', reword: 'Reword something', section: 'Add a section', page: 'Add a page', broken: 'Something looks broken', other: 'Something else' };
+  const requestOpen = (request) => request.status !== 'live' && request.status !== 'closed';
+
+  /** The newest copy of a request: the project refreshes more often than the conversation does. */
+  const currentRequest = (request) => (P.requests || []).find((r) => r.id === request.id) || request;
+  const requestStates = () => JSON.stringify((P.requests || []).map((r) => [r.id, r.status, r.title, r.note]));
+
+  function requestBadge(request) {
+    const status = REQUEST_STATUS[request.status] || REQUEST_STATUS.received;
+    return `<span class="badge ${status.badge}">${esc(admin ? status.daniel : status.you)}</span>`;
+  }
+
+  /** The client's one button, where it applies. */
+  const looksGoodButton = (request) => (!admin && request.status === 'preview' ? `<button type="button" class="primary" data-request-approve="${request.id}">Looks good</button>` : '');
+
+  /** The card under a message that became a request. */
+  function requestCardHtml(request) {
+    return `<div class="request-card">
+      <p class="request-line"><span class="request-word">Request</span> ${requestBadge(request)}</p>
+      <p class="request-title">${esc(request.title)}</p>
+      ${request.note ? `<p class="muted">${admin ? 'Your note' : 'Daniel'}: ${esc(request.note)}</p>` : ''}
+      ${looksGoodButton(request)}
+    </div>`;
+  }
+
+  /** "Looks good", wherever it's drawn: under a message or in the list. */
+  function wireRequestButtons(scope) {
+    scope.querySelectorAll('[data-request-approve]').forEach((button) => {
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          P.requests = (await api(`${routes.requests}/${button.dataset.requestApprove}`, { method: 'PATCH', body: JSON.stringify({ approved: true }) })).requests;
+        } catch (e) {
+          alert(e.message);
+        }
+        paintRequests();
+      };
+    });
+  }
+
+  function requestRowForDaniel(request) {
+    // The step that usually comes next gets the first button; any other step is in the menu.
+    const next = { received: 'working', working: 'preview', preview: 'live', approved: 'live' }[request.status];
+    const nextLabel = { working: 'Start on it', preview: 'It’s on the preview', live: 'It’s live' }[next];
+    const others = Object.keys(REQUEST_STATUS).filter((status) => status !== request.status && status !== next);
+    return `<li class="asset" data-request="${request.id}">
+      <p class="asset-title"><strong>${esc(request.title)}</strong> ${requestBadge(request)}</p>
+      <p class="muted">${esc(REQUEST_KIND[request.kind] || REQUEST_KIND.other)} · opened ${esc(ago(request.createdAt))}${request.createdBy === 'client' ? ' by them' : ''}</p>
+      ${request.note ? `<p class="asset-note">Your note to them: ${esc(request.note)}</p>` : ''}
+      <p class="asset-actions">
+        ${next ? `<button type="button" data-request-status="${next}">${nextLabel}</button>` : ''}
+        <label class="sr" for="requestmove${request.id}">Move “${esc(request.title)}” to</label>
+        <select id="requestmove${request.id}" data-request-move><option value="">Move to…</option>${others.map((status) => `<option value="${status}">${esc(REQUEST_STATUS[status].daniel)}</option>`).join('')}</select>
+        <button type="button" data-request-note>${request.note ? 'Change the note' : 'Add a note'}</button>
+      </p>
+    </li>`;
+  }
+
+  function requestRowForClient(request) {
+    return `<li class="asset" data-request="${request.id}">
+      <p class="asset-title"><strong>${esc(request.title)}</strong> ${requestBadge(request)}</p>
+      ${request.note ? `<p class="asset-note">Daniel: ${esc(request.note)}</p>` : ''}
+      ${request.status === 'preview' ? `<p class="muted">Have a look at your preview. If it’s right, say so and it goes live.</p><p class="asset-actions">${looksGoodButton(request)}</p>` : ''}
+    </li>`;
+  }
+
+  function paintRequests() {
+    // The cards in the conversation follow the same statuses.
+    if (shownMessages && shownRequestStates !== requestStates()) showMessages(shownMessages);
+
+    const el = root.querySelector('#requests');
+    if (!el) return;
+    const requests = P.requests || [];
+    const key = requestStates();
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+
+    const open = requests.filter(requestOpen);
+    const done = requests.filter((request) => !requestOpen(request));
+    const row = admin ? requestRowForDaniel : requestRowForClient;
+    const typed = el.querySelector('#requesttitle')?.value ?? '';
+    const doneList = done.length ? `<details class="request-done"><summary>${done.length} finished</summary><ul class="assets">${done.map(row).join('')}</ul></details>` : '';
+
+    if (admin) {
+      el.innerHTML = `<h2>Requests</h2>
+        <p class="muted">${open.length ? `${open.length} open.` : 'Nothing open.'} Each one is also a card in the conversation, under the message it came from. To make one from a message of theirs, use Track as a request in the <a href="/admin/inbox#p/${esc(P.id)}">inbox</a>.</p>
+        ${open.length ? `<ul class="assets">${open.map(row).join('')}</ul>` : ''}
+        ${doneList}
+        <div class="asset-add">
+          <label for="requesttitle">Open a request yourself</label>
+          <input type="text" id="requesttitle" maxlength="160" placeholder="The ask in a few words: Add a gallery page">
+          <label class="sr" for="requestkind">What kind of request</label>
+          <select id="requestkind">${Object.entries(REQUEST_KIND).map(([kind, name]) => `<option value="${kind}"${kind === 'other' ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>
+          <p><button type="button" id="requestadd">Open it</button> <span class="muted" id="requestsaid" role="status"></span></p>
+        </div>`;
+      el.querySelector('#requesttitle').value = typed;
+    } else {
+      el.innerHTML = `<h2>Your requests</h2>
+        <p class="muted">${open.length ? 'What you’ve asked for, and where each one is.' : 'Everything you’ve asked for is done.'}</p>
+        ${open.length ? `<ul class="assets">${open.map(row).join('')}</ul>` : ''}
+        ${doneList}`;
+    }
+    wireRequestButtons(el);
+
+    const said = (message) => { const line = el.querySelector('#requestsaid'); if (line) line.textContent = message; else alert(message); };
+    const change = async (path, init) => {
+      try {
+        P.requests = (await api(path, init)).requests;
+      } catch (e) {
+        said(e.message);
+        return false;
+      }
+      paintRequests();
+      return true;
+    };
+    const pathFor = (control) => `${routes.requests}/${control.closest('[data-request]').dataset.request}`;
+    const patch = (control, body) => change(pathFor(control), { method: 'PATCH', body: JSON.stringify(body) });
+
+    const add = el.querySelector('#requestadd');
+    if (add) add.onclick = async () => {
+      const title = el.querySelector('#requesttitle');
+      const opened = await change(routes.requests, { method: 'POST', body: JSON.stringify({ title: title.value, kind: el.querySelector('#requestkind').value }) });
+      if (opened) { root.querySelector('#requesttitle').value = ''; msgLoaded = false; }
+    };
+    el.querySelectorAll('[data-request-status]').forEach((button) => { button.onclick = () => patch(button, { status: button.dataset.requestStatus }); });
+    el.querySelectorAll('[data-request-move]').forEach((menu) => { menu.onchange = () => { if (menu.value) patch(menu, { status: menu.value }); }; });
+    el.querySelectorAll('[data-request-note]').forEach((button) => {
+      button.onclick = () => {
+        const request = requests.find((r) => r.id === Number(button.closest('[data-request]').dataset.request));
+        const note = prompt('A note they’ll see on this request (a quote, or why it’s closed). Leave it empty to remove the note.', request?.note || '');
+        if (note !== null) patch(button, { note });
+      };
+    });
+  }
+
   // ---- what the project still needs from the client (2026-11-19, server/assets.js) ----
   // Daniel keeps the list on his page. The client sees it on theirs, marks an item sent and says
   // where it is (most of these are fonts and design files, not photos to upload), and Daniel marks
   // it received. Either side can step an item back.
   let assetNoteOpen = null; // the item whose "where is it?" box is open on the client's page
+  let assetEditing = null; // the item Daniel is rewording on his page
 
   const ASSET_BADGE = {
     needed: () => '<span class="badge review">Needed</span>',
@@ -1027,6 +1187,15 @@ export async function mountProject(o) {
   };
 
   function assetHtmlForDaniel(item) {
+    if (assetEditing === item.id) {
+      return `<li class="asset" data-asset="${item.id}">
+        <label class="sr" for="assetedittitle">What’s needed</label>
+        <input type="text" id="assetedittitle" maxlength="120" value="${esc(item.title)}">
+        <label class="sr" for="asseteditdetail">The format, or what it’s for</label>
+        <textarea id="asseteditdetail" maxlength="600" placeholder="The format, or what it’s for (optional)">${esc(item.detail || '')}</textarea>
+        <p class="asset-actions"><button type="button" class="primary" data-asset-save>Save</button> <button type="button" data-asset-edit-cancel>Cancel</button> <span class="muted" id="asseteditsaid" role="status"></span></p>
+      </li>`;
+    }
     const buttons = {
       needed: '<button type="button" data-asset-status="received">Got it</button> <button type="button" data-asset-remove>Remove</button>',
       sent: '<button type="button" data-asset-status="received">Got it</button> <button type="button" data-asset-status="needed">Still needed</button>',
@@ -1036,7 +1205,7 @@ export async function mountProject(o) {
       <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
       ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
       ${item.clientNote ? `<p class="asset-note">They said: ${esc(item.clientNote)}</p>` : ''}
-      <p class="asset-actions">${buttons}</p>
+      <p class="asset-actions">${buttons} <button type="button" data-asset-edit>Edit</button></p>
     </li>`;
   }
 
@@ -1066,8 +1235,11 @@ export async function mountProject(o) {
     if (!el) return;
     const items = P.assets || [];
     // Redraw only when the list (or the open note box) changes, so typing isn't wiped by the refresh.
-    const key = JSON.stringify([items, assetNoteOpen]);
+    const key = JSON.stringify([items, assetNoteOpen, assetEditing]);
     if (el.dataset.key === key) return;
+    // While Daniel is rewording an item, a background refresh leaves the card alone.
+    if (el.querySelector('#assetedittitle') && assetEditing !== null && el.dataset.editing === String(assetEditing)) return;
+    el.dataset.editing = assetEditing === null ? '' : String(assetEditing);
     el.dataset.key = key;
 
     // Whatever Daniel has typed into the add form survives a redraw (the client marking something sent).
@@ -1121,6 +1293,29 @@ export async function mountProject(o) {
       }
     };
     el.querySelectorAll('[data-asset-status]').forEach((button) => { button.onclick = () => patch(button, { status: button.dataset.assetStatus }); });
+    // Rewording an item: the row turns into its two fields, with Save and Cancel.
+    const redraw = () => { delete el.dataset.key; delete el.dataset.editing; paintAssets(); };
+    el.querySelectorAll('[data-asset-edit]').forEach((button) => {
+      button.onclick = () => {
+        assetEditing = Number(button.closest('[data-asset]').dataset.asset);
+        redraw();
+        root.querySelector('#assetedittitle')?.focus();
+      };
+    });
+    el.querySelectorAll('[data-asset-edit-cancel]').forEach((button) => { button.onclick = () => { assetEditing = null; redraw(); }; });
+    el.querySelectorAll('[data-asset-save]').forEach((button) => {
+      button.onclick = async () => {
+        const body = { title: el.querySelector('#assetedittitle').value, detail: el.querySelector('#asseteditdetail').value };
+        try {
+          P.assets = (await api(itemPath(button), { method: 'PATCH', body: JSON.stringify(body) })).assets;
+        } catch (e) {
+          el.querySelector('#asseteditsaid').textContent = e.message;
+          return;
+        }
+        assetEditing = null;
+        redraw();
+      };
+    });
     el.querySelectorAll('[data-asset-remove]').forEach((button) => {
       button.onclick = () => { if (confirm('Take this off the list? They stop seeing it too.')) change(itemPath(button), { method: 'DELETE' }); };
     });

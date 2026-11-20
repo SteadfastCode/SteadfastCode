@@ -54,6 +54,8 @@ export type ProjectRoutes = {
   library?: string;
   /** The needed-assets list: POST here to add (admin), PATCH or DELETE `${assets}/${id}`. */
   assets?: string;
+  /** Change requests: POST here to open one (admin), PATCH `${requests}/${id}` to move or approve. */
+  requests?: string;
 };
 
 export type MountOptions = {

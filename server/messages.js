@@ -4,6 +4,7 @@
 // email the client a note with their link. The table is migrations/0013_messages.sql; until it
 // exists, counts read as zero, never an error.
 import { newToken, hashToken, sealToken, openToken, LINK_DAYS } from './client.js';
+import { withRequests } from './requests.js';
 
 export const MAX_MESSAGE = 4000;
 
@@ -26,7 +27,8 @@ export async function thread(env, projectId, side, { markRead = true } = {}) {
   const from = side === 'daniel' ? 'client' : 'daniel';
   if (markRead) await env.INTAKE.prepare('UPDATE messages SET read_at = ? WHERE project_id = ? AND sender = ? AND read_at IS NULL').bind(new Date().toISOString(), projectId, from).run();
   const { results } = await env.INTAKE.prepare('SELECT id, at, sender, name, body, read_at FROM messages WHERE project_id = ? ORDER BY id LIMIT 500').bind(projectId).all();
-  return results;
+  // A message that became a change request carries it (server/requests.js), so its card shows here.
+  return withRequests(env, projectId, results);
 }
 
 export async function addMessage(env, projectId, sender, name, text) {

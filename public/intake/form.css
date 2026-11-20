@@ -86,6 +86,17 @@
   .hday select:disabled { opacity: .4; }
   .hcopy { justify-self: start; font-size: .9rem; padding: 8px 12px; }
   .agreement h3 { font-size: 1rem; margin: 18px 0 6px; }
+  /* Change requests (2026-11-20): the card under the message a request came from, and the list. */
+  .request-card { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card, var(--bg)); }
+  .request-card p { margin: 0 0 4px; }
+  .request-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .request-word { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .request-title { font-weight: 600; overflow-wrap: anywhere; }
+  .request-card button { margin-top: 6px; }
+  .request-done { padding: 10px 0; border-top: 1px solid var(--line); }
+  .request-done summary { cursor: pointer; color: var(--muted); }
+  #requests select { width: auto; max-width: 100%; }
+  #requests .asset-add select { margin-bottom: 8px; }
   /* What the project still needs from the client (2026-11-19): a list both sides see. */
   .assets { list-style: none; margin: 0; padding: 0; }
   .asset { padding: 12px 0; border-top: 1px solid var(--line); }

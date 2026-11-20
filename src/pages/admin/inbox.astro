@@ -40,6 +40,9 @@ const v = Date.now().toString(36);
   .pane-head .back { display: none; }
   .thread { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; }
   .thread ol.msgs { margin: 0; }
+  /* "Track as a request" sits quietly under a message of theirs. */
+  .msg .track { margin: 6px 0 0; }
+  .msg .track button { font-size: .82rem; padding: 4px 10px; }
   .empty { margin: auto; color: var(--muted); padding: 24px; text-align: center; }
   .pane .composer { position: static; margin: 0; border-radius: 0; }
   @media (max-width: 760px) {
@@ -80,6 +83,21 @@ const v = Date.now().toString(36);
     name: string | null;
     body: string;
     read_at: string | null;
+    /** The change request this message became, if it did (server/requests.js). */
+    request?: ChangeRequest;
+  };
+
+  /** A change request as the card under its message needs it. */
+  type ChangeRequest = { id: number; title: string; status: string; note: string | null };
+
+  /** How each status reads in Daniel's queue; the same words as the Requests card on the project. */
+  const REQUEST_STATUS: Record<string, string> = {
+    received: 'Received',
+    working: 'Working on it',
+    preview: 'On the preview',
+    approved: 'Approved by them',
+    live: 'Live',
+    closed: 'Closed',
   };
 
   const conversationList = document.getElementById('list')!;
@@ -289,8 +307,8 @@ const v = Date.now().toString(36);
     const list = document.getElementById('msglist');
     // The pane was replaced while this was in flight: there is nothing to paint into.
     if (!list) return;
-    // Read receipts are the only thing that changes about a message, so they are the key with it.
-    const painting = JSON.stringify(messages.map((m) => [m.id, m.read_at]));
+    // Read receipts and a request's status are what change about a message, so they are the key with it.
+    const painting = JSON.stringify(messages.map((m) => [m.id, m.read_at, m.request?.status, m.request?.title, m.request?.note]));
     if (painting === paintedThread) return;
     paintedThread = painting;
     const thread = document.getElementById('thread')!;
@@ -300,6 +318,32 @@ const v = Date.now().toString(36);
       ? messages.map(messageHtml).join('')
       : '<li class="muted">No messages yet. Say hello; they’ll get an email with their link.</li>';
     if (atEnd) thread.scrollTop = thread.scrollHeight;
+    wireTrackButtons(list, messages);
+  }
+
+  /**
+   * "Track as a request" under a message of theirs: asks for the request in a few words (their
+   * first line to start from) and opens it on that message. From then on the message carries a
+   * card with the request's status, here and on their page, and it's in the project's queue.
+   */
+  function wireTrackButtons(list: HTMLElement, messages: Message[]) {
+    list.querySelectorAll<HTMLButtonElement>('[data-track]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const message = messages.find((m) => m.id === Number(button.dataset.track));
+        if (!message || !openId) return;
+        const firstLine = message.body.split('\n')[0].slice(0, 160);
+        const title = prompt('The request in a few words (they’ll see this on its card):', firstLine);
+        if (title === null) return;
+        button.disabled = true;
+        try {
+          await callApi(`/projects/${openId}/requests`, { method: 'POST', body: JSON.stringify({ title, messageId: message.id }) });
+          await loadThread(false);
+        } catch (error) {
+          alert(reasonFor(error));
+          button.disabled = false;
+        }
+      });
+    });
   }
 
   /** One message: his on the right, theirs on the left. */
@@ -308,7 +352,19 @@ const v = Date.now().toString(36);
     const who = mine ? 'You' : escapeHtml(message.name || 'Client');
     // Only his own messages say "read": theirs are read by the time they are on his screen.
     const read = mine && message.read_at ? ' <span class="muted">· read</span>' : '';
-    return `<li class="msg ${mine ? 'mine' : 'theirs'}"><div class="meta"><b>${who}</b> <span class="muted">${escapeHtml(ago(message.at))}</span>${read}</div><div class="body">${escapeHtml(message.body)}</div></li>`;
+    return `<li class="msg ${mine ? 'mine' : 'theirs'}"><div class="meta"><b>${who}</b> <span class="muted">${escapeHtml(ago(message.at))}</span>${read}</div><div class="body">${escapeHtml(message.body)}</div>${requestHtml(message, mine)}</li>`;
+  }
+
+  /** Under a message: its request's card, or, on one of theirs that isn't a request yet, the way to make it one. */
+  function requestHtml(message: Message, mine: boolean): string {
+    const request = message.request;
+    if (!request) return mine ? '' : `<p class="track"><button type="button" data-track="${message.id}">Track as a request</button></p>`;
+    const note = request.note ? `<p class="muted">Your note: ${escapeHtml(request.note)}</p>` : '';
+    return `<div class="request-card">
+      <p class="request-line"><span class="request-word">Request</span> <span class="badge">${escapeHtml(REQUEST_STATUS[request.status] || request.status)}</span></p>
+      <p class="request-title">${escapeHtml(request.title)}</p>
+      ${note}
+    </div>`;
   }
 
   // Opening a conversation marks the client's messages read, but only while this window is the one

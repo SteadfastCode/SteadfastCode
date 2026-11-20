@@ -5,6 +5,7 @@
 import { check } from './intake.js';
 import { clientStatus, openToken, editableFor, intakeOpen } from './client.js';
 import { listAssets } from './assets.js';
+import { listRequests } from './requests.js';
 import { agreementState } from './agreement.js';
 import { careState } from './care.js';
 import { unreadFor } from './messages.js';
@@ -81,6 +82,8 @@ export async function projectView(env, p, { mode }) {
     uploads: uploads.results,
     // What the project still needs from the client (2026-11-19, server/assets.js); both sides see it.
     assets: await listAssets(env, p.id),
+    // Change requests (2026-11-20, server/requests.js): the project's queue, and the client's own list.
+    requests: await listRequests(env, p.id),
     uploadsReady: !!env.UPLOADS,
     events: events.results,
     others: presence.results.map((r) => ({ who: r.who, name: r.name, field: r.field })),
