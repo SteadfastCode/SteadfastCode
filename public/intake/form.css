@@ -1,6 +1,11 @@
 /* The admin intake and the client page share these styles (2026-11-01). */
   :root { --bg: #f7f7f5; --card: #fff; --ink: #1d1f22; --muted: #5d636b; --line: #dcdfe3; --accent: #1f5f8b; --accent-hover: #174a6d; --on-accent: #fff; --hover: #eef1f4; --ok: #1d7a46; --warn: #9a5b00; --bad: #a12a2a; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #15171a; --card: #1e2125; --ink: #e8eaed; --muted: #a2a8b0; --line: #343941; --accent: #6fb3e0; --accent-hover: #8cc6ec; --on-accent: #0b1a24; --hover: #262a2f; --ok: #5cc28a; --warn: #e0a54a; --bad: #ec7d7d; } }
+  /* Dark follows the device unless the person picked a theme with the switch on their page
+     (data-theme on <html>, saved in this browser, the same choice as on steadfastcode.tech). */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15171a; --card: #1e2125; --ink: #e8eaed; --muted: #a2a8b0; --line: #343941; --accent: #6fb3e0; --accent-hover: #8cc6ec; --on-accent: #0b1a24; --hover: #262a2f; --ok: #5cc28a; --warn: #e0a54a; --bad: #ec7d7d; } }
+  :root[data-theme="dark"] { --bg: #15171a; --card: #1e2125; --ink: #e8eaed; --muted: #a2a8b0; --line: #343941; --accent: #6fb3e0; --accent-hover: #8cc6ec; --on-accent: #0b1a24; --hover: #262a2f; --ok: #5cc28a; --warn: #e0a54a; --bad: #ec7d7d; }
+  /* So checkboxes, menus and scrollbars match the theme in use, not the device's. */
+  :root { color-scheme: light dark; } :root[data-theme="light"] { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--ink); }
   main { max-width: 760px; margin: 0 auto; padding: 16px 16px 140px; }
@@ -89,17 +94,36 @@
      fresh light blue on the dark theme, the deeper blue on the light one). */
   .agreement h3 { font-size: 1.25rem; color: var(--accent); margin: 26px 0 8px; }
   .agreement h3:first-child { margin-top: 4px; }
-  /* One column or the whole page (2026-11-20): the button beside the client's title. In the grid
-     the cards fill columns across the page; the title and the line under it stay full width. */
-  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 12px; }
-  .page-head h1 { margin: 0; }
-  #layouttoggle { display: none; white-space: nowrap; font-size: .9rem; padding: 6px 12px; }
+  /* The client's page tools (2026-11-20): a slim row above the title, on every tab. The theme
+     switch is always there; the layout switch only where there's room for more than one column. */
+  .page-tools { max-width: 760px; margin: 0 auto; padding: 10px 16px 0; display: flex; justify-content: flex-end; gap: 8px; }
+  .page-tools button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted); }
+  .page-tools button:not(:disabled):hover { color: var(--ink); }
+  #layouttoggle { display: none; }
+
+  /* "Use the whole page": the cards fill two columns, three on a big screen, never more, so a card
+     is always wide enough to read. The title and anything that isn't a card stays full width. */
   @media (min-width: 1000px) {
     #layouttoggle { display: inline-block; }
-    body.layout-grid main { max-width: 1680px; columns: 400px; column-gap: 14px; }
+    body.layout-grid main, body.layout-grid .page-tools { max-width: 1500px; }
+    body.layout-grid main { columns: 2; column-gap: 14px; }
     body.layout-grid main > .card { break-inside: avoid; }
     body.layout-grid main > :not(.card) { column-span: all; }
-    body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: 1648px; }
+    /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */
+    body.layout-grid main > #care { column-span: all; }
+    body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: 1468px; }
+
+    /* The contract tab is laid out on purpose, not filled: the contract takes two thirds, and the
+       note and the signature box sit beside it, staying in view while the contract is read. */
+    body.layout-grid main:has(> .card.agreement) { columns: auto; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 14px; align-items: start; }
+    body.layout-grid main:has(> .card.agreement) > :not(.card) { grid-column: 1 / -1; }
+    body.layout-grid main:has(> .card.agreement) > .card { grid-column: 2; }
+    body.layout-grid main:has(> .card.agreement) > .card.agreement { grid-column: 1; grid-row: 2 / span 6; }
+    body.layout-grid main:has(> .card.agreement) > #signbox, body.layout-grid main:has(> .card.agreement) > #reviewonly { position: sticky; top: 12px; }
+  }
+  @media (min-width: 1500px) {
+    body.layout-grid main { columns: 3; }
+    body.layout-grid main:has(> .card.agreement) { columns: auto; }
   }
   /* "Make a change" (2026-11-20): the button above the message box, and the block it opens. */
   .change-row { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -330,4 +354,5 @@
   .cpreview .agreement { font-size: .92rem; }
   .review { border: 1px solid var(--warn); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
   .review ul { margin: 6px 0 10px; padding-left: 18px; }
-  .badge.review { color: var(--warn); border-color: var(--warn); }
+  /* A badge, not the boxed note that .review alone is: keep the badge's own size and shape. */
+  .badge.review { color: var(--warn); border-color: var(--warn); padding: 2px 8px; margin-top: 0; border-radius: 999px; }

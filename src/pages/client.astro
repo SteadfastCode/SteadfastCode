@@ -28,6 +28,16 @@ const config = {
 <meta name="referrer" content="no-referrer">
 <title>Your website — Steadfast Code</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+{/* The theme picked with the switch on this page (or on steadfastcode.tech) applies before the
+    page is drawn, so it never flashes the other one. Inline because it has to run right here. */}
+<script is:inline>
+  try {
+    var savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
+  } catch (e) {
+    // Storage blocked: the device's own setting applies.
+  }
+</script>
 </head>
 <body>
 <div id="progress" role="button" tabindex="0" hidden></div>

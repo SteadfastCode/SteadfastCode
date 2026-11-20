@@ -251,7 +251,7 @@ export async function mountProject(o) {
     const y = scrollY;
     root.innerHTML = `
       ${o.backHref ? `<p><a class="back" href="${o.backHref}"><span aria-hidden="true">‹</span> All projects</a></p>` : ''}
-      <div class="page-head"><h1 id="title"></h1>${admin ? '' : `<button type="button" id="layouttoggle" aria-pressed="${gridLayout() ? 'true' : 'false'}">${gridLayout() ? 'Single column' : 'Use the whole page'}</button>`}</div>
+      <h1 id="title"></h1>
       ${show.intro ? `<p class="muted">${closed() ? 'These are the details your site is built from. To change anything, big or small, send Daniel a message and he’ll take care of it.' : launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${admin ? `<details class="card qmenu" id="qmenu"${qOpen ? ' open' : ''}><summary><h2>Questions</h2><span class="muted" id="qcount"></span></summary><div id="qbody"></div></details>` : ''}
@@ -270,7 +270,6 @@ export async function mountProject(o) {
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
-    wireLayoutToggle();
     wireQuestionsMenu();
     if (!wide()) wireMessages();
     root.querySelectorAll('[data-f]').forEach((el) => {
@@ -1087,28 +1086,48 @@ export async function mountProject(o) {
     };
   }
 
-  // ---- one column or the whole page (2026-11-20) ----
-  // The client's page is one readable column by default. On a wide screen the button beside the
-  // title lays the cards out across the whole page instead, filling columns side by side, and the
-  // choice is remembered in this browser. On a phone there's one column either way, so no button.
-  function gridLayout() {
-    try { return localStorage.getItem('clientLayout') === 'grid'; } catch { return false; }
-  }
-  function applyLayout() {
-    document.body.classList.toggle('layout-grid', !admin && gridLayout());
-  }
-  function wireLayoutToggle() {
-    const button = root.querySelector('#layouttoggle');
-    if (!button) return;
-    button.onclick = () => {
-      const grid = !gridLayout();
-      try { localStorage.setItem('clientLayout', grid ? 'grid' : 'column'); } catch { /* storage blocked: it lasts until the page is left */ }
+  // ---- the client's page tools (2026-11-20) ----
+  // A slim row above the title, on every tab (the contract too), with two switches:
+  //   the theme: Auto (the device's setting) → Light → Dark, saved in this browser under the same
+  //     key steadfastcode.tech uses, and applied before paint by the script in the page's <head>;
+  //   the layout: one readable column, or the cards across the whole page. Only on a wide screen;
+  //     a phone has one column either way.
+  const THEMES = ['auto', 'light', 'dark'];
+  const THEME_LABEL = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+  const stored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+  const store = (key, value) => { try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* storage blocked: it lasts until the page is left */ } };
+  const currentTheme = () => (THEMES.includes(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : 'auto');
+  const gridLayout = () => stored('clientLayout') === 'grid';
+
+  function mountPageTools() {
+    if (admin || document.getElementById('pagetools')) return;
+    const tools = document.createElement('div');
+    tools.id = 'pagetools';
+    tools.className = 'page-tools';
+    tools.innerHTML = '<button type="button" id="layouttoggle"></button><button type="button" id="themetoggle" aria-live="polite"></button>';
+    root.before(tools);
+    const layout = tools.querySelector('#layouttoggle');
+    const theme = tools.querySelector('#themetoggle');
+
+    const showLayout = () => {
+      const grid = gridLayout();
       document.body.classList.toggle('layout-grid', grid);
-      button.setAttribute('aria-pressed', String(grid));
-      button.textContent = grid ? 'Single column' : 'Use the whole page';
+      layout.setAttribute('aria-pressed', String(grid));
+      layout.textContent = grid ? 'Single column' : 'Use the whole page';
     };
+    const showTheme = () => { theme.textContent = `Theme: ${THEME_LABEL[currentTheme()]}`; };
+
+    layout.onclick = () => { store('clientLayout', gridLayout() ? 'column' : 'grid'); showLayout(); };
+    theme.onclick = () => {
+      const next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
+      if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
+      store('theme', next === 'auto' ? null : next);
+      showTheme();
+    };
+    showLayout();
+    showTheme();
   }
-  applyLayout();
+  mountPageTools();
 
   // ---- "Make a change" (2026-11-20, server/changes.js) ----
   // The client's way to change anything about their site: a button above the message box (and on
