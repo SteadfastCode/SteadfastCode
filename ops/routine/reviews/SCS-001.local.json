@@ -1,0 +1,163 @@
+{
+  "item": "SCS-001",
+  "repo": "SteadfastCode",
+  "mergeSha": "7194ebacdbefffabe95026b214ffd9b3794734a1",
+  "completedAtUtc": "2026-11-19T09:27:25.255Z",
+  "completeRunId": "2026-11-19T09:12:43.130Z",
+  "reviewRunId": "2026-11-20T08:00:38.373Z",
+  "reviewedAtUtc": "2026-11-20T08:03:58.308Z",
+  "model": "qwen2.5-coder:14b",
+  "promptVersion": "v6",
+  "diffBytes": 57397,
+  "contextFiles": 1,
+  "excluded": [],
+  "chunks": [
+    {
+      "files": [
+        "src/pages/admin/leads.astro"
+      ],
+      "part": {
+        "index": 1,
+        "total": 5,
+        "oversized": false
+      },
+      "bytes": 14194,
+      "contextBytes": 0,
+      "promptTokens": 5205,
+      "completionTokens": 229,
+      "latencyMs": 52180,
+      "findings": 0,
+      "needs": 5,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/leads.astro"
+      ],
+      "part": {
+        "index": 2,
+        "total": 5,
+        "oversized": false
+      },
+      "bytes": 13937,
+      "contextBytes": 0,
+      "promptTokens": 4757,
+      "completionTokens": 236,
+      "latencyMs": 24415,
+      "findings": 0,
+      "needs": 6,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/leads.astro"
+      ],
+      "part": {
+        "index": 3,
+        "total": 5,
+        "oversized": false
+      },
+      "bytes": 14147,
+      "contextBytes": 0,
+      "promptTokens": 4751,
+      "completionTokens": 396,
+      "latencyMs": 32987,
+      "findings": 0,
+      "needs": 13,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/leads.astro"
+      ],
+      "part": {
+        "index": 4,
+        "total": 5,
+        "oversized": false
+      },
+      "bytes": 14148,
+      "contextBytes": 0,
+      "promptTokens": 4623,
+      "completionTokens": 232,
+      "latencyMs": 25600,
+      "findings": 0,
+      "needs": 6,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": false,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/leads.astro"
+      ],
+      "part": {
+        "index": 5,
+        "total": 5,
+        "oversized": false
+      },
+      "bytes": 1799,
+      "contextBytes": 4896,
+      "promptTokens": null,
+      "completionTokens": null,
+      "latencyMs": 18,
+      "findings": 0,
+      "needs": 0,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": false,
+      "retry": false,
+      "error": "TypeError: fetch failed"
+    }
+  ],
+  "findings": [],
+  "triage": {
+    "auth": {
+      "touched": false,
+      "evidence": null
+    },
+    "secrets": {
+      "touched": false,
+      "evidence": null
+    },
+    "money": {
+      "touched": false,
+      "evidence": null
+    },
+    "destructive": {
+      "touched": true,
+      "evidence": "src/pages/admin/leads.astro:203"
+    },
+    "externalApi": {
+      "touched": true,
+      "evidence": "src/pages/admin/leads.astro:103"
+    },
+    "release": {
+      "touched": false,
+      "evidence": null
+    }
+  },
+  "summary": "The diff shows the beginning of a refactoring effort to make the inline script in `src/pages/admin/leads.astro` more readable and maintainable by splitting it into named functions. The changes include adding type definitions, renaming variables for clarity, and breaking down complex logic into smaller functions. However, the full context of how these functions interact with each other and the rest of the page is not provided in this diff snippet. · The diff introduces several new functions to handle different aspects of the leads page, such as sorting, rendering rows, and handling form fields. The code is well-structured and commented, making it easier to understand. However, some symbols used in the diff are not defined within the provided context, so further verification is needed. · The diff introduces several new functions and refactors the existing code to improve readability and maintainability. However, it relies on several symbols that are not defined within the provided diff. These symbols need to be reviewed to ensure they exist elsewhere in the repository. · The diff introduces several new functions to handle different aspects of the leads page, such as rendering rows, editing, and importing leads. The code is more readable with comments explaining each function's purpose. However, some symbols used in the diff are not defined within the provided context, so further verification is needed.",
+  "errors": [
+    "triage failed: TypeError: fetch failed",
+    "TypeError: fetch failed"
+  ],
+  "usage": {
+    "promptTokens": 33656,
+    "completionTokens": 1519
+  },
+  "latencyMs": 198547
+}
