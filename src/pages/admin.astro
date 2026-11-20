@@ -4,6 +4,7 @@
 // questions come from src/data/intake.ts and the packages from site.ts, both embedded below as JSON,
 // so the page and the server (server/intake.js) can't disagree. Not a public page: noindex, out of
 // the sitemap, and excluded from the public-page tests (test/admin.test.js covers it instead).
+import ThemeBoot from '../components/ThemeBoot.astro';
 import { intakeSections, defaultPages, siteTypes } from '../data/intake';
 import { websiteTiers, addOns, standardDiscounts } from '../data/site';
 import { placeholderNames } from '../data/agreement';
@@ -32,7 +33,9 @@ const config = {
 <meta name="robots" content="noindex, nofollow">
 <title>Client intake — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<ThemeBoot />
 <script src={`/admin/app.js?v=${v}`} defer></script>
+<script src={`/admin/tools.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin" aria-current="page">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>

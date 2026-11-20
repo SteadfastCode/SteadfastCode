@@ -30,7 +30,7 @@
   label { display: block; font-weight: 600; margin: 12px 0 4px; }
   label.check { display: flex; gap: 8px; align-items: center; font-weight: 600; }
   .help { font-weight: 400; color: var(--muted); font-size: .85rem; display: block; }
-  input[type=text], input[type=email], input[type=tel], textarea, select { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  input[type=text], input[type=email], input[type=tel], input[type=url], textarea, select { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
   textarea { min-height: 84px; resize: vertical; }
   input[type=checkbox] { width: 22px; height: 22px; }
   .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
@@ -100,6 +100,10 @@
   .page-tools button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted); }
   .page-tools button:not(:disabled):hover { color: var(--ink); }
   #layouttoggle { display: none; }
+  /* The same two switches on the admin pages, in the header beside the page links (public/admin/tools.js). */
+  .head-tools { display: flex; gap: 8px; margin-left: auto; }
+  .head-tools button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted); white-space: nowrap; }
+  .head-tools button:not(:disabled):hover { color: var(--ink); }
 
   /* "Use the whole page": the cards fill two columns, three on a big screen, never more, so a card
      is always wide enough to read. The title and anything that isn't a card stays full width. */
@@ -112,6 +116,10 @@
     /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */
     body.layout-grid main > #care { column-span: all; }
     body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: 1468px; }
+    /* On Daniel's project page the header lines up with the wider page, and with the contract card
+       open beside the form (two equal halves) the form keeps its one column. */
+    body.layout-grid .admin-head .in { max-width: 1500px; }
+    body.layout-grid.has-cpane.cpane-open .cols > main { columns: auto; }
 
     /* The contract tab is laid out on purpose, not filled: the contract takes two thirds, and the
        note and the signature box sit beside it. */

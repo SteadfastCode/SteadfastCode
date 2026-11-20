@@ -4,6 +4,7 @@
 // intake at /admin with what the board knows filled in. Behind the same Cloudflare Access app as
 // /admin; the API under /api/admin/leads checks the signature again. The statuses, kinds and
 // touch kinds are embedded from server/leads.js, so the page and the server can't disagree.
+import ThemeBoot from '../../components/ThemeBoot.astro';
 import { websiteTiers } from '../../data/site';
 import { STATUSES, STATUS_LABEL, ACTIVE, KINDS, KIND_LABEL, SITE_STATES, SITE_STATE_LABEL, TOUCH_KINDS, TOUCH_LABEL } from '../../../server/leads.js';
 
@@ -24,6 +25,7 @@ const config = {
 <meta name="robots" content="noindex, nofollow">
 <title>Leads — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<ThemeBoot />
 <style is:global>
   /* The board uses the width: on a wide screen the last touch gets the room, clamped to three lines. */
   main { max-width: 1440px; }
@@ -69,6 +71,7 @@ const config = {
   h1 .badge { vertical-align: middle; font-size: .85rem; }
 </style>
 <script src={`/admin/app.js?v=${v}`} defer></script>
+<script src={`/admin/tools.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads" aria-current="page">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>

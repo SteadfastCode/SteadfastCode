@@ -3,6 +3,7 @@
 // live, from a private link (/client#<token>, made on the admin page). The token stays in the
 // fragment, which browsers never send to the server; the page passes it to /api/client as a bearer
 // header. Not a public page: noindex, out of the sitemap, outside the public-page tests.
+import ThemeBoot from '../components/ThemeBoot.astro';
 import { intakeSections, siteTypes } from '../data/intake';
 import { websiteTiers, addOns, business, standardDiscounts } from '../data/site';
 
@@ -28,16 +29,7 @@ const config = {
 <meta name="referrer" content="no-referrer">
 <title>Your website — Steadfast Code</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
-{/* The theme picked with the switch on this page (or on steadfastcode.tech) applies before the
-    page is drawn, so it never flashes the other one. Inline because it has to run right here. */}
-<script is:inline>
-  try {
-    var savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
-  } catch (e) {
-    // Storage blocked: the device's own setting applies.
-  }
-</script>
+<ThemeBoot />
 </head>
 <body>
 <div id="progress" role="button" tabindex="0" hidden></div>

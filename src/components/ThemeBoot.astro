@@ -1,0 +1,15 @@
+---
+// Applies the saved theme before the page is drawn, so a pinned Light or Dark never flashes the
+// other one (2026-11-20). For the pages that use public/intake/form.css: the client's page and the
+// admin pages. The choice is the one the theme switch saves (`theme` in this browser, the same key
+// the main site uses), put on <html> as data-theme. Inline because it has to run right here, in
+// <head>, before the stylesheet's colors are used.
+---
+<script is:inline>
+  try {
+    var savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
+  } catch (e) {
+    // Storage blocked: the device's own setting applies.
+  }
+</script>

@@ -9,6 +9,7 @@
 // work a build did. The ratio is calibrated from the plan's own meter, read before and after each
 // build: whole percents, and other sessions running at the same time count too, so one build's
 // reading is noisy, but the sum over many builds isn't. The page says how many builds it rests on.
+import ThemeBoot from '../../components/ThemeBoot.astro';
 const v = Date.now().toString(36);
 ---
 <!doctype html>
@@ -19,9 +20,12 @@ const v = Date.now().toString(36);
 <meta name="robots" content="noindex, nofollow">
 <title>Build usage — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<ThemeBoot />
 <style is:global>
   :root { --chart: #2563eb; }
-  @media (prefers-color-scheme: dark) { :root { --chart: #4f8ef0; } }
+  /* Dark follows the device unless a theme is pinned with the header's switch (form.css). */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --chart: #4f8ef0; } }
+  :root[data-theme="dark"] { --chart: #4f8ef0; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
   .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
   .tile .n { display: block; font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
@@ -44,6 +48,7 @@ const v = Date.now().toString(36);
   .plan input { width: 8rem; }
 </style>
 <script src={`/admin/app.js?v=${v}`} defer></script>
+<script src={`/admin/tools.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage" aria-current="page">Usage</a></nav></div></header>

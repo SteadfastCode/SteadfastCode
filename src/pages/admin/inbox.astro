@@ -4,6 +4,7 @@
 // client so he can start one), the open conversation on the right with the message box pinned at
 // the bottom: Enter sends, Shift+Enter is a new line. On a phone it's one pane at a time. The client
 // gets an email with their link when he writes (server/messages.js). Behind Cloudflare Access.
+import ThemeBoot from '../../components/ThemeBoot.astro';
 const v = Date.now().toString(36);
 ---
 <!doctype html>
@@ -14,6 +15,7 @@ const v = Date.now().toString(36);
 <meta name="robots" content="noindex, nofollow">
 <title>Inbox — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<ThemeBoot />
 <style is:global>
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; overflow: hidden; }
@@ -53,6 +55,7 @@ const v = Date.now().toString(36);
   }
 </style>
 <script src={`/admin/app.js?v=${v}`} defer></script>
+<script src={`/admin/tools.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox" aria-current="page">Inbox</a><a href="/admin/care">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>

@@ -4,6 +4,7 @@
 // a client's page sets the plan and price, the launch date, the hosting-move checklist, and offers
 // the plan for them to sign on their portal. Billing is Stripe's (server/care.js). Behind the same
 // Cloudflare Access app as /admin.
+import ThemeBoot from '../../components/ThemeBoot.astro';
 import { carePlans } from '../../data/site';
 import { careChecklist, CHANGE_WINDOW_DAYS } from '../../data/care';
 
@@ -22,6 +23,7 @@ const config = {
 <meta name="robots" content="noindex, nofollow">
 <title>Care plans — Steadfast Code admin</title>
 <link rel="stylesheet" href={`/intake/form.css?v=${v}`}>
+<ThemeBoot />
 <style is:global>
   .crow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
   .crow:first-child { border-top: 0; }
@@ -48,6 +50,7 @@ const config = {
   .terms p { margin: 4px 0; }
 </style>
 <script src={`/admin/app.js?v=${v}`} defer></script>
+<script src={`/admin/tools.js?v=${v}`} defer></script>
 </head>
 <body>
 <header class="admin-head stick"><div class="in"><span class="mark">Steadfast Code <span class="muted">admin</span></span><nav aria-label="Admin"><a href="/admin">Intake</a><a href="/admin/leads">Leads</a><a href="/admin/inbox">Inbox</a><a href="/admin/care" aria-current="page">Care plans</a><a href="/admin/usage">Usage</a></nav></div></header>
