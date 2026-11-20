@@ -86,6 +86,9 @@ export async function mountProject(o) {
   // Care plan once Daniel offers one (before or after launch), and Documents (everything signed).
   // The tab is remembered for this browser tab, so a reload stays where it was.
   const launched = () => !!P?.launched;
+  // The intake retires after the first meeting (2026-11-19): once Daniel closes it, the client's
+  // planning tab is "Details", read-only, and every change is a message to him.
+  const closed = () => !admin && !!P?.intakeClosed;
   const WIDE = matchMedia('(min-width: 900px)');
   const wide = () => !admin && WIDE.matches;
   const clientTabs = () => {
@@ -94,19 +97,19 @@ export async function mountProject(o) {
     // On a wide screen Messages is a drawer on the right instead (2026-11-04), open from any tab.
     const msgs = wide() ? [] : [['messages', P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages']];
     if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning'], ...msgs] : [];
-    return [['site', 'Your site'], ['planning', launched() ? 'Details' : 'Planning'], ...msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
+    return [['site', 'Your site'], ['planning', launched() || closed() ? 'Details' : 'Planning'], ...msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
   };
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
   const tabbed = () => clientTabs().length > 0;
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${!!P.care}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
   // What each tab shows. Daniel's page has everything; so does the client's planning tab before signing.
   const parts = () => {
     // Daniel's messages live in /admin/inbox (2026-11-04); his project page links there.
     if (admin) return { status: 1, scope: 1, link: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
     if (tab === 'messages') return { messages: 1 };
     if (gated()) return { status: 1, scope: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
-    return ({ site: { status: 1, scope: 1, request: launched(), activity: 1 }, planning: { files: 1, fields: launched() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
+    return ({ site: { status: 1, scope: 1, request: launched() && !closed(), activity: 1 }, planning: { files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
   const fieldShown = (mode) => (f) => applies(f) && (mode === 'all' || (f.live && f.id !== 'notes'));
 
@@ -115,7 +118,8 @@ export async function mountProject(o) {
     const v = P.answers[f.id];
     const editable = canEdit(f);
     const dis = editable ? '' : ' disabled';
-    const help = [helpOf(f), editable ? null : 'Daniel sets this'].filter(Boolean).map((h) => `<span class="help">${esc(h)}</span>`).join('');
+    // A closed intake is a record, not a form: no hints about how to fill it in.
+    const help = (closed() ? [] : [helpOf(f), editable ? null : 'Daniel sets this']).filter(Boolean).map((h) => `<span class="help">${esc(h)}</span>`).join('');
     const id = 'f-' + f.id;
     const who = `<span class="who" data-who="${f.id}" hidden></span>`;
     const req = f.required ? ' *' : '';
@@ -246,7 +250,7 @@ export async function mountProject(o) {
     root.innerHTML = `
       ${o.backHref ? `<p><a class="back" href="${o.backHref}"><span aria-hidden="true">‹</span> All projects</a></p>` : ''}
       <h1 id="title"></h1>
-      ${show.intro ? `<p class="muted">${launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
+      ${show.intro ? `<p class="muted">${closed() ? 'These are the details your site is built from. To change anything, big or small, send Daniel a message and he’ll take care of it.' : launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${admin ? `<details class="card qmenu" id="qmenu"${qOpen ? ' open' : ''}><summary><h2>Questions</h2><span class="muted" id="qcount"></span></summary><div id="qbody"></div></details>` : ''}
       ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
@@ -961,7 +965,7 @@ export async function mountProject(o) {
     const l = P.clientLink;
     // Only redraw when the link itself changes, so a copy in progress isn't wiped by the 2 s refresh.
     const to = String(P.answers.email ?? '').trim();
-    const key = JSON.stringify([l, madeUrl, P.linkKeySet, to]);
+    const key = JSON.stringify([l, madeUrl, P.linkKeySet, to, P.intakeClosedAt]);
     if (el.dataset.key === key) return;
     el.dataset.key = key;
     const url = l?.url || (l && madeUrl) || null;
@@ -970,7 +974,17 @@ export async function mountProject(o) {
       ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
       ${url && !l?.url ? '<p class="help">Copy it now: without the LINK_KEY secret it won’t be shown again after you leave this page.</p>' : ''}
       <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>
-      <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>`;
+      <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>
+      <h3>Intake</h3>
+      <p class="muted">${P.intakeClosed
+        ? `Closed ${esc(ago(P.intakeClosedAt))}. They see their details read-only, and changes come to you as messages.`
+        : 'Open. They can edit their answers on their page. Close it after the first meeting, and changes come to you as messages instead.'}</p>
+      <p><button type="button" id="intaketoggle">${P.intakeClosed ? 'Reopen the intake' : 'Close the intake'}</button></p>`;
+    el.querySelector('#intaketoggle').onclick = async () => {
+      try {
+        apply(await api(routes.project, { method: 'PATCH', body: JSON.stringify({ intakeClosed: !P.intakeClosed }) }));
+      } catch (e) { alert(e.message); }
+    };
     el.querySelector('#makelink').onclick = async () => {
       if (l && !confirm('Make a new link? The current one stops working.')) return;
       try { madeUrl = (await api(routes.link, { method: 'POST', body: '{}' })).url; await refresh(); } catch (e) { alert(e.message); }

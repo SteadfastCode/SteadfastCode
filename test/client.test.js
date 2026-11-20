@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { mergeClientAnswers, clientEditable, sniffImage, newToken, hashToken, clientStatus } from '../server/client.js';
+import { mergeClientAnswers, clientEditable, sniffImage, newToken, hashToken, clientStatus, intakeOpen, editableFor } from '../server/client.js';
 import { intakeSections } from '../src/data/intake.ts';
 import { onRequest as clientMiddleware } from '../functions/api/client/_middleware.js';
 
@@ -104,4 +104,23 @@ test('the box’s notes to Daniel never reach the client; their own big asks are
   assert.equal(forClient(ev('box', 'Updating the preview with the client’s changes (1 thing)')).what, 'Updating your preview with your changes');
   assert.equal(forClient(ev('client', 'Jimmy updated Hours')).what, 'Jimmy updated Hours');
   assert.equal(flagKind({ what: 'x', kind: 'suspicious' }), 'suspicious');
+});
+
+// The intake retires after the first meeting (2026-11-19): Daniel closes it, and from then on the
+// client's answers are read-only to them and the server refuses their edits.
+test('a closed intake leaves the client nothing to edit, and their PATCH is refused', async () => {
+  assert.equal(intakeOpen({ intake_closed_at: null }), true);
+  assert.equal(intakeOpen({}), true, 'a project from before the column existed is open');
+  assert.equal(intakeOpen({ intake_closed_at: '2026-11-19T20:00:00.000Z' }), false);
+  assert.deepEqual(editableFor({ intake_closed_at: '2026-11-19T20:00:00.000Z' }), []);
+  assert.ok(editableFor({}).includes('pages'));
+
+  const { onRequestPatch } = await import('../functions/api/client/project.js');
+  let wrote = false;
+  const env = { INTAKE: { prepare: () => { wrote = true; throw new Error('a closed intake must not reach the database'); } } };
+  const request = new Request('https://steadfastcode.tech/api/client/project', { method: 'PATCH', body: JSON.stringify({ answers: { phone: '717 555 0000' } }) });
+  const response = await onRequestPatch({ request, env, data: { project: { id: 'p1', answers: '{}', intake_closed_at: '2026-11-19T20:00:00.000Z' } } });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /send Daniel a message/);
+  assert.equal(wrote, false);
 });

@@ -3,7 +3,7 @@
 // and who is editing what. Only Daniel's view adds the client-link status. Nothing else differs.
 
 import { check } from './intake.js';
-import { clientStatus, clientEditable, openToken } from './client.js';
+import { clientStatus, openToken, editableFor, intakeOpen } from './client.js';
 import { agreementState } from './agreement.js';
 import { careState } from './care.js';
 import { unreadFor } from './messages.js';
@@ -72,7 +72,11 @@ export async function projectView(env, p, { mode }) {
     updatedAt: p.updated_at,
     answers,
     check: check(answers),
-    editable: mode === 'admin' ? null : [...clientEditable],
+    editable: mode === 'admin' ? null : editableFor(p),
+    // Closed after the first meeting (2026-11-19): the client's answers are read-only to them, and
+    // their changes come in as messages. Daniel's page shows the switch.
+    intakeClosed: !intakeOpen(p),
+    intakeClosedAt: mode === 'admin' ? p.intake_closed_at ?? null : undefined,
     uploads: uploads.results,
     uploadsReady: !!env.UPLOADS,
     events: events.results,

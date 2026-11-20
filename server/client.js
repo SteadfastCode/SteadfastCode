@@ -24,6 +24,15 @@ export async function hashToken(token) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Whether the intake is still open to the client (2026-11-19). Daniel closes it after the first
+ * meeting; from then on their answers are read-only to them and changes come in as messages.
+ */
+export const intakeOpen = (project) => !project?.intake_closed_at;
+
+/** The fields a client may edit on this project right now: none once the intake is closed. */
+export const editableFor = (project) => (intakeOpen(project) ? [...clientEditable] : []);
+
 /** A client's edit, limited to clientEditable; the package and scope fields are dropped and reported. */
 export function mergeClientAnswers(saved, patch) {
   const mine = {};
