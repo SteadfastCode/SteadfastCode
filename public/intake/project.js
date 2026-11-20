@@ -258,6 +258,7 @@ export async function mountProject(o) {
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
+      ${admin ? '<section class="card" id="launchcard"></section>' : ''}
       ${show.link ? '<section class="card" id="linkcard"></section>' : ''}
       ${show.requests && (admin || (P.requests || []).length) ? '<section class="card" id="requests"></section>' : ''}
       ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
@@ -628,6 +629,7 @@ export async function mountProject(o) {
       const w = root.querySelector(`.who[data-who="${x.field}"]`);
       if (w) { w.hidden = false; w.textContent = `${x.name || (x.who === 'daniel' ? 'Daniel' : 'Your client')} is editing`; }
     }
+    if (admin) paintLaunch();
     if (admin) paintLink();
     paintRequests();
     paintAssets();
@@ -1021,6 +1023,64 @@ export async function mountProject(o) {
     };
     const share = el.querySelector('#sharelink');
     if (share) share.onclick = () => navigator.share({ title: 'Your website', text: 'Here’s the page for your new website.', url }).catch(() => {});
+  }
+
+  // ---- launch (2026-11-20, server/launch.js) ----
+  // One button on Daniel's page. Launching marks the project live; the box then lets search engines
+  // in, marks the repo launched and deploys, usually within a couple of minutes, and says so in the
+  // activity list. Taking it back does the reverse.
+  let launchSaid = ''; // what the last press answered, shown under the buttons
+
+  function paintLaunch() {
+    const el = root.querySelector('#launchcard');
+    if (!el) return;
+    const launched = !!P.launchedAt || P.status === 'live';
+    const key = JSON.stringify([launched, P.launchedAt, P.domain, P.previewUrl, P.status, launchSaid]);
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+
+    const address = P.domain ? `<a href="https://${esc(P.domain)}" target="_blank" rel="noopener">${esc(P.domain)}</a>` : 'its domain';
+    if (launched) {
+      el.innerHTML = `<h2>Launch</h2>
+        <p class="muted">Launched${P.launchedAt ? ` ${esc(ago(P.launchedAt))}` : ''}, live at ${address}. The box lets search engines in and deploys within a couple of minutes of launching; Activity says when it’s done.</p>
+        <p><button type="button" id="unlaunch">Take it back to preview</button></p>
+        <p class="muted" role="status">${esc(launchSaid)}</p>`;
+    } else {
+      const blockers = [
+        P.previewUrl ? null : 'Build a first version.',
+        P.domain ? null : 'Add the domain under their details.',
+        building() ? 'Wait for the build to finish.' : null,
+      ].filter(Boolean);
+      el.innerHTML = `<h2>Launch</h2>
+        <p class="muted">Launching marks the project live and takes the site out of preview mode: search engines are let in, and the client’s page switches to its after-launch view. The domain has to be pointing at the site already; that part is DNS and is done by hand.</p>
+        ${blockers.length ? `<p class="muted">Before it can launch: ${blockers.map(esc).join(' ')}</p>` : ''}
+        <p><button type="button" class="primary" id="launch"${blockers.length ? ' disabled' : ''}>Launch the site</button></p>
+        <p class="muted" role="status">${esc(launchSaid)}</p>`;
+    }
+
+    const send = async (body) => {
+      const response = await fetch(routes.launch, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      return { ok: response.ok, body: await response.json().catch(() => ({})) };
+    };
+    const finish = (answer, done) => {
+      if (answer.ok) { launchSaid = done; apply(answer.body); } else { launchSaid = answer.body.error || 'That didn’t work.'; paintLaunch(); }
+    };
+
+    const launch = el.querySelector('#launch');
+    if (launch) launch.onclick = async () => {
+      if (!confirm(`Launch ${P.domain}? Search engines will be let in.`)) return;
+      launch.disabled = true;
+      let answer = await send({ launch: true });
+      // The domain didn't answer: Daniel may know it's on its way.
+      if (!answer.ok && answer.body.canForce && confirm(`${answer.body.error}\n\nLaunch anyway?`)) answer = await send({ launch: true, force: true });
+      finish(answer, 'Launched. The box is taking the site out of preview mode now.');
+    };
+    const unlaunch = el.querySelector('#unlaunch');
+    if (unlaunch) unlaunch.onclick = async () => {
+      if (!confirm('Take the site back to preview? Search engines are shut out again. The care plan’s launch day stays as it is.')) return;
+      unlaunch.disabled = true;
+      finish(await send({ launch: false }), 'Back to preview. The box is putting the search-engine block back on.');
+    };
   }
 
   // ---- change requests (2026-11-20, server/requests.js) ----

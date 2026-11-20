@@ -186,3 +186,19 @@ test('the client cannot set the price', async () => {
   assert.deepEqual(dropped, ['pricing']);
   assert.equal(answers.pricing, undefined);
 });
+
+// Launch (2026-11-20, server/launch.js): what has to be true first, and what "launched" means.
+test('a launch needs a first version and a domain, and waits for a build to finish', async () => {
+  const { launchProblems, isLaunched, domainHost, domainAnswers, launchDay } = await import('../server/launch.js');
+  assert.deepEqual(launchProblems({ preview_url: 'https://stdfst-x.pages.dev', status: 'preview' }, { domain: 'https://WWW.Example.com/home' }), []);
+  assert.equal(launchProblems({ preview_url: null, status: 'intake' }, { domain: '' }).length, 2);
+  assert.match(launchProblems({ preview_url: 'https://x', status: 'building' }, { domain: 'example.com' })[0], /build is running/);
+  assert.equal(domainHost('https://WWW.Example.com/home'), 'www.example.com');
+  assert.equal(domainHost('not a domain'), '');
+  assert.equal(isLaunched({ launched_at: '2026-11-20T15:00:00.000Z', status: 'building' }), true, 'a rebuild in progress is still a launched site');
+  assert.equal(isLaunched({ launched_at: null, status: 'live' }), true);
+  assert.equal(isLaunched({ launched_at: null, status: 'preview' }), false);
+  assert.equal(await domainAnswers('example.com', { fetchImpl: async () => ({ ok: true }) }), true);
+  assert.equal(await domainAnswers('example.com', { fetchImpl: async () => { throw new Error('no route'); } }), false);
+  assert.equal(launchDay(new Date('2026-11-20T03:30:00Z')), '2026-11-19', 'the launch day is the day in Daniel’s time zone');
+});

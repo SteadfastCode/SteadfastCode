@@ -6,6 +6,7 @@ import { check } from './intake.js';
 import { clientStatus, openToken, editableFor, intakeOpen } from './client.js';
 import { listAssets } from './assets.js';
 import { listRequests } from './requests.js';
+import { domainHost } from './launch.js';
 import { agreementState } from './agreement.js';
 import { careState } from './care.js';
 import { unreadFor } from './messages.js';
@@ -99,7 +100,10 @@ export async function projectView(env, p, { mode }) {
     // portal then trades the intake for Your details and a Request a change box.
     // Messages from the other side not opened yet (2026-11-04): the count on the Messages tab.
     unreadMessages: unread,
-    launched: p.status === 'live' || !!(care?.launchedAt && care.launchedAt <= new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })),
+    launched: !!p.launched_at || p.status === 'live' || !!(care?.launchedAt && care.launchedAt <= new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })),
+    // When Daniel pressed Launch (2026-11-20, server/launch.js), and the address it launched at.
+    launchedAt: p.launched_at ?? null,
+    domain: domainHost(answers.domain) || null,
     // What the client changed that hasn't gone into a preview yet, and what's waiting on Daniel.
     pendingChanges: !!p.client_changed_at,
     // Daniel sees every flag; the client only learns that a bigger ask of theirs went to him.

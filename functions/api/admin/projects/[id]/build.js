@@ -13,7 +13,8 @@ export async function onRequestPost({ request, env, params }) {
   const answers = JSON.parse(p.answers);
   const c = check(answers);
   if (!c.ready) return json({ error: `Still missing: ${c.missing.map((m) => m.label).join(', ')}.` }, 409);
-  if (!['intake', 'preview'].includes(p.status)) return json({ error: `A build is already ${p.status}.` }, 409);
+  // A launched site can be rebuilt too; the box sets it back to live when the build is done.
+  if (!['intake', 'preview', 'live'].includes(p.status)) return json({ error: `A build is already ${p.status}.` }, 409);
   // The deposit is non-refundable once a build starts, so a build waits for the signed agreement.
   const ag = await agreementState(env, p);
   if (ag.needed) return json({ error: ag.reason === 'changed' ? 'The package changed since the contract was signed. The client needs to sign the updated one first.' : 'The client needs to sign the contract before the build starts.' }, 409);

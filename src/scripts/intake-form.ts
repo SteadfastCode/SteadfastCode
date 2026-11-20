@@ -56,6 +56,8 @@ export type ProjectRoutes = {
   assets?: string;
   /** Change requests: POST here to open one (admin), PATCH `${requests}/${id}` to move or approve. */
   requests?: string;
+  /** Launch the site, or take it back to preview (admin). */
+  launch?: string;
 };
 
 export type MountOptions = {
