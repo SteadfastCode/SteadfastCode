@@ -102,6 +102,16 @@
   .page-tools { max-width: var(--column); margin: 0 auto; padding: 10px 16px 0; display: flex; justify-content: flex-end; gap: 8px; }
   .page-tools button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted); }
   .page-tools button:not(:disabled):hover { color: var(--ink); }
+  /* From tablet width up, the switches sit on the title's own row, at its right, in either layout:
+     the row takes no height of its own, and the title keeps clear of the buttons so a long name
+     wraps beside them, never under them. On a phone they stay on their own line above the title. */
+  @media (min-width: 700px) {
+    .page-tools { position: relative; z-index: 2; height: 0; padding-top: 0; padding-bottom: 0; overflow: visible; align-items: flex-start; }
+    /* Dropped to the middle of the title's line (the page's 16px top padding, the title's 4px margin). */
+    .page-tools button { position: relative; top: 22px; }
+    .page-tools + main > h1 { padding-right: 150px; min-height: 34px; }
+  }
+  @media (min-width: 1000px) { .page-tools + main > h1 { padding-right: 320px; } }
   #layouttoggle { display: none; }
   /* The same two switches on the admin pages, in the header beside the page links (public/admin/tools.js). */
   .head-tools { display: flex; gap: 8px; margin-left: auto; }
@@ -113,7 +123,7 @@
      laptop, three or four on a big screen. The title and anything that isn't a card stays full width. */
   @media (min-width: 1000px) {
     #layouttoggle { display: inline-block; }
-    body.layout-grid main, body.layout-grid .page-tools { max-width: none; padding-left: 24px; padding-right: 24px; }
+    body.layout-grid main, body.layout-grid .page-tools { max-width: none; padding-left: 48px; padding-right: 48px; }
     body.layout-grid main { columns: 420px; column-gap: 14px; }
     body.layout-grid main > .card { break-inside: avoid; }
     /* The real layout is a masonry (the page script, layoutMasonry): every card goes into whichever
@@ -125,10 +135,12 @@
     body.layout-grid main > :not(.card) { column-span: all; }
     /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */
     body.layout-grid main > #care { column-span: all; }
-    body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: none; padding-left: 24px; padding-right: 24px; }
+    body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: none; padding-left: 48px; padding-right: 48px; }
+    /* Daniel's header lines up with the page's 48px sides. */
+    body.layout-grid .admin-head .in { padding-left: 48px; padding-right: 48px; }
     /* On Daniel's project page, with the contract card open beside the form, the two halves take
        the whole page too, and the form fills its half the same way. */
-    body.layout-grid.has-cpane.cpane-open .cols { max-width: none; padding: 0 24px; }
+    body.layout-grid.has-cpane.cpane-open .cols { max-width: none; padding: 0 48px; }
     body.layout-grid.has-cpane.cpane-open .cols > main { padding-left: 0; padding-right: 0; }
     body.layout-grid.has-cpane.cpane-open .admin-head .in, body.layout-grid.has-cpane.cpane-open #progress .in, body.layout-grid.has-cpane.cpane-open footer.bar .in { max-width: none; }
 
