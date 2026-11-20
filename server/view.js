@@ -7,6 +7,8 @@ import { clientStatus, openToken, editableFor, intakeOpen } from './client.js';
 import { listAssets } from './assets.js';
 import { listRequests } from './requests.js';
 import { domainHost } from './launch.js';
+import { changeMenu } from './changes.js';
+import { firstPreviewOf } from './care.js';
 import { agreementState } from './agreement.js';
 import { careState } from './care.js';
 import { unreadFor } from './messages.js';
@@ -102,6 +104,9 @@ export async function projectView(env, p, { mode }) {
     // Messages from the other side not opened yet (2026-11-04): the count on the Messages tab.
     unreadMessages: unread,
     launched: !!p.launched_at || p.status === 'live' || !!(care?.launchedAt && care.launchedAt <= new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })),
+    // The "Make a change" block (2026-11-20, server/changes.js): what the client can ask for, which
+    // lane each travels in, and what it says about cost. Only their page draws it.
+    change: mode === 'admin' ? undefined : changeMenu({ project: p, answers, firstPreview: await firstPreviewOf(env, p.id).catch(() => null), care }),
     // When Daniel pressed Launch (2026-11-20, server/launch.js), and the address it launched at.
     launchedAt: p.launched_at ?? null,
     domain: domainHost(answers.domain) || null,

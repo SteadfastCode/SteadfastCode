@@ -188,7 +188,9 @@ export async function mountProject(o) {
     // Days are kept whatever the mode, so a tap on 24/7 and back doesn't lose them; they only count under "Set hours".
     return { mode, days, note: el.querySelector('.hnote').value };
   }
-  function wireHours(el) {
+  // `changed(value, now)` is what a change does: on the form it queues an autosave; the "Make a
+  // change" block passes its own, because there the hours are only sent when the client says so.
+  function wireHours(el, changed = (value, now) => queue(el.dataset.f, value, now)) {
     el.addEventListener('input', (e) => {
       const t = e.target;
       if (t.dataset.day) {
@@ -201,7 +203,7 @@ export async function mountProject(o) {
         }
       }
       if (t.type === 'radio') el.querySelector('.hdays').hidden = t.value !== 'set';
-      queue(el.dataset.f, hoursValue(el), t.classList.contains('hnote') ? false : true);
+      changed(hoursValue(el), t.classList.contains('hnote') ? false : true);
     });
     // Delegated, so it survives the picker being redrawn with the other side's hours.
     el.addEventListener('click', (e) => {
@@ -209,7 +211,7 @@ export async function mountProject(o) {
       const on = DAYS.map(([d]) => d).filter((d) => el.querySelector(`[data-day="${d}"]`).checked);
       if (!on.length) return;
       for (const d of on.slice(1)) for (const w of ['open', 'close']) el.querySelector(`[data-${w}="${d}"]`).value = el.querySelector(`[data-${w}="${on[0]}"]`).value;
-      queue(el.dataset.f, hoursValue(el), true);
+      changed(hoursValue(el), true);
     });
   }
 
@@ -253,7 +255,8 @@ export async function mountProject(o) {
       ${show.intro ? `<p class="muted">${closed() ? 'These are the details your site is built from. To change anything, big or small, send Daniel a message and he’ll take care of it.' : launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${admin ? `<details class="card qmenu" id="qmenu"${qOpen ? ' open' : ''}><summary><h2>Questions</h2><span class="muted" id="qcount"></span></summary><div id="qbody"></div></details>` : ''}
-      ${show.request && notesField ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
+      ${!admin && tab === 'site' && P.change && !gated() ? '<section class="card"><h2>Change something</h2><p class="muted">New hours, new photos, different wording, a new page: start here, and you’ll see where each one stands.</p><p><button type="button" class="primary" data-make-change>Make a change</button></p></section>' : ''}
+      ${show.request && notesField && !P.change ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
       ${show.messages && !wide() ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${MSG_INTRO}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol>${composerHtml(true)}</section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
@@ -445,7 +448,7 @@ export async function mountProject(o) {
   let shownMessages = null;
   let shownRequestStates = '';
   const MSG_INTRO = 'Write to Daniel any time, about anything. Daniel gets your message right away and answers here, and you’ll get an email when there’s a reply.';
-  const composerHtml = (fixed) => `<div class="composer${fixed ? ' fixed' : ''}" id="composer"><div class="in"><label for="msgbody" class="sr">Message</label><div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message Daniel" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
+  const composerHtml = (fixed) => `<div class="composer${fixed ? ' fixed' : ''}" id="composer"><div class="in"><label for="msgbody" class="sr">Message</label>${admin ? '' : '<p class="change-row"><button type="button" data-make-change>Make a change</button> <span class="muted">Hours, photos, wording, a new page…</span></p>'}<div class="composer-row"><textarea id="msgbody" maxlength="4000" rows="1" placeholder="Message Daniel" aria-describedby="msghint"></textarea><button type="button" class="primary" id="msgsend">Send</button></div><span id="msghint" class="help">Enter sends · Shift+Enter for a new line</span> <span id="msgnote" class="muted" role="status"></span></div></div>`;
   // The drawer (wide screens): made once and kept across tab switches, so a half-typed message stays.
   let drawer = null;
   const drawerOpen = () => document.body.classList.contains('drawer-open');
@@ -1083,6 +1086,277 @@ export async function mountProject(o) {
     };
   }
 
+  // ---- "Make a change" (2026-11-20, server/changes.js) ----
+  // The client's way to change anything about their site: a button above the message box (and on
+  // Your site) opens this block. They pick one of a few kinds of change, or type what they're
+  // after and the search finds it: "hours" opens the same hours picker the intake used, "Darby"
+  // finds that part of their site. A fact (hours, phone, email) is saved and goes onto the site on
+  // its own. Anything else is sent in their words and becomes a request with a card in the
+  // conversation. Before sending, the block says how the change travels and whether it's covered.
+
+  /** Words people use for each thing, so the search doesn't need our labels. */
+  const CHANGE_SYNONYMS = {
+    hours: 'open opening close closing closed time times schedule days weekend holiday',
+    phone: 'number call telephone cell mobile text',
+    email: 'mail e-mail contact address',
+    photos: 'photo picture pictures image images gallery logo swap replace',
+    reword: 'text wording words typo spelling copy description sentence paragraph say says',
+    section: 'new block area part add',
+    page: 'new add another',
+    broken: 'bug error wrong problem not working doesn’t work issue fix',
+    other: 'different else question idea',
+  };
+
+  let changeDialog = null; // the <dialog>, made the first time it's opened
+  let changeView = { name: 'home' }; // home | facts | fact | describe | sent
+  let changeQuery = '';
+
+  /**
+   * How many slips separate two short words, for typos like "huors": a wrong, missing or extra
+   * letter is one slip, and so is two neighbouring letters swapped.
+   */
+  function editDistance(a, b) {
+    const rows = [Array.from({ length: b.length + 1 }, (_, j) => j)];
+    for (let i = 1; i <= a.length; i++) {
+      rows[i] = [i];
+      for (let j = 1; j <= b.length; j++) {
+        const same = a[i - 1] === b[j - 1];
+        rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + (same ? 0 : 1));
+        const swapped = i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1];
+        if (swapped) rows[i][j] = Math.min(rows[i][j], rows[i - 2][j - 2] + 1);
+      }
+    }
+    return rows[a.length][b.length];
+  }
+
+  /** Whether one typed word matches one word of an entry: a prefix, a piece of it, or a near miss. */
+  function wordMatches(typed, word) {
+    if (word.startsWith(typed)) return true;
+    if (typed.length >= 3 && word.includes(typed)) return true;
+    return typed.length >= 4 && editDistance(typed, word.slice(0, typed.length + 1)) <= 1;
+  }
+
+  /** Everything the search can find: each kind of change, each fact, and each named part of the site. */
+  function changeEntries() {
+    const fact = (id) => C.sections.flatMap((section) => section.fields).find((f) => f.id === id);
+    const kinds = P.change.kinds.filter((kind) => kind.id !== 'details').map((kind) => ({
+      label: kind.name, hint: kind.hint, words: CHANGE_SYNONYMS[kind.id] || '', open: { name: 'describe', kind: kind.id },
+    }));
+    const facts = P.change.instantFields.filter(fact).map((id) => ({
+      label: label(fact(id)), hint: 'Change it yourself; it goes onto your site in a few minutes', words: CHANGE_SYNONYMS[id] || '', open: { name: 'fact', field: id },
+    }));
+    const parts = P.change.parts.map((part) => ({
+      label: part.label, hint: 'Reword this part of your site', words: '', open: { name: 'describe', kind: 'reword', part: part.key },
+    }));
+    return [...facts, ...parts, ...kinds];
+  }
+
+  /** The entries matching what was typed, best first: every typed word must match, the label counts double. */
+  function searchChanges(query) {
+    const typed = query.toLowerCase().split(/[^a-z0-9’']+/).filter(Boolean);
+    if (!typed.length) return [];
+    const scored = [];
+    for (const entry of changeEntries()) {
+      const labelWords = entry.label.toLowerCase().split(/[^a-z0-9’']+/).filter(Boolean);
+      const otherWords = entry.words.toLowerCase().split(/\s+/).filter(Boolean);
+      let score = 0;
+      const all = typed.every((word) => {
+        if (labelWords.some((w) => wordMatches(word, w))) { score += 2; return true; }
+        if (otherWords.some((w) => wordMatches(word, w))) { score += 1; return true; }
+        return false;
+      });
+      if (all) scored.push({ entry, score });
+    }
+    return scored.sort((a, b) => b.score - a.score).slice(0, 8).map((found) => found.entry);
+  }
+
+  const changeKind = (id) => P.change.kinds.find((kind) => kind.id === id);
+  /** The two lines under every form: how this change travels, and what it costs. */
+  const changeFinePrint = (kind) => `<p class="change-says">${esc(kind.says)}</p><p class="change-cost">${esc(kind.coverage)}</p>`;
+  const changeEntryButton = (entry, index) => `<li><button type="button" class="change-pick" data-change-entry="${index}"><strong>${esc(entry.label)}</strong><span class="muted">${esc(entry.hint)}</span></button></li>`;
+
+  function changeHomeHtml() {
+    const found = changeQuery.trim() ? searchChanges(changeQuery) : null;
+    const kinds = P.change.kinds.map((kind) => ({ label: kind.name, hint: kind.hint, open: kind.id === 'details' ? { name: 'facts' } : { name: 'describe', kind: kind.id } }));
+    const list = found ?? kinds;
+    changeDialog.entries = list;
+    return `<label for="changesearch" class="change-label">What would you like to change?</label>
+      <input type="search" id="changesearch" placeholder="Type it (“hours”, “photos”…) or pick below" value="${esc(changeQuery)}" autocomplete="off">
+      ${list.length ? `<ul class="change-list">${list.map(changeEntryButton).join('')}</ul>` : `<p class="muted">Nothing matches that. <button type="button" class="linklike" data-change-other>Tell Daniel in your own words</button>.</p>`}`;
+  }
+
+  function changeFactsHtml() {
+    const fact = (id) => C.sections.flatMap((section) => section.fields).find((f) => f.id === id);
+    const list = P.change.instantFields.filter(fact).map((id) => ({ label: label(fact(id)), hint: 'Change it yourself', open: { name: 'fact', field: id } }));
+    changeDialog.entries = list;
+    return `<p class="change-label">Which one?</p><ul class="change-list">${list.map(changeEntryButton).join('')}</ul>
+      <p class="muted">Something else about your business, like your address or where you work? <button type="button" class="linklike" data-change-other>Tell Daniel in your own words</button>.</p>`;
+  }
+
+  /** One fact, with the editor the intake used for it. */
+  function changeFactHtml(fieldId) {
+    const field = C.sections.flatMap((section) => section.fields).find((f) => f.id === fieldId);
+    const value = P.answers[fieldId];
+    const editor = field.type === 'hours'
+      ? `<div class="hours" id="changevalue" data-kind="hours">${hoursInner(normHours(value), true)}</div>`
+      : `<input type="${field.type === 'email' ? 'email' : field.type === 'tel' ? 'tel' : 'text'}" id="changevalue" value="${esc(value || '')}" autocomplete="off">`;
+    return `<p class="change-label">${field.type === 'hours' ? esc(label(field)) : `<label for="changevalue">${esc(label(field))}</label>`}</p>
+      ${editor}
+      ${changeFinePrint(changeKind('details'))}
+      <p class="change-actions"><button type="button" class="primary" data-change-send>Save and update my site</button> <span class="muted" id="changesaid" role="status"></span></p>`;
+  }
+
+  /** Anything that isn't a fact: their words, the part it's about when it's a rewording, photos when it's photos. */
+  function changeDescribeHtml(view) {
+    const kind = changeKind(view.kind);
+    const prompts = {
+      photos: 'Which photos, and where should they go? If you’re replacing or removing some, say which.',
+      reword: 'What should it say instead?',
+      section: 'What should the new section be about, and which page does it go on?',
+      page: 'What’s the page for, and what should be on it?',
+      broken: 'What’s wrong, and where did you see it? The page and what you were doing help a lot.',
+      other: 'What would you like?',
+    };
+    const partPicker = view.kind === 'reword' && P.change.parts.length
+      ? `<label for="changepart" class="change-label">Which part of your site?</label>
+        <select id="changepart"><option value="">I’ll describe it</option>${P.change.parts.map((part) => `<option value="${esc(part.key)}"${part.key === view.part ? ' selected' : ''}>${esc(part.label)}</option>`).join('')}</select>`
+      : '';
+    const photoPicker = view.kind === 'photos' && P.uploadsReady
+      ? `<p class="upl"><label class="btn">Add photos<input type="file" id="changephotos" accept="image/*" multiple hidden></label> <span class="muted" id="changephotosaid" role="status"></span></p>`
+      : '';
+    return `<h3 class="change-kind">${esc(kind.name)}</h3>
+      ${partPicker}
+      ${photoPicker}
+      <label for="changebody" class="change-label">${esc(prompts[view.kind])}</label>
+      <textarea id="changebody" maxlength="4000" rows="5"></textarea>
+      ${changeFinePrint(kind)}
+      <p class="change-actions"><button type="button" class="primary" data-change-send>${view.kind === 'broken' ? 'Tell Daniel' : 'Send'}</button> <span class="muted" id="changesaid" role="status"></span></p>`;
+  }
+
+  function changeSentHtml(view) {
+    return `<h3 class="change-kind">${view.instant ? 'Saved' : 'Sent'}</h3>
+      <p>${esc(view.says)}</p>
+      <p class="muted">You’ll find it in your messages and under Your requests, with where it stands.</p>
+      <p class="change-actions"><button type="button" class="primary" data-change-close>Done</button> <button type="button" data-change-home>Change something else</button></p>`;
+  }
+
+  function paintChange() {
+    const view = changeView;
+    const body = { home: changeHomeHtml, facts: changeFactsHtml, fact: () => changeFactHtml(view.field), describe: () => changeDescribeHtml(view), sent: () => changeSentHtml(view) }[view.name]();
+    // The form element keeps the hours picker's radio buttons apart from the ones on the page behind.
+    changeDialog.innerHTML = `<form method="dialog" class="change-in" id="changeform">
+      <div class="change-head">${view.name === 'home' || view.name === 'sent' ? '<h2>Make a change</h2>' : '<button type="button" class="change-back" data-change-home>‹ Back</button>'}<button type="button" data-change-close aria-label="Close">×</button></div>
+      ${body}
+    </form>`;
+    wireChange();
+  }
+
+  function wireChange() {
+    const dialog = changeDialog;
+    const goTo = (next) => { changeView = next; paintChange(); dialog.querySelector('input, textarea, select, .change-pick')?.focus(); };
+    dialog.querySelectorAll('[data-change-close]').forEach((button) => { button.onclick = () => dialog.close(); });
+    dialog.querySelectorAll('[data-change-home]').forEach((button) => { button.onclick = () => { changeQuery = ''; goTo({ name: 'home' }); }; });
+    dialog.querySelectorAll('[data-change-other]').forEach((button) => { button.onclick = () => goTo({ name: 'describe', kind: 'other' }); });
+    dialog.querySelectorAll('[data-change-entry]').forEach((button) => { button.onclick = () => goTo(dialog.entries[Number(button.dataset.changeEntry)].open); });
+
+    const search = dialog.querySelector('#changesearch');
+    if (search) {
+      search.oninput = () => {
+        changeQuery = search.value;
+        // Only the list is redrawn, so the box keeps its focus and its cursor.
+        const found = changeQuery.trim() ? searchChanges(changeQuery) : null;
+        const kinds = P.change.kinds.map((kind) => ({ label: kind.name, hint: kind.hint, open: kind.id === 'details' ? { name: 'facts' } : { name: 'describe', kind: kind.id } }));
+        const list = found ?? kinds;
+        dialog.entries = list;
+        const old = dialog.querySelector('.change-list') || dialog.querySelector('#changeform > p.muted');
+        const fresh = document.createElement('div');
+        fresh.innerHTML = list.length ? `<ul class="change-list">${list.map(changeEntryButton).join('')}</ul>` : '<p class="muted">Nothing matches that. <button type="button" class="linklike" data-change-other>Tell Daniel in your own words</button>.</p>';
+        old.replaceWith(fresh.firstElementChild);
+        dialog.querySelectorAll('[data-change-entry]').forEach((button) => { button.onclick = () => goTo(dialog.entries[Number(button.dataset.changeEntry)].open); });
+        dialog.querySelectorAll('[data-change-other]').forEach((button) => { button.onclick = () => goTo({ name: 'describe', kind: 'other' }); });
+      };
+      // Enter in the search box opens the first match instead of closing the dialog.
+      search.onkeydown = (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        if (dialog.entries?.length) goTo(dialog.entries[0].open);
+      };
+    }
+
+    const hours = dialog.querySelector('#changevalue[data-kind="hours"]');
+    if (hours) wireHours(hours, () => {});
+
+    // Photos for a photo request go up as they're picked; the request then says how many came with it.
+    const photos = dialog.querySelector('#changephotos');
+    if (photos) photos.onchange = async () => {
+      const said = dialog.querySelector('#changephotosaid');
+      const files = [...photos.files];
+      let done = 0;
+      for (const file of files) {
+        said.textContent = `Uploading ${done + 1} of ${files.length}…`;
+        const form = new FormData();
+        form.set('file', file);
+        form.set('kind', 'photo');
+        try { await api(routes.uploads, { method: 'POST', body: form }); done++; } catch (e) { said.textContent = `${file.name}: ${e.message}`; return; }
+      }
+      changeView.photosAdded = (changeView.photosAdded || 0) + done;
+      said.textContent = `${changeView.photosAdded} added. They’re under Photos and logo now.`;
+    };
+
+    const send = dialog.querySelector('[data-change-send]');
+    if (send) send.onclick = async () => {
+      const said = dialog.querySelector('#changesaid');
+      const view = changeView;
+      let body;
+      if (view.name === 'fact') {
+        const box = dialog.querySelector('#changevalue');
+        body = { kind: 'details', field: view.field, value: box.dataset.kind === 'hours' ? hoursValue(box) : box.value };
+      } else {
+        const words = dialog.querySelector('#changebody').value;
+        const added = view.photosAdded ? `\n\n(${view.photosAdded} new ${view.photosAdded === 1 ? 'photo' : 'photos'} added with this.)` : '';
+        body = { kind: view.kind, body: words.trim() ? words + added : words, part: dialog.querySelector('#changepart')?.value || undefined };
+      }
+      send.disabled = true;
+      try {
+        const answer = await api(routes.requests, { method: 'POST', body: JSON.stringify(body) });
+        P.requests = answer.requests;
+        if (view.name === 'fact') P.answers[view.field] = body.value;
+        showMessages(answer.messages);
+        paintRequests();
+        const kind = changeKind(view.name === 'fact' ? 'details' : view.kind);
+        changeView = { name: 'sent', says: kind.says, instant: view.name === 'fact' };
+        paintChange();
+        dialog.querySelector('[data-change-close]')?.focus();
+      } catch (e) {
+        said.textContent = e.message;
+        send.disabled = false;
+      }
+    };
+  }
+
+  function openChange() {
+    if (admin || !P.change) return;
+    if (!changeDialog) {
+      changeDialog = document.createElement('dialog');
+      changeDialog.className = 'change';
+      changeDialog.setAttribute('aria-label', 'Make a change');
+      document.body.appendChild(changeDialog);
+      // A click on the dimmed page behind closes it, like any sheet.
+      changeDialog.addEventListener('click', (event) => { if (event.target === changeDialog) changeDialog.close(); });
+    }
+    changeView = { name: 'home' };
+    changeQuery = '';
+    paintChange();
+    changeDialog.showModal();
+    changeDialog.querySelector('#changesearch')?.focus();
+  }
+  // The button is drawn in several places (above the message box, on Your site), so one listener
+  // on the page finds whichever was pressed.
+  if (!admin && !window.__makeChangeWired) {
+    window.__makeChangeWired = true;
+    document.addEventListener('click', (event) => { if (event.target.closest?.('[data-make-change]')) openChange(); });
+  }
+
   // ---- change requests (2026-11-20, server/requests.js) ----
   // One record per thing the client asks to change. It shows twice: as a card under the message it
   // came from, and in a list (Daniel's request queue on the project; "Your requests" on the client's
@@ -1107,7 +1381,9 @@ export async function mountProject(o) {
 
   function requestBadge(request) {
     const status = REQUEST_STATUS[request.status] || REQUEST_STATUS.received;
-    return `<span class="badge ${status.badge}">${esc(admin ? status.daniel : status.you)}</span>`;
+    // A change that's finished on a site that hasn't launched is "Done", not "Live".
+    const words = request.status === 'live' && !launched() ? 'Done' : admin ? status.daniel : status.you;
+    return `<span class="badge ${status.badge}">${esc(words)}</span>`;
   }
 
   /** The client's one button, where it applies. */
@@ -1307,7 +1583,7 @@ export async function mountProject(o) {
       ${has('files') && P.uploadsReady ? '<p class="help">Up to 15 MB each. For anything bigger, share a link instead.</p>' : ''}
       ${has('link') ? `<label class="asset-where" for="assetlink${item.id}">A link to it</label>
         <div class="asset-row"><input type="text" inputmode="url" id="assetlink${item.id}" data-asset-link maxlength="500" placeholder="https://" value="${esc(item.link || '')}"><button type="button" data-asset-link-save>Save link</button></div>` : ''}
-      ${has('text') ? `<label class="asset-where" for="assetanswer${item.id}">Type it here</label>
+      ${has('text') ? `<label class="asset-where" for="assetanswer${item.id}">Notes or Text</label>
         <textarea id="assetanswer${item.id}" data-asset-answer maxlength="4000">${esc(item.answer || '')}</textarea>
         <p class="asset-actions"><button type="button" data-asset-answer-save>Save</button></p>` : ''}
       <p class="muted" data-asset-said role="status">${esc(assetSaid[item.id] || '')}</p>`;

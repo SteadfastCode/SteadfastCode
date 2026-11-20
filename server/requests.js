@@ -73,6 +73,9 @@ const shape = (row) => ({
   title: row.title,
   status: row.status,
   note: row.note,
+  // How it travels (server/changes.js): instant | preview | daniel; null on one Daniel opened himself.
+  lane: row.lane ?? null,
+  field: row.field ?? null,
   createdBy: row.created_by,
   createdAt: row.created_at,
   updatedAt: row.updated_at,

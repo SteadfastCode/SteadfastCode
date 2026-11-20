@@ -41,7 +41,7 @@ test('messages carry the request that hangs on them; without the table there are
   const messages = [{ id: 10, body: 'Hello' }, { id: 11, body: 'Can we add a gallery?' }];
   const withCards = await withRequests(env, 'p1', messages);
   assert.equal(withCards[0].request, undefined);
-  assert.deepEqual(withCards[1].request, { id: 5, messageId: 11, kind: 'page', title: 'Add a gallery page', status: 'working', note: null, createdBy: 'client', createdAt: 'A', updatedAt: 'B' });
+  assert.deepEqual(withCards[1].request, { id: 5, messageId: 11, kind: 'page', title: 'Add a gallery page', status: 'working', note: null, lane: null, field: null, createdBy: 'client', createdAt: 'A', updatedAt: 'B' });
 
   const missing = { INTAKE: { prepare: () => ({ bind: () => ({ all: async () => { throw new Error('no such table: change_requests'); } }) }) } };
   assert.deepEqual(await listRequests(missing, 'p1'), []);

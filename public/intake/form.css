@@ -86,6 +86,26 @@
   .hday select:disabled { opacity: .4; }
   .hcopy { justify-self: start; font-size: .9rem; padding: 8px 12px; }
   .agreement h3 { font-size: 1rem; margin: 18px 0 6px; }
+  /* "Make a change" (2026-11-20): the button above the message box, and the block it opens. */
+  .change-row { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .change-row button { font-size: .9rem; padding: 6px 12px; }
+  dialog.change { width: min(34rem, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); overflow: auto; }
+  dialog.change::backdrop { background: rgb(0 0 0 / .45); }
+  .change-in { padding: 16px; margin: 0; }
+  .change-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .change-head h2 { margin: 0; border: 0; padding: 0; }
+  .change-label { display: block; font-weight: 600; margin: 10px 0 6px; }
+  .change-kind { margin: 0 0 4px; font-size: 1.1rem; }
+  /* The search box takes the same shape as every other field on the page. */
+  dialog.change input[type=search] { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .change-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+  .change-pick { width: 100%; text-align: left; display: grid; gap: 2px; padding: 10px 12px; }
+  .change-says { margin: 12px 0 2px; }
+  .change-cost { margin: 0 0 4px; font-weight: 600; }
+  .change-actions { margin: 12px 0 0; }
+  .change textarea { min-height: 110px; }
+  .linklike { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; }
+  .linklike:not(:disabled):hover { background: none; color: var(--accent-hover); }
   /* Change requests (2026-11-20): the card under the message a request came from, and the list. */
   .request-card { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card, var(--bg)); }
   .request-card p { margin: 0 0 4px; }
