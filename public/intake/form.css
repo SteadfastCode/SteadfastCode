@@ -85,7 +85,10 @@
   .hday select { padding: 8px; }
   .hday select:disabled { opacity: .4; }
   .hcopy { justify-self: start; font-size: .9rem; padding: 8px 12px; }
-  .agreement h3 { font-size: 1rem; margin: 18px 0 6px; }
+  /* The contract's section headings stand out from its text: bigger, and in the accent blue (a
+     fresh light blue on the dark theme, the deeper blue on the light one). */
+  .agreement h3 { font-size: 1.25rem; color: var(--accent); margin: 26px 0 8px; }
+  .agreement h3:first-child { margin-top: 4px; }
   /* One column or the whole page (2026-11-20): the button beside the client's title. In the grid
      the cards fill columns across the page; the title and the line under it stay full width. */
   .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 12px; }
