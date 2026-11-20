@@ -129,6 +129,9 @@
     /* The real layout is a masonry (the page script, layoutMasonry): the grid's rows are 2px tall
        and the script gives every card a column and its rows, tallest cards first, each into the
        shortest column. Columns can't do that: they fill top to bottom and can't split a card. */
+    /* A card that changed column in a reshuffle: its border lights up and fades, to show where it went. */
+    @keyframes masonry-moved { 0%, 35% { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); } 100% { border-color: var(--line); box-shadow: 0 0 0 3px transparent; } }
+    .masonry-moved { animation: masonry-moved 2.2s ease-out; }
     body.layout-grid main.masonry { columns: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); grid-auto-rows: 2px; column-gap: 14px; align-items: start; }
     body.layout-grid main > :not(.card) { column-span: all; }
     /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */

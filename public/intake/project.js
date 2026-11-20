@@ -1158,8 +1158,10 @@ export async function mountProject(o) {
   // Cards are placed tallest first, each into whichever column is shortest so far. So a very long
   // card ends up with a column to itself, the short ones pack into the others, and the columns end
   // as level as the cards allow. The order of the cards gives way to that (Daniel: order doesn't
-  // matter, fill evenly), except the status card, which always comes first. The title and anything else that isn't a card keeps its place across the
-  // top, full width.
+  // matter, fill evenly), except the status card, which always comes first. The title and
+  // anything else that isn't a card keeps its place across the top, full width.
+  // While a pointer is held down (a text box being dragged bigger) cards stay in their columns;
+  // the even fill runs on release, and cards that move glide there and are highlighted (showMoves).
   // It runs again whenever a card changes size, the cards are redrawn, the window is resized or
   // the layout is switched. The contract tab has its own two-part layout and is left alone.
   const MASONRY_ROW = 2;
@@ -1199,23 +1201,86 @@ export async function mountProject(o) {
       nextRow += rows;
     }
 
-    // Then the cards: tallest first, each into the shortest column.
     const columnCount = getComputedStyle(root).gridTemplateColumns.split(' ').length;
     const columnEnds = Array.from({ length: columnCount }, () => nextRow);
-    // The status card ("Getting started", "Preview ready") always leads: top of the first column.
-    const status = shown.find((child) => child.id === 'status');
-    if (status) {
-      const rows = rowsFor(status);
-      place(status, 0, columnEnds[0], rows);
-      columnEnds[0] += rows;
+    const cards = shown.filter(isCard);
+    const before = new Map(cards.map((card) => [card, card.getBoundingClientRect()]));
+
+    // While something is being dragged (a text box by its corner), nothing changes column: each
+    // card keeps its place and its column just restacks, so the card under the pointer grows and
+    // the ones below it slide down. The even fill waits for the pointer to let go.
+    const holding = pointerHeld && columnCount === masonryColumns && cards.every((card) => masonryPlace.has(card));
+    if (holding) {
+      const inOrder = [...cards].sort((one, other) => masonryPlace.get(one).row - masonryPlace.get(other).row);
+      for (const card of inOrder) {
+        const { column } = masonryPlace.get(card);
+        const rows = rowsFor(card);
+        place(card, column, columnEnds[column], rows);
+        masonryPlace.set(card, { column, row: columnEnds[column] });
+        columnEnds[column] += rows;
+      }
+      return;
     }
-    const cards = shown.filter((child) => isCard(child) && child !== status).map((card) => ({ card, rows: rowsFor(card) })).sort((one, other) => other.rows - one.rows);
-    for (const { card, rows } of cards) {
-      const column = columnEnds.indexOf(Math.min(...columnEnds));
+
+    // The even fill. The status card ("Getting started", "Preview ready") always leads: top of
+    // the first column. Then the rest, tallest first, each into the shortest column.
+    const status = cards.find((card) => card.id === 'status');
+    const rest = cards.filter((card) => card !== status).map((card) => ({ card, rows: rowsFor(card) })).sort((one, other) => other.rows - one.rows);
+    const changedColumn = [];
+    for (const { card, rows } of [...(status ? [{ card: status, rows: rowsFor(status) }] : []), ...rest]) {
+      const column = card === status ? 0 : columnEnds.indexOf(Math.min(...columnEnds));
+      const was = masonryPlace.get(card);
+      if (was && was.column !== column) changedColumn.push(card);
       place(card, column, columnEnds[column], rows);
+      masonryPlace.set(card, { column, row: columnEnds[column] });
       columnEnds[column] += rows;
     }
+    const sameColumns = columnCount === masonryColumns;
+    masonryColumns = columnCount;
+    showMoves(before, sameColumns ? changedColumn : []);
   }
+
+  // Where each card was last put, and in how many columns, so the next layout can tell what moved.
+  const masonryPlace = new WeakMap();
+  let masonryColumns = 0;
+
+  // A pointer held down anywhere on the page counts as "something may be being resized".
+  let pointerHeld = false;
+  if (!window.__masonryPointerWired) {
+    window.__masonryPointerWired = true;
+    addEventListener('pointerdown', () => { pointerHeld = true; }, true);
+    for (const released of ['pointerup', 'pointercancel', 'mouseup', 'blur']) {
+      addEventListener(released, () => { if (pointerHeld) { pointerHeld = false; queueMasonry(); } }, true);
+    }
+  }
+
+  /**
+   * Makes a reshuffle easy to follow: every card that ended up somewhere else glides there from
+   * where it was (about half a second), and a card that changed column gets a highlighted border
+   * that fades, so it's clear where it went. With "reduce motion" on there's no glide, only the
+   * highlight. Cards drawn for the first time have no "before" and simply appear.
+   */
+  function showMoves(before, changedColumn) {
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for (const [card, was] of before) {
+      if (!masonryShown.has(card)) { masonryShown.add(card); continue; }
+      const now = card.getBoundingClientRect();
+      const dx = was.left - now.left;
+      const dy = was.top - now.top;
+      if (calm || !card.animate || (Math.abs(dx) < 2 && Math.abs(dy) < 2)) continue;
+      card.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.2, .7, .2, 1)' });
+    }
+    for (const card of changedColumn) {
+      card.classList.remove('masonry-moved');
+      // Reading a layout value between removing and adding the class restarts the highlight.
+      void card.offsetWidth;
+      card.classList.add('masonry-moved');
+      setTimeout(() => card.classList.remove('masonry-moved'), 2200);
+    }
+  }
+  // Cards that have been laid out at least once; only those glide.
+  const masonryShown = new WeakSet();
+
   /** Lays the cards out once before the next paint, however many things asked for it. */
   function queueMasonry() {
     if (masonryQueued) return;
