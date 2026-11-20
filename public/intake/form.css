@@ -8,7 +8,10 @@
   :root { color-scheme: light dark; } :root[data-theme="light"] { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--ink); }
-  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 140px; }
+  /* The single column is at least half the page, and never narrower than 760px on a smaller one.
+     The bars above and below it line up with the same width. */
+  :root { --column: max(760px, 50vw); }
+  main { max-width: var(--column); margin: 0 auto; padding: 16px 16px 140px; }
   h1 { font-size: 1.35rem; margin: 4px 0 12px; } h2 { font-size: 1.05rem; margin: 0 0 10px; }
   /* A section's heading reads as the section, not as one more question: bigger, with a rule under it. */
   section.card > h2 { font-size: 1.3rem; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
@@ -40,13 +43,13 @@
   .scope li { color: var(--warn); }
   .count.over { color: var(--bad); font-weight: 600; }
   footer.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 10px 16px; }
-  footer.bar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  footer.bar .in { max-width: var(--column); margin: 0 auto; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
   #saved { min-width: 70px; }
   .error { color: var(--bad); }
   /* The build's progress stays at the top of the screen. Scrolled down it's just the bars; a tap
      (or hover with a mouse) shows the details again, and a tap pins it open or closed. */
   #progress { position: sticky; top: 0; z-index: 5; width: 100%; padding: 8px 16px 6px; background: var(--card); border-bottom: 1px solid var(--line); cursor: pointer; }
-  #progress .in { max-width: 728px; margin: 0 auto; }
+  #progress .in { max-width: calc(var(--column) - 32px); margin: 0 auto; }
   #progress .steps { margin: 2px 0 4px; }
   #progress .details { display: grid; gap: 2px; padding-bottom: 4px; }
   #progress.collapsed:not(.pinned) .details { display: none; }
@@ -96,7 +99,7 @@
   .agreement h3:first-child { margin-top: 4px; }
   /* The client's page tools (2026-11-20): a slim row above the title, on every tab. The theme
      switch is always there; the layout switch only where there's room for more than one column. */
-  .page-tools { max-width: 760px; margin: 0 auto; padding: 10px 16px 0; display: flex; justify-content: flex-end; gap: 8px; }
+  .page-tools { max-width: var(--column); margin: 0 auto; padding: 10px 16px 0; display: flex; justify-content: flex-end; gap: 8px; }
   .page-tools button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted); }
   .page-tools button:not(:disabled):hover { color: var(--ink); }
   #layouttoggle { display: none; }
@@ -113,6 +116,12 @@
     body.layout-grid main, body.layout-grid .page-tools { max-width: none; padding-left: 24px; padding-right: 24px; }
     body.layout-grid main { columns: 420px; column-gap: 14px; }
     body.layout-grid main > .card { break-inside: avoid; }
+    /* The real layout is a masonry (the page script, layoutMasonry): every card goes into whichever
+       column is shortest, so a tall card never leaves a hole beside it. Columns can't do that: they
+       fill top to bottom and can't split a card. The grid's rows are 2px tall and the script gives
+       each card as many as its height needs; `dense` lets a card take the first gap it fits. */
+    body.layout-grid main.masonry { columns: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); grid-auto-rows: 2px; grid-auto-flow: dense; column-gap: 14px; align-items: start; }
+    body.layout-grid main.masonry > :not(.card), body.layout-grid main.masonry > #care { grid-column: 1 / -1; }
     body.layout-grid main > :not(.card) { column-span: all; }
     /* Long reading (the care plan's terms) gets the full width instead of a narrow column. */
     body.layout-grid main > #care { column-span: all; }
@@ -185,6 +194,9 @@
   .asset-inputs { border: 0; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }
   .asset-inputs legend { padding: 0; margin-bottom: 4px; font-weight: 600; }
   .asset-inputs label { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; }
+  .asset-compact { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .asset-summary { flex: 1; min-width: 0; }
+  .asset-compact > button { white-space: nowrap; }
   .asset-add { padding-top: 12px; border-top: 1px solid var(--line); }
   .asset-add label { display: block; font-weight: 600; margin-bottom: 6px; }
   .asset-add input { margin-bottom: 8px; }
@@ -237,7 +249,7 @@
   .composer { position: sticky; bottom: 0; z-index: 4; background: var(--card); margin: 0 -14px -14px; padding: 10px 14px 12px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; }
   /* The client's Messages tab: fixed to the bottom of the screen, however short the conversation. */
   .composer.fixed { position: fixed; left: 0; right: 0; margin: 0; border-radius: 0; padding: 10px 16px 12px; box-shadow: 0 -6px 16px -10px rgb(0 0 0 / .3); }
-  .composer.fixed .in { max-width: 728px; margin: 0 auto; }
+  .composer.fixed .in { max-width: calc(var(--column) - 32px); margin: 0 auto; }
   body:has(.composer.fixed) main { padding-bottom: 240px; }
   .composer-row { display: flex; gap: 8px; align-items: flex-end; }
   .composer textarea { flex: 1; min-height: 44px; max-height: 160px; resize: none; margin: 0; }

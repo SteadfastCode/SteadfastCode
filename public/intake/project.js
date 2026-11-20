@@ -1152,6 +1152,47 @@ export async function mountProject(o) {
     };
   }
 
+  // ---- the whole-page layout is a masonry (2026-11-20) ----
+  // In "Use the whole page" the cards sit in a grid whose rows are 2px tall (form.css). This gives
+  // each card as many rows as its height needs, and the grid's dense flow then puts every card in
+  // the first gap it fits, which is the shortest column. So the page fills evenly whatever the
+  // cards' heights, and the order of the cards gives way to that (Daniel: order doesn't matter).
+  // It runs again whenever a card changes size, the cards are redrawn, the window is resized or
+  // the layout is switched. The contract tab has its own two-part layout and is left alone.
+  const MASONRY_ROW = 2;
+  let masonryQueued = false;
+
+  function layoutMasonry() {
+    masonryQueued = false;
+    const wide = matchMedia('(min-width: 1000px)').matches;
+    const on = wide && document.body.classList.contains('layout-grid') && !root.querySelector(':scope > .card.agreement');
+    root.classList.toggle('masonry', on);
+    for (const child of root.children) {
+      const shown = on && !child.hidden && getComputedStyle(child).display !== 'none';
+      if (!shown) { child.style.gridRowEnd = ''; continue; }
+      // A grid item's margins are part of its place, so they count toward its rows.
+      const style = getComputedStyle(child);
+      const height = child.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+      const rows = `span ${Math.max(1, Math.ceil(height / MASONRY_ROW))}`;
+      if (child.style.gridRowEnd !== rows) child.style.gridRowEnd = rows;
+    }
+  }
+  /** Lays the cards out once before the next paint, however many things asked for it. */
+  function queueMasonry() {
+    if (masonryQueued) return;
+    masonryQueued = true;
+    requestAnimationFrame(layoutMasonry);
+  }
+  if (window.ResizeObserver && !root.dataset.masonryWired) {
+    root.dataset.masonryWired = '1';
+    const sizes = new ResizeObserver(queueMasonry);
+    const watchCards = () => { for (const child of root.children) sizes.observe(child); queueMasonry(); };
+    new MutationObserver(watchCards).observe(root, { childList: true });
+    new MutationObserver(queueMasonry).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    addEventListener('resize', queueMasonry);
+    watchCards();
+  }
+
   // ---- the client's page tools (2026-11-20) ----
   // A slim row above the title, on every tab (the contract too), with two switches:
   //   the theme: Auto (the device's setting) → Light → Dark, saved in this browser under the same
@@ -1621,7 +1662,8 @@ export async function mountProject(o) {
   // ---- what the project still needs from the client (2026-11-19, server/assets.js) ----
   // Daniel keeps the list on his page and says, per item, how the client can give it: photos or
   // files uploaded right on the card, a link, a typed answer (2026-11-20). The client sees the list
-  // on theirs and answers on the card; anything they give marks the item sent and tells Daniel.
+  // on theirs as a short list and opens an item to answer it in a popup; anything they give marks
+  // the item sent and tells Daniel.
   // "I sent it another way" is always there, with a note saying where. Daniel marks it received.
   // A photo given on a card is an ordinary photo too, so it also shows under Photos and logo.
   let assetNoteOpen = null; // the item whose "where is it?" box is open on the client's page
@@ -1698,57 +1740,196 @@ export async function mountProject(o) {
       <p class="muted" data-asset-said role="status">${esc(assetSaid[item.id] || '')}</p>`;
   }
 
+  /** What the client has given for an item so far, in a few words for its row in the list. */
+  function assetGivenSummary(item) {
+    const uploads = assetUploads(item);
+    const photos = uploads.filter((upload) => upload.kind !== 'file').length;
+    const files = uploads.length - photos;
+    const count = (n, one, many) => (n ? `${n} ${n === 1 ? one : many}` : '');
+    return [count(photos, 'photo', 'photos'), count(files, 'file', 'files'), item.link ? 'a link' : '', item.answer ? 'your notes' : '', item.clientNote ? 'sent another way' : ''].filter(Boolean).join(', ');
+  }
+
+  /**
+   * The client's row for an item: its name, where it stands, Daniel's note and what they've given,
+   * with one button. The inputs themselves open in a popup (2026-11-20), so a long list stays short.
+   */
   function assetHtmlForClient(item) {
-    let action = '';
-    if (item.status === 'received') {
-      action = `${assetGivenHtml(item, false)}<p class="muted">Daniel has this one. Thank you!</p>`;
-    } else {
-      // "Sent another way": its note box when open, the way back when it's been used, or the button.
-      let anotherWay = '';
-      if (assetNoteOpen === item.id) {
-        anotherWay = `<label class="asset-where" for="assetnote${item.id}">Where can Daniel find it?</label>
-          <textarea id="assetnote${item.id}" maxlength="600" placeholder="Where you sent it (“in Discord”, “emailed Tuesday”). You can leave this empty."></textarea>
-          <p class="asset-actions"><button type="button" class="primary" data-asset-sent="yes">Mark as sent</button> <button type="button" data-asset-cancel>Cancel</button></p>`;
-      } else if (item.status === 'sent') {
-        // "Not sent yet" undoes a "sent another way"; something given on the card is removed there instead.
-        const givenOnCard = assetUploads(item).length > 0 || item.link || item.answer;
-        anotherWay = `${item.clientNote ? `<p class="asset-note">You said: ${esc(item.clientNote)}</p>` : ''}
-          ${givenOnCard ? '' : '<p class="asset-actions"><button type="button" data-asset-sent="no">Not sent yet</button></p>'}`;
-      } else {
-        anotherWay = `<p class="asset-actions"><button type="button" data-asset-open>${item.inputs.length ? 'I sent it another way' : 'I’ve sent this'}</button></p>`;
-      }
-      action = `${assetGivenHtml(item, true)}${assetInputsHtml(item)}${anotherWay}`;
-    }
-    return `<li class="asset" data-asset="${item.id}">
-      <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
-      ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
-      ${action}
+    const given = assetGivenSummary(item);
+    const button = item.status === 'received' ? '' : `<button type="button" data-asset-give>${item.status === 'sent' ? 'View or add more' : 'Add it'}</button>`;
+    return `<li class="asset asset-compact" data-asset="${item.id}">
+      <div class="asset-summary">
+        <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
+        ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
+        ${given ? `<p class="muted">You gave: ${esc(given)}.</p>` : ''}
+        ${item.status === 'received' ? '<p class="muted">Daniel has this one. Thank you!</p>' : ''}
+      </div>
+      ${button}
     </li>`;
   }
 
+  /** The popup for one item: what's been given, the inputs Daniel allowed, and "sent another way". */
+  function assetDialogHtml(item) {
+    // "Sent another way": its note box when open, the way back when it's been used, or the button.
+    let anotherWay = '';
+    if (assetNoteOpen === item.id) {
+      anotherWay = `<label class="asset-where" for="assetnote${item.id}">Where can Daniel find it?</label>
+        <textarea id="assetnote${item.id}" maxlength="600" placeholder="Where you sent it (“in Discord”, “emailed Tuesday”). You can leave this empty."></textarea>
+        <p class="asset-actions"><button type="button" class="primary" data-asset-sent="yes">Mark as sent</button> <button type="button" data-asset-cancel>Cancel</button></p>`;
+    } else if (item.status === 'sent') {
+      // "Not sent yet" undoes a "sent another way"; something given here is removed here instead.
+      const givenHere = assetUploads(item).length > 0 || item.link || item.answer;
+      anotherWay = `${item.clientNote ? `<p class="asset-note">You said: ${esc(item.clientNote)}</p>` : ''}
+        ${givenHere ? '' : '<p class="asset-actions"><button type="button" data-asset-sent="no">Not sent yet</button></p>'}`;
+    } else {
+      anotherWay = `<p class="asset-actions"><button type="button" data-asset-open>${item.inputs.length ? 'I sent it another way' : 'I’ve sent this'}</button></p>`;
+    }
+    return `<div class="change-in" data-asset="${item.id}">
+      <div class="change-head"><h2>${esc(item.title)}</h2><button type="button" data-asset-dialog-close aria-label="Close">×</button></div>
+      <p>${ASSET_BADGE[item.status](item)}</p>
+      ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
+      ${assetGivenHtml(item, true)}
+      ${assetInputsHtml(item)}
+      ${anotherWay}
+      <p class="change-actions"><button type="button" class="primary" data-asset-dialog-close>Done</button></p>
+    </div>`;
+  }
+
+  let assetDialog = null; // the popup's <dialog>, made the first time an item is opened
+  let assetDialogItem = null; // the item it's showing
+
+  /** Draws the popup for the open item, keeping anything half-typed, and wires its controls. */
+  function paintAssetDialog() {
+    if (!assetDialog || assetDialogItem === null) return;
+    const item = (P.assets || []).find((one) => one.id === assetDialogItem);
+    // Daniel took it off the list, or has it now: nothing left to give.
+    if (!item || item.status === 'received') { assetDialog.close(); return; }
+    const key = JSON.stringify([item, assetUploads(item).map((upload) => upload.id), assetNoteOpen, assetSaid[item.id], P.uploadsReady]);
+    if (assetDialog.dataset.key === key) return;
+    assetDialog.dataset.key = key;
+    const typed = {};
+    assetDialog.querySelectorAll('[data-asset-link], [data-asset-answer], textarea[id^="assetnote"]').forEach((box) => { typed[box.id] = box.value; });
+    assetDialog.innerHTML = assetDialogHtml(item);
+    for (const [id, value] of Object.entries(typed)) { const box = assetDialog.querySelector(`#${id}`); if (box) box.value = value; }
+    wireAssetDialog(item);
+  }
+
+  function openAssetDialog(id) {
+    if (!assetDialog) {
+      assetDialog = document.createElement('dialog');
+      assetDialog.className = 'change';
+      document.body.appendChild(assetDialog);
+      assetDialog.addEventListener('click', (event) => { if (event.target === assetDialog) assetDialog.close(); });
+      assetDialog.addEventListener('close', () => { assetDialogItem = null; assetNoteOpen = null; delete assetDialog.dataset.key; });
+    }
+    assetDialogItem = id;
+    delete assetDialog.dataset.key;
+    paintAssetDialog();
+    if (!assetDialog.open) assetDialog.showModal();
+  }
+
+  /** Every control in the popup. A change sends itself, takes the list the server answers with, and redraws. */
+  function wireAssetDialog(item) {
+    const dialog = assetDialog;
+    const id = item.id;
+    const path = `${routes.assets}/${id}`;
+    const redraw = () => { delete dialog.dataset.key; paintAssetDialog(); const card = root.querySelector('#assets'); if (card) { delete card.dataset.key; paintAssets(); } };
+    const say = (message) => { assetSaid[id] = message; const line = dialog.querySelector('[data-asset-said]'); if (line) line.textContent = message; };
+    const patch = async (body) => {
+      try {
+        P.assets = (await api(path, { method: 'PATCH', body: JSON.stringify(body) })).assets;
+        return true;
+      } catch (e) {
+        say(e.message);
+        return false;
+      }
+    };
+
+    dialog.querySelectorAll('[data-asset-dialog-close]').forEach((button) => { button.onclick = () => dialog.close(); });
+
+    dialog.querySelectorAll('[data-asset-upload]').forEach((input) => {
+      input.onchange = async () => {
+        const files = [...input.files];
+        let done = 0;
+        for (const file of files) {
+          say(`Uploading ${done + 1} of ${files.length}…`);
+          const form = new FormData();
+          form.set('file', file);
+          form.set('kind', input.dataset.assetUpload);
+          form.set('asset', String(id));
+          try {
+            await api(routes.uploads, { method: 'POST', body: form });
+            done++;
+          } catch (e) {
+            assetSaid[id] = `${file.name}: ${e.message}`;
+            await refresh();
+            return;
+          }
+        }
+        assetSaid[id] = `Uploaded ${done}. Daniel can see ${done === 1 ? 'it' : 'them'} now.`;
+        await refresh();
+      };
+    });
+    dialog.querySelectorAll('.asset-remove-upload').forEach((button) => {
+      button.onclick = async () => {
+        if (!confirm('Remove this file?')) return;
+        await api(routes.file(button.dataset.upload, true), { method: 'DELETE' }).catch((e) => alert(e.message));
+        await refresh();
+      };
+    });
+    dialog.querySelectorAll('[data-asset-link-save]').forEach((button) => {
+      button.onclick = async () => {
+        const box = dialog.querySelector(`#assetlink${id}`);
+        if (!(await patch({ link: box.value }))) return;
+        // Show the link as it was saved (with https:// in front), not as it was typed.
+        box.value = P.assets.find((one) => one.id === id)?.link || '';
+        assetSaid[id] = box.value ? 'Link saved. Daniel can see it now.' : 'Link removed.';
+        redraw();
+      };
+    });
+    dialog.querySelectorAll('[data-asset-answer-save]').forEach((button) => {
+      button.onclick = async () => {
+        if (!(await patch({ answer: dialog.querySelector(`#assetanswer${id}`).value }))) return;
+        assetSaid[id] = 'Saved. Daniel can see it now.';
+        redraw();
+      };
+    });
+    dialog.querySelectorAll('[data-asset-open]').forEach((button) => {
+      button.onclick = () => { assetNoteOpen = id; redraw(); dialog.querySelector(`#assetnote${id}`)?.focus(); };
+    });
+    dialog.querySelectorAll('[data-asset-cancel]').forEach((button) => { button.onclick = () => { assetNoteOpen = null; redraw(); }; });
+    dialog.querySelectorAll('[data-asset-sent]').forEach((button) => {
+      button.onclick = async () => {
+        const sent = button.dataset.assetSent === 'yes';
+        const note = sent ? dialog.querySelector(`#assetnote${id}`)?.value ?? '' : '';
+        assetNoteOpen = null;
+        if (await patch({ sent, note })) redraw();
+      };
+    });
+  }
+
   function paintAssets() {
+    // The popup shows the same item as the list, so it follows every refresh too.
+    paintAssetDialog();
     const el = root.querySelector('#assets');
     if (!el) return;
     const items = P.assets || [];
     const given = (P.uploads || []).filter((upload) => upload.assetId).map((upload) => [upload.id, upload.assetId]);
     // Redraw only when something on the card changes, so typing isn't wiped by the refresh.
-    const key = JSON.stringify([items, given, assetNoteOpen, assetEditing, assetSaid, P.uploadsReady]);
+    const key = JSON.stringify([items, given, assetEditing, P.uploadsReady]);
     if (el.dataset.key === key) return;
     // While Daniel is rewording an item, a background refresh leaves the card alone.
     if (el.querySelector('#assetedittitle') && assetEditing !== null && el.dataset.editing === String(assetEditing)) return;
     el.dataset.key = key;
     el.dataset.editing = assetEditing === null ? '' : String(assetEditing);
 
-    // Whatever is half-typed survives a redraw: Daniel's add form, and the client's link and answer.
+    // Whatever Daniel has half-typed into the add form survives a redraw.
     const typed = { title: el.querySelector('#assettitle')?.value ?? '', detail: el.querySelector('#assetdetail')?.value ?? '', inputs: chosenInputs(el, 'assetinput') };
-    const typedOnCards = {};
-    el.querySelectorAll('[data-asset-link], [data-asset-answer]').forEach((box) => { typedOnCards[box.id] = box.value; });
     const waiting = items.filter((item) => item.status === 'needed').length;
     const list = items.length ? `<ul class="assets">${items.map(admin ? assetHtmlForDaniel : assetHtmlForClient).join('')}</ul>` : '';
 
     if (admin) {
       el.innerHTML = `<h2>Assets needed</h2>
-        <p class="muted">${items.length ? `${waiting} still needed of ${items.length}. ` : ''}What this project still needs from them. They see this list on their page and give each thing right on its card.</p>
+        <p class="muted">${items.length ? `${waiting} still needed of ${items.length}. ` : ''}What this project still needs from them. They see this list on their page and give each thing from there.</p>
         ${list}
         <div class="asset-add">
           <label for="assettitle">Add something</label>
@@ -1761,16 +1942,18 @@ export async function mountProject(o) {
       el.querySelector('#assetdetail').value = typed.detail;
     } else {
       el.innerHTML = `<h2>What we still need from you</h2>
-        <p class="muted">${waiting ? `${waiting} to go. Add each one right here, or tell Daniel where to find it.` : 'That’s everything for now. Thank you!'}</p>
+        <p class="muted">${waiting ? `${waiting} to go. Open one to add it, or to tell Daniel where to find it.` : 'That’s everything for now. Thank you!'}</p>
         ${list}`;
-      for (const [id, value] of Object.entries(typedOnCards)) { const box = el.querySelector(`#${id}`); if (box) box.value = value; }
+      el.querySelectorAll('[data-asset-give]').forEach((button) => {
+        button.onclick = () => openAssetDialog(Number(button.closest('[data-asset]').dataset.asset));
+      });
+      return;
     }
 
+    // ---- Daniel's controls ----
     const itemId = (control) => Number(control.closest('[data-asset]').dataset.asset);
     const itemPath = (control) => `${routes.assets}/${itemId(control)}`;
     const redraw = () => { delete el.dataset.key; delete el.dataset.editing; paintAssets(); };
-    const say = (id, message) => { assetSaid[id] = message; const line = el.querySelector(`[data-asset="${id}"] [data-asset-said]`); if (line) line.textContent = message; };
-
     // One place for a change to the list: send it, take the list the server answers with, and redraw.
     const change = async (path, init, onError) => {
       try {
@@ -1782,11 +1965,8 @@ export async function mountProject(o) {
       redraw();
       return true;
     };
-    const patch = (control, body, onError) => change(itemPath(control), { method: 'PATCH', body: JSON.stringify(body) }, onError);
 
-    // ---- Daniel's controls ----
-    const add = el.querySelector('#assetadd');
-    if (add) add.onclick = async () => {
+    el.querySelector('#assetadd').onclick = async () => {
       const body = { title: el.querySelector('#assettitle').value, detail: el.querySelector('#assetdetail').value, inputs: chosenInputs(el, 'assetinput') };
       const added = await change(routes.assets, { method: 'POST', body: JSON.stringify(body) }, (message) => { el.querySelector('#assetsaid').textContent = message; });
       if (added) {
@@ -1796,7 +1976,9 @@ export async function mountProject(o) {
         fresh.querySelector('#assettitle').focus();
       }
     };
-    el.querySelectorAll('[data-asset-status]').forEach((button) => { button.onclick = () => patch(button, { status: button.dataset.assetStatus }); });
+    el.querySelectorAll('[data-asset-status]').forEach((button) => {
+      button.onclick = () => change(itemPath(button), { method: 'PATCH', body: JSON.stringify({ status: button.dataset.assetStatus }) });
+    });
     el.querySelectorAll('[data-asset-remove]').forEach((button) => {
       button.onclick = () => { if (confirm('Take this off the list? They stop seeing it too.')) change(itemPath(button), { method: 'DELETE' }); };
     });
@@ -1815,74 +1997,6 @@ export async function mountProject(o) {
         }
         assetEditing = null;
         redraw();
-      };
-    });
-
-    // ---- the client's controls ----
-    el.querySelectorAll('[data-asset-upload]').forEach((input) => {
-      input.onchange = async () => {
-        const id = itemId(input);
-        const files = [...input.files];
-        let done = 0;
-        for (const file of files) {
-          say(id, `Uploading ${done + 1} of ${files.length}…`);
-          const form = new FormData();
-          form.set('file', file);
-          form.set('kind', input.dataset.assetUpload);
-          form.set('asset', String(id));
-          try {
-            await api(routes.uploads, { method: 'POST', body: form });
-            done++;
-          } catch (e) {
-            assetSaid[id] = `${file.name}: ${e.message}`;
-            await refresh();
-            return;
-          }
-        }
-        assetSaid[id] = `Uploaded ${done}. Daniel can see ${done === 1 ? 'it' : 'them'} now.`;
-        await refresh();
-      };
-    });
-    el.querySelectorAll('.asset-remove-upload').forEach((button) => {
-      button.onclick = async () => {
-        if (!confirm('Remove this file?')) return;
-        await api(routes.file(button.dataset.upload, true), { method: 'DELETE' }).catch((e) => alert(e.message));
-        await refresh();
-      };
-    });
-    el.querySelectorAll('[data-asset-link-save]').forEach((button) => {
-      button.onclick = async () => {
-        const id = itemId(button);
-        const box = el.querySelector(`#assetlink${id}`);
-        try {
-          P.assets = (await api(itemPath(button), { method: 'PATCH', body: JSON.stringify({ link: box.value }) })).assets;
-        } catch (e) {
-          say(id, e.message);
-          return;
-        }
-        // Show the link as it was saved (with https:// in front), not as it was typed.
-        box.value = P.assets.find((item) => item.id === id)?.link || '';
-        assetSaid[id] = box.value ? 'Link saved. Daniel can see it now.' : 'Link removed.';
-        redraw();
-      };
-    });
-    el.querySelectorAll('[data-asset-answer-save]').forEach((button) => {
-      button.onclick = async () => {
-        const id = itemId(button);
-        const saved = await patch(button, { answer: el.querySelector(`#assetanswer${id}`).value }, (message) => say(id, message));
-        if (saved) { assetSaid[id] = 'Saved. Daniel can see it now.'; redraw(); }
-      };
-    });
-    el.querySelectorAll('[data-asset-open]').forEach((button) => {
-      button.onclick = () => { assetNoteOpen = itemId(button); redraw(); root.querySelector(`#assetnote${assetNoteOpen}`)?.focus(); };
-    });
-    el.querySelectorAll('[data-asset-cancel]').forEach((button) => { button.onclick = () => { assetNoteOpen = null; redraw(); }; });
-    el.querySelectorAll('[data-asset-sent]').forEach((button) => {
-      button.onclick = () => {
-        const sent = button.dataset.assetSent === 'yes';
-        const note = sent ? el.querySelector(`#assetnote${assetNoteOpen}`)?.value ?? '' : '';
-        assetNoteOpen = null;
-        patch(button, { sent, note });
       };
     });
   }
