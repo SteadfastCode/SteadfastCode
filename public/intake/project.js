@@ -102,14 +102,14 @@ export async function mountProject(o) {
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
   const tabbed = () => clientTabs().length > 0;
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}:${(P.assets || []).length ? 'assets' : ''}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
   // What each tab shows. Daniel's page has everything; so does the client's planning tab before signing.
   const parts = () => {
     // Daniel's messages live in /admin/inbox (2026-11-04); his project page links there.
-    if (admin) return { status: 1, scope: 1, link: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
+    if (admin) return { status: 1, scope: 1, link: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
     if (tab === 'messages') return { messages: 1 };
-    if (gated()) return { status: 1, scope: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
-    return ({ site: { status: 1, scope: 1, request: launched() && !closed(), activity: 1 }, planning: { files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
+    if (gated()) return { status: 1, scope: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
+    return ({ site: { status: 1, scope: 1, assets: 1, request: launched() && !closed(), activity: 1 }, planning: { assets: 1, files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
   const fieldShown = (mode) => (f) => applies(f) && (mode === 'all' || (f.live && f.id !== 'notes'));
 
@@ -259,6 +259,7 @@ export async function mountProject(o) {
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
       ${show.link ? '<section class="card" id="linkcard"></section>' : ''}
+      ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
       ${show.fields ? C.sections.filter(applies).map((s) => { const fs = s.fields.filter(fieldShown(show.fields)); return fs.length ? `<section class="card"><h2>${esc(secTitle(s))}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; }).join('') : ''}
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
@@ -620,6 +621,7 @@ export async function mountProject(o) {
       if (w) { w.hidden = false; w.textContent = `${x.name || (x.who === 'daniel' ? 'Daniel' : 'Your client')} is editing`; }
     }
     if (admin) paintLink();
+    paintAssets();
     paintFiles();
     paintActivity();
     paintProgress();
@@ -1010,6 +1012,134 @@ export async function mountProject(o) {
     };
     const share = el.querySelector('#sharelink');
     if (share) share.onclick = () => navigator.share({ title: 'Your website', text: 'Here’s the page for your new website.', url }).catch(() => {});
+  }
+
+  // ---- what the project still needs from the client (2026-11-19, server/assets.js) ----
+  // Daniel keeps the list on his page. The client sees it on theirs, marks an item sent and says
+  // where it is (most of these are fonts and design files, not photos to upload), and Daniel marks
+  // it received. Either side can step an item back.
+  let assetNoteOpen = null; // the item whose "where is it?" box is open on the client's page
+
+  const ASSET_BADGE = {
+    needed: () => '<span class="badge review">Needed</span>',
+    sent: (item) => `<span class="badge">Sent ${esc(ago(item.sentAt))}</span>`,
+    received: () => '<span class="badge ready">Received</span>',
+  };
+
+  function assetHtmlForDaniel(item) {
+    const buttons = {
+      needed: '<button type="button" data-asset-status="received">Got it</button> <button type="button" data-asset-remove>Remove</button>',
+      sent: '<button type="button" data-asset-status="received">Got it</button> <button type="button" data-asset-status="needed">Still needed</button>',
+      received: '<button type="button" data-asset-status="needed">Still needed</button> <button type="button" data-asset-remove>Remove</button>',
+    }[item.status];
+    return `<li class="asset" data-asset="${item.id}">
+      <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
+      ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
+      ${item.clientNote ? `<p class="asset-note">They said: ${esc(item.clientNote)}</p>` : ''}
+      <p class="asset-actions">${buttons}</p>
+    </li>`;
+  }
+
+  function assetHtmlForClient(item) {
+    let action = '';
+    if (item.status === 'received') {
+      action = '<p class="muted">Daniel has this one. Thank you!</p>';
+    } else if (item.status === 'sent') {
+      action = `${item.clientNote ? `<p class="asset-note">You said: ${esc(item.clientNote)}</p>` : ''}
+        <p class="asset-actions"><button type="button" data-asset-sent="no">Not sent yet</button></p>`;
+    } else if (assetNoteOpen === item.id) {
+      action = `<label class="asset-where" for="assetnote${item.id}">Where can Daniel find it?</label>
+        <textarea id="assetnote${item.id}" maxlength="600" placeholder="A link, or where you sent it (“in Discord”). You can leave this empty."></textarea>
+        <p class="asset-actions"><button type="button" class="primary" data-asset-sent="yes">Mark as sent</button> <button type="button" data-asset-cancel>Cancel</button></p>`;
+    } else {
+      action = '<p class="asset-actions"><button type="button" data-asset-open>I’ve sent this</button></p>';
+    }
+    return `<li class="asset" data-asset="${item.id}">
+      <p class="asset-title"><strong>${esc(item.title)}</strong> ${ASSET_BADGE[item.status](item)}</p>
+      ${item.detail ? `<p class="muted">${esc(item.detail)}</p>` : ''}
+      ${action}
+    </li>`;
+  }
+
+  function paintAssets() {
+    const el = root.querySelector('#assets');
+    if (!el) return;
+    const items = P.assets || [];
+    // Redraw only when the list (or the open note box) changes, so typing isn't wiped by the refresh.
+    const key = JSON.stringify([items, assetNoteOpen]);
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+
+    // Whatever Daniel has typed into the add form survives a redraw (the client marking something sent).
+    const typed = { title: el.querySelector('#assettitle')?.value ?? '', detail: el.querySelector('#assetdetail')?.value ?? '' };
+    const waiting = items.filter((item) => item.status === 'needed').length;
+    const list = items.length ? `<ul class="assets">${items.map(admin ? assetHtmlForDaniel : assetHtmlForClient).join('')}</ul>` : '';
+
+    if (admin) {
+      el.innerHTML = `<h2>Assets needed</h2>
+        <p class="muted">${items.length ? `${waiting} still needed of ${items.length}. ` : ''}What this project still needs from them. They see this list on their page and mark things sent.</p>
+        ${list}
+        <div class="asset-add">
+          <label for="assettitle">Add something</label>
+          <input type="text" id="assettitle" maxlength="120" placeholder="What’s needed: Display font">
+          <textarea id="assetdetail" maxlength="600" placeholder="The format, or what it’s for (optional)"></textarea>
+          <p><button type="button" id="assetadd">Add to the list</button> <span class="muted" id="assetsaid" role="status"></span></p>
+        </div>`;
+      el.querySelector('#assettitle').value = typed.title;
+      el.querySelector('#assetdetail').value = typed.detail;
+    } else {
+      el.innerHTML = `<h2>What we still need from you</h2>
+        <p class="muted">${waiting ? `${waiting} to go. When you’ve sent one, mark it here so Daniel knows to look.` : 'That’s everything for now. Thank you!'}</p>
+        ${list}`;
+    }
+
+    // One place for every change: send it, take the list the server answers with, and redraw.
+    const change = async (path, init) => {
+      try {
+        P.assets = (await api(path, init)).assets;
+      } catch (e) {
+        const said = el.querySelector('#assetsaid');
+        if (said) said.textContent = e.message; else alert(e.message);
+        return false;
+      }
+      paintAssets();
+      return true;
+    };
+    const itemPath = (button) => `${routes.assets}/${button.closest('[data-asset]').dataset.asset}`;
+    const patch = (button, body) => change(itemPath(button), { method: 'PATCH', body: JSON.stringify(body) });
+
+    const add = el.querySelector('#assetadd');
+    if (add) add.onclick = async () => {
+      const title = el.querySelector('#assettitle');
+      const detail = el.querySelector('#assetdetail');
+      const added = await change(routes.assets, { method: 'POST', body: JSON.stringify({ title: title.value, detail: detail.value }) });
+      if (added) {
+        const fresh = root.querySelector('#assets');
+        fresh.querySelector('#assettitle').value = '';
+        fresh.querySelector('#assetdetail').value = '';
+        fresh.querySelector('#assettitle').focus();
+      }
+    };
+    el.querySelectorAll('[data-asset-status]').forEach((button) => { button.onclick = () => patch(button, { status: button.dataset.assetStatus }); });
+    el.querySelectorAll('[data-asset-remove]').forEach((button) => {
+      button.onclick = () => { if (confirm('Take this off the list? They stop seeing it too.')) change(itemPath(button), { method: 'DELETE' }); };
+    });
+    el.querySelectorAll('[data-asset-open]').forEach((button) => {
+      button.onclick = () => {
+        assetNoteOpen = Number(button.closest('[data-asset]').dataset.asset);
+        paintAssets();
+        root.querySelector(`#assetnote${assetNoteOpen}`)?.focus();
+      };
+    });
+    el.querySelectorAll('[data-asset-cancel]').forEach((button) => { button.onclick = () => { assetNoteOpen = null; paintAssets(); }; });
+    el.querySelectorAll('[data-asset-sent]').forEach((button) => {
+      button.onclick = () => {
+        const sent = button.dataset.assetSent === 'yes';
+        const note = sent ? el.querySelector(`#assetnote${assetNoteOpen}`)?.value ?? '' : '';
+        assetNoteOpen = null;
+        patch(button, { sent, note });
+      };
+    });
   }
 
   function paintFiles() {
