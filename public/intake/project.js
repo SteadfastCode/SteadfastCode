@@ -681,7 +681,7 @@ export async function mountProject(o) {
     }
     root.innerHTML = `
       <h1>Before we start</h1>
-      <section class="card">
+      <section class="card" id="contractnote">
         ${ag.reason === 'changed' ? '<p class="error">Your package changed since you signed, so here is the updated contract.</p>' : ''}
         <p class="muted">This is the contract for your website: what's included, the price, and how changes and launch work. You can read it here and start planning in the Planning tab any time; building starts once it's signed.</p>
       </section>
@@ -696,6 +696,12 @@ export async function mountProject(o) {
         <p><button type="button" class="primary" id="signbtn" disabled>Sign and continue</button> <span id="signnote" class="muted"></span></p>
       </section>`;
     root.querySelectorAll('[data-tab]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); setTab(a.dataset.tab); }));
+    // In the whole-page layout the note and the signature box both stay in view beside the
+    // contract. The box sits under the note, so the stylesheet needs to know how tall the note is.
+    const contractNote = root.querySelector('#contractnote');
+    const tellNoteHeight = () => root.style.setProperty('--contract-note-height', `${contractNote.offsetHeight}px`);
+    tellNoteHeight();
+    if (window.ResizeObserver) new ResizeObserver(tellNoteHeight).observe(contractNote);
     const name = root.querySelector('#signname'), agree = root.querySelector('#signagree'), btn = root.querySelector('#signbtn'), note = root.querySelector('#signnote');
     const ready = () => { btn.disabled = !(agree.checked && /\S+\s+\S+/.test(name.value.trim())); };
     name.addEventListener('input', ready);

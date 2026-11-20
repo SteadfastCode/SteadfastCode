@@ -114,12 +114,15 @@
     body.layout-grid footer.bar .in, body.layout-grid #progress .in { max-width: 1468px; }
 
     /* The contract tab is laid out on purpose, not filled: the contract takes two thirds, and the
-       note and the signature box sit beside it, staying in view while the contract is read. */
+       note and the signature box sit beside it. */
     body.layout-grid main:has(> .card.agreement) { columns: auto; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 14px; align-items: start; }
     body.layout-grid main:has(> .card.agreement) > :not(.card) { grid-column: 1 / -1; }
     body.layout-grid main:has(> .card.agreement) > .card { grid-column: 2; }
     body.layout-grid main:has(> .card.agreement) > .card.agreement { grid-column: 1; grid-row: 2 / span 6; }
-    body.layout-grid main:has(> .card.agreement) > #signbox, body.layout-grid main:has(> .card.agreement) > #reviewonly { position: sticky; top: 12px; }
+    /* Both stay in view while the contract scrolls: the note at the top, the box right under it
+       (the page script measures the note, since a sticky box can't know what's above it). */
+    body.layout-grid main:has(> .card.agreement) > #contractnote { position: sticky; top: 12px; }
+    body.layout-grid main:has(> .card.agreement) > #signbox, body.layout-grid main:has(> .card.agreement) > #reviewonly { position: sticky; top: calc(26px + var(--contract-note-height, 0px)); }
   }
   @media (min-width: 1500px) {
     body.layout-grid main { columns: 3; }
