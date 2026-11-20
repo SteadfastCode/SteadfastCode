@@ -460,6 +460,61 @@ export async function mountProject(o) {
     if (open) { msgLoaded = false; paintMessages(); setTimeout(() => document.getElementById('msgbody')?.focus(), 50); }
     placeComposer();
   }
+  // The drawer's width is theirs to set (2026-11-20): drag anywhere on its left edge, or focus the
+  // edge and use the arrow keys. It's kept between 320 px and 60% of the window, and remembered in
+  // this browser. The width lives in one CSS variable, so the page behind makes the same room.
+  const DRAWER_MIN = 320;
+  const drawerMax = () => Math.max(DRAWER_MIN, Math.round(innerWidth * 0.6));
+  function setDrawerWidth(width, { remember = true } = {}) {
+    const clamped = Math.min(drawerMax(), Math.max(DRAWER_MIN, Math.round(width)));
+    document.documentElement.style.setProperty('--drawer-width', `${clamped}px`);
+    document.querySelector('.drawer-resize')?.setAttribute('aria-valuenow', String(clamped));
+    if (remember) { try { localStorage.setItem('drawerWidth', String(clamped)); } catch { /* storage blocked: it lasts until the page is left */ } }
+    return clamped;
+  }
+  function wireDrawerResize(drawerEl) {
+    const handle = document.createElement('div');
+    handle.className = 'drawer-resize';
+    handle.tabIndex = 0;
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-orientation', 'vertical');
+    handle.setAttribute('aria-label', 'Resize messages');
+    handle.setAttribute('aria-valuemin', String(DRAWER_MIN));
+    handle.setAttribute('aria-valuemax', String(drawerMax()));
+    drawerEl.prepend(handle);
+
+    let saved = NaN;
+    try { saved = Number(localStorage.getItem('drawerWidth')); } catch { /* no saved width */ }
+    setDrawerWidth(saved >= DRAWER_MIN ? saved : 400, { remember: false });
+
+    // The drawer is pinned to the right, so its width is the distance from the pointer to that edge.
+    handle.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      document.body.classList.add('drawer-resizing');
+      const follow = (move) => setDrawerWidth(innerWidth - move.clientX, { remember: false });
+      const finish = (end) => {
+        handle.removeEventListener('pointermove', follow);
+        document.body.classList.remove('drawer-resizing');
+        setDrawerWidth(innerWidth - end.clientX);
+      };
+      handle.addEventListener('pointermove', follow);
+      handle.addEventListener('pointerup', finish, { once: true });
+      handle.addEventListener('pointercancel', finish, { once: true });
+    });
+    handle.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      const now = drawerEl.getBoundingClientRect().width;
+      setDrawerWidth(now + (event.key === 'ArrowLeft' ? 24 : -24));
+    });
+    // A smaller window can't keep a drawer wider than its share of it.
+    addEventListener('resize', () => {
+      handle.setAttribute('aria-valuemax', String(drawerMax()));
+      setDrawerWidth(drawerEl.getBoundingClientRect().width, { remember: false });
+    });
+  }
+
   function ensureDrawer() {
     if (admin) return;
     if (!wide()) {
@@ -480,6 +535,7 @@ export async function mountProject(o) {
       drawer.querySelector('#drawerclose').addEventListener('click', () => setDrawer(false));
       addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawerOpen()) setDrawer(false); });
       wireMessages(drawer);
+      wireDrawerResize(drawer);
       let was = false; try { was = sessionStorage.getItem('drawer') === '1'; } catch {}
       setDrawer(was);
     }
