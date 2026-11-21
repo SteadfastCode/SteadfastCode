@@ -4,7 +4,7 @@
     "SCS-004": {
       "order": 1,
       "title": "Readable scripts: contact.astro, Base.astro, SpeedProof.astro",
-      "status": "claimed",
+      "status": "done",
       "attempts": 1,
       "cluster": null,
       "branch": "routine/item/SCS-004",
