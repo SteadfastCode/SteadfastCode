@@ -1,8 +1,9 @@
 ---
 // The pitch, measured on the visitor's own device: how many bytes this page took and how long it
-// took to load, next to the median website. The script is first-party, inline and a few lines; it
-// reads the browser's own timing data and writes four numbers. Without JavaScript the block still
-// reads true: the fallback figures are the ones test/perf.test.js enforces on the built site.
+// took to load, next to the median website. The script is first-party and a few lines, bundled into
+// the page by Astro; it reads the browser's own timing data and writes four numbers. Without
+// JavaScript the block still reads true: the figures in the markup are the ones test/perf.test.js
+// enforces on the built site.
 import { benchmarks } from '../data/site';
 const median = benchmarks.medianPageKb;
 const medianMb = (median / 1024).toFixed(1);
@@ -17,7 +18,7 @@ const medianMb = (median / 1024).toFixed(1);
     <span class="l">over the wire for this whole page, fonts and styles included.</span>
   </div>
   <div class="stat" data-reveal style="--i:2">
-    <span class="n" data-median>{medianMb} MB</span>
+    <span class="n" data-median data-median-kb={median}>{medianMb} MB</span>
     <span class="l">the median website, per the <a href={benchmarks.sourceUrl} rel="noopener">{benchmarks.source}</a>. Most of it JavaScript and oversized images.</span>
   </div>
 </div>
@@ -28,34 +29,59 @@ const medianMb = (median / 1024).toFixed(1);
   <div class="bar us"><span>This page</span><span class="track" role="progressbar" aria-label="This page's size as a share of the median website" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.ceil((benchmarks.budgetKb / median) * 100)} data-bar-us><span class="fill" style={`--w:${Math.ceil((benchmarks.budgetKb / median) * 100)}%`}></span></span><span class="v"><span data-share>&lt;{Math.ceil((benchmarks.budgetKb / median) * 100)}%</span> of the median · <span data-kb-small>&lt;{benchmarks.budgetKb} KB</span></span></div>
 </div>
 <p class="proof-note">That gap is most of what I am selling. A page that is loaded the moment a visitor's thumb is lifted is a delightful experience. A page, or a whole site, that makes them wait can frustrate potential customers. Google ranks on it, too.</p>
-<script is:inline>
-  // Runs once the page has fully loaded, so the numbers are the whole page, not a snapshot mid-way.
-  addEventListener('load', () => setTimeout(() => {
+<script>
+  // Bundled, not inline, so the production build minifies it. Nothing here has to run before paint:
+  // the figures in the markup are already true, and these replace them with the visitor's own.
+  const find = (selector: string) => document.querySelector<HTMLElement>(selector);
+
+  // Waits for load, so the numbers cover the whole page rather than a snapshot part way through,
+  // and then for a turn of the event loop, so loadEventEnd is filled in.
+  addEventListener('load', () => setTimeout(showThisVisit, 0));
+
+  function showThisVisit() {
     try {
-      const nav = performance.getEntriesByType('navigation')[0];
-      if (!nav) return;
-      const res = performance.getEntriesByType('resource');
-      const bytes = (nav.transferSize || 0) + res.reduce((a, r) => a + (r.transferSize || 0), 0);
-      const ms = Math.round(nav.loadEventEnd || nav.domContentLoadedEventEnd || performance.now());
-      const kb = Math.round(bytes / 1024);
-      const $ = (s) => document.querySelector(s);
-      if (ms > 0) {
-        $('[data-ms]').textContent = ms < 1000 ? ms + ' ms' : (ms / 1000).toFixed(2) + ' s';
-      }
+      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      // An old browser with no Navigation Timing: leave the markup's figures alone.
+      if (!navigation) return;
+
+      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      const pageBytes = navigation.transferSize || 0;
+      const assetBytes = resources.reduce((total, asset) => total + (asset.transferSize || 0), 0);
+      const kb = Math.round((pageBytes + assetBytes) / 1024);
+      const ms = Math.round(navigation.loadEventEnd || navigation.domContentLoadedEventEnd || performance.now());
+
+      const time = find('[data-ms]');
+      if (ms > 0 && time) time.textContent = ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
+
       // A cached visit transfers almost nothing; say so instead of claiming a 2 KB website.
-      if (kb >= 5) {
-        $('[data-kb]').textContent = kb + ' KB';
-        $('[data-kb-small]').textContent = kb + ' KB';
-        const median = Number($('[data-median]').textContent) * 1024 || 2311;
-        const share = Math.max(1, Math.min(100, Math.round((kb / median) * 100)));
-        $('[data-share]').textContent = share + '%';
-        const bar = $('[data-bar-us]');
-        bar.setAttribute('aria-valuenow', String(share));
-        bar.firstElementChild.style.setProperty('--w', share + '%');
-      } else if (nav.transferSize === 0) {
-        $('[data-kb]').textContent = 'cached';
-        $('[data-ms-label]').textContent = 'to load this page from your browser’s cache. Measured just now.';
+      if (kb < 5) {
+        if (navigation.transferSize !== 0) return;
+        const size = find('[data-kb]');
+        const label = find('[data-ms-label]');
+        if (size) size.textContent = 'cached';
+        if (label) label.textContent = 'to load this page from your browser’s cache. Measured just now.';
+        return;
       }
-    } catch (e) { /* the fallback text is already true */ }
-  }, 0));
+
+      for (const size of [find('[data-kb]'), find('[data-kb-small]')]) {
+        if (size) size.textContent = `${kb} KB`;
+      }
+
+      // This page as a share of the median website, the same sum the markup already shows. The
+      // median comes from src/data/site.ts by way of the data attribute, so there is no second
+      // copy of the figure here; without it the markup's own share stands.
+      const median = Number(find('[data-median]')?.dataset.medianKb);
+      if (!median) return;
+      const share = Math.max(1, Math.min(100, Math.round((kb / median) * 100)));
+      const percent = find('[data-share]');
+      if (percent) percent.textContent = `${share}%`;
+      const bar = find('[data-bar-us]');
+      if (bar) {
+        bar.setAttribute('aria-valuenow', String(share));
+        (bar.firstElementChild as HTMLElement | null)?.style.setProperty('--w', `${share}%`);
+      }
+    } catch (error) {
+      // The figures already in the markup are true, so a browser that surprises us shows those.
+    }
+  }
 </script>

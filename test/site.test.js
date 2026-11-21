@@ -125,7 +125,9 @@ test('every page counts visits only through its own /api/hit, and the privacy pa
     // The one thing allowed in browser storage is the light/dark choice under the key 'theme'
     // (2026-11-02, and the privacy page says so). Nothing else: no cookies, no session storage.
     assert.doesNotMatch(html, /document\.cookie|sessionStorage/, `${rel(p)} touches browser storage`);
-    for (const m of html.matchAll(/localStorage\.(\w+)\(([^)]*)\)/g)) assert.match(m[2], /^'theme'/, `${rel(p)} uses localStorage for something other than the theme: ${m[0]}`);
+    // The quote is whichever one the minifier picked: the theme switch is a bundled script now
+    // (2026-11-20), so its 'theme' comes out of the build as `theme`. The key is what matters.
+    for (const m of html.matchAll(/localStorage\.(\w+)\(([^)]*)\)/g)) assert.match(m[2], /^['"`]theme['"`]/, `${rel(p)} uses localStorage for something other than the theme: ${m[0]}`);
   }
   const privacy = read(path.join(dist, 'privacy.html'));
   assert.match(privacy, /Steadfast Analytics/);

@@ -36,7 +36,15 @@ const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:norma
     <meta name="theme-color" content="#f6f8fb" media="(prefers-color-scheme: light)" />
     <meta name="color-scheme" content="dark light" />
     {/* A pinned theme (the footer switch) applies before first paint, so there's no flash. */}
-    <script is:inline>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+    {/* Inline (not bundled) because it has to run right here, before the page is drawn. */}
+    <script is:inline>
+      try {
+        var savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') document.documentElement.dataset.theme = savedTheme;
+      } catch (e) {
+        // Storage blocked (private window, strict settings): the device's own setting applies.
+      }
+    </script>
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -55,19 +63,32 @@ const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:norma
   <body>
     <!-- First-party, inline, a few lines: marks the page as scripted so [data-reveal] elements can
          start hidden, then shows each one as it scrolls into view. Not a tracker and not a library;
-         without it the page is the same page with everything visible. -->
+         without it the page is the same page with everything visible.
+         Inline (not bundled) because the html.js class has to be set before the page is drawn: the
+         CSS only hides a [data-reveal] element while that class is there, so a bundled script,
+         which runs after the HTML is parsed, would let the page flash in and then hide itself. -->
     <script is:inline>
       document.documentElement.classList.add('js');
+
       addEventListener('DOMContentLoaded', () => {
-        const els = document.querySelectorAll('[data-reveal]');
-        if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          els.forEach((el) => el.classList.add('in'));
+        const toReveal = document.querySelectorAll('[data-reveal]');
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // An old browser, or a visitor who asked for less motion: show everything at once.
+        if (!('IntersectionObserver' in window) || reducedMotion) {
+          toReveal.forEach((element) => element.classList.add('in'));
           return;
         }
-        const io = new IntersectionObserver((entries) => {
-          for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        // 'in' is the class the CSS animates. The -6% bottom margin holds the reveal until the
+        // element is a little way into the window, so it animates where the eye already is.
+        const watcher = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.add('in');
+            // Revealed once and left alone; nothing re-hides as the visitor scrolls back up.
+            watcher.unobserve(entry.target);
+          }
         }, { rootMargin: '0px 0px -6% 0px' });
-        els.forEach((el) => el.observe ? null : io.observe(el));
+        toReveal.forEach((element) => watcher.observe(element));
       });
     </script>
     <a class="skip" href="#main">Skip to content</a>
@@ -120,12 +141,44 @@ const fontFace = `@font-face{font-family:'Roboto Slab Variable';font-style:norma
         </div>
         <p class="copyright-line">{business.verseCopyright}</p>
         <p><button type="button" class="theme-switch" id="theme-switch" aria-live="polite">Theme: Auto</button></p>
-        <script is:inline>(function(){var b=document.getElementById('theme-switch'),o=['auto','light','dark'],n={auto:'Auto',light:'Light',dark:'Dark'};function cur(){return document.documentElement.dataset.theme||'auto'}function show(){b.textContent='Theme: '+n[cur()]}show();b.addEventListener('click',function(){var t=o[(o.indexOf(cur())+1)%3];if(t==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;try{t==='auto'?localStorage.removeItem('theme'):localStorage.setItem('theme',t)}catch(e){}show()})})();</script>
+        <script>
+          // The theme switch: Auto (whatever the device asks for) → Light → Dark → Auto. A pinned
+          // choice is saved in this browser only and applied before paint by the script in <head>,
+          // which is why that one has to stay inline and this one does not.
+          const root = document.documentElement;
+          const button = document.getElementById('theme-switch');
+          const order = ['auto', 'light', 'dark'] as const;
+          type Theme = (typeof order)[number];
+          const labels: Record<Theme, string> = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+
+          const current = (): Theme => (root.dataset.theme as Theme | undefined) ?? 'auto';
+          const showCurrent = () => { if (button) button.textContent = `Theme: ${labels[current()]}`; };
+
+          function choose(theme: Theme) {
+            // Auto means no pin at all, so the OS setting shows through again.
+            if (theme === 'auto') delete root.dataset.theme;
+            else root.dataset.theme = theme;
+            try {
+              if (theme === 'auto') localStorage.removeItem('theme');
+              else localStorage.setItem('theme', theme);
+            } catch (e) {
+              // Storage blocked: the choice still holds until the visitor leaves the page.
+            }
+            showCurrent();
+          }
+
+          showCurrent();
+          button?.addEventListener('click', () => choose(order[(order.indexOf(current()) + 1) % order.length]));
+        </script>
       </div>
     </footer>
     <!-- Steadfast Analytics: counts this visit without cookies. Sends the page, the linking site's
          name, campaign tags and phone/tablet/desktop to this site's own /api/hit; taps on phone, text
-         and email links and form sends are counted the same way. Nothing goes to anyone else. -->
+         and email links and form sends are counted the same way. Nothing goes to anyone else.
+         The one line below is a verbatim copy of ~/repos/steadfast-analytics/snippet/beacon.html,
+         which is the source of truth for every site that uses the counter. It is the one script here
+         that is not written out readably, on purpose: a change belongs in that repo and is copied
+         down, so that the two never quietly drift apart. -->
     <script is:inline>(()=>{if(navigator.webdriver||!navigator.sendBeacon)return;const q=new URLSearchParams(location.search),w=innerWidth;let r='';try{r=document.referrer&&new URL(document.referrer).hostname}catch{}const s=(k,n)=>{try{navigator.sendBeacon('/api/hit',JSON.stringify({k,n,p:location.pathname,r,s:q.get('utm_source'),m:q.get('utm_medium'),c:q.get('utm_campaign'),d:w<768?'m':w<1024?'t':'d'}))}catch{}};s('view');addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="tel:"],a[href^="sms:"],a[href^="mailto:"]');a&&s('event',{'tel:':'phone','sms:':'text'}[a.protocol]||'email')},true);addEventListener('submit',()=>s('event','form'),true)})()</script>
   </body>
 </html>
