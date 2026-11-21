@@ -1,0 +1,157 @@
+{
+  "item": "SCS-003",
+  "repo": "SteadfastCode",
+  "mergeSha": "2b5df87c44030447a1a1416351ae711e38f4a6eb",
+  "completedAtUtc": "2026-11-19T18:52:20.077Z",
+  "completeRunId": "2026-11-19T18:06:47.279Z",
+  "reviewRunId": "2026-11-21T08:01:15.507Z",
+  "reviewedAtUtc": "2026-11-21T08:08:34.147Z",
+  "model": "qwen2.5-coder:14b",
+  "promptVersion": "v6",
+  "diffBytes": 50373,
+  "contextFiles": 4,
+  "excluded": [],
+  "chunks": [
+    {
+      "files": [
+        "src/pages/admin.astro"
+      ],
+      "part": {
+        "index": 1,
+        "total": 2,
+        "oversized": false
+      },
+      "bytes": 14123,
+      "contextBytes": 0,
+      "promptTokens": 4725,
+      "completionTokens": 97,
+      "latencyMs": 18325,
+      "findings": 0,
+      "needs": 2,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin.astro"
+      ],
+      "part": {
+        "index": 2,
+        "total": 2,
+        "oversized": false
+      },
+      "bytes": 1012,
+      "contextBytes": 4094,
+      "promptTokens": 2105,
+      "completionTokens": 107,
+      "latencyMs": 11118,
+      "findings": 0,
+      "needs": 2,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/inbox.astro"
+      ],
+      "part": {
+        "index": 1,
+        "total": 2,
+        "oversized": false
+      },
+      "bytes": 14102,
+      "contextBytes": 0,
+      "promptTokens": 4655,
+      "completionTokens": 176,
+      "latencyMs": 20684,
+      "findings": 0,
+      "needs": 3,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/inbox.astro"
+      ],
+      "part": {
+        "index": 2,
+        "total": 2,
+        "oversized": false
+      },
+      "bytes": 8949,
+      "contextBytes": 0,
+      "promptTokens": 3188,
+      "completionTokens": 240,
+      "latencyMs": 20704,
+      "findings": 0,
+      "needs": 5,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/client.astro",
+        "src/scripts/intake-form.ts"
+      ],
+      "part": null,
+      "bytes": 12595,
+      "contextBytes": 0,
+      "promptTokens": 4140,
+      "completionTokens": 139,
+      "latencyMs": 18864,
+      "findings": 0,
+      "needs": 2,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    }
+  ],
+  "findings": [],
+  "triage": {
+    "auth": {
+      "touched": true,
+      "evidence": "src/pages/client.astro:104"
+    },
+    "secrets": {
+      "touched": false,
+      "evidence": null
+    },
+    "money": {
+      "touched": true,
+      "evidence": "src/pages/admin.astro:120"
+    },
+    "destructive": {
+      "touched": false,
+      "evidence": null
+    },
+    "externalApi": {
+      "touched": true,
+      "evidence": "src/pages/admin.astro:97"
+    },
+    "release": {
+      "touched": false,
+      "evidence": null
+    }
+  },
+  "summary": "The diff introduces readable and commented code for the admin.astro file, but it relies on symbols from an external script that are not defined in the provided diff. · The diff introduces new functions and variables but does not provide the implementation details for `loadProjectForm` and `form`. These symbols are used in the code, so their definitions need to be reviewed. · The diff introduces a more readable and commented version of the inline script in `src/pages/admin/inbox.astro`. The changes include refactoring the code into smaller functions, adding type definitions, and improving variable naming for better readability. However, some symbols like `route`, `show`, and `loadThread` are used but not defined within the provided diff. These need to be checked elsewhere in the repository. · The diff rewrites the inline scripts in src/pages/admin/inbox.astro into readable, commented code. The changes include adding event listeners for back button, message box input, keydown, pointerdown, and click events. Functions like `send`, `sendsOnEnter`, `showThread`, and `loadThread` are defined to handle the respective functionalities. The diff also includes a function to fit the visible area on iPhones and an interval to load conversations and threads periodically. · The diff introduces a new file `src/scripts/intake-form.ts` and modifies `src/pages/client.astro`. The changes aim to make the inline scripts more readable by moving shared logic into a separate module. However, without seeing the implementation of `mountProject` and `wireProgress`, it's not possible to verify if the behavior remains unchanged.",
+  "errors": [],
+  "usage": {
+    "promptTokens": 36971,
+    "completionTokens": 1462
+  },
+  "latencyMs": 175460
+}

@@ -1,0 +1,105 @@
+{
+  "item": "SCS-004",
+  "repo": "SteadfastCode",
+  "mergeSha": "73b8e472566c8bf637a1b556b8e206e2a9ed2965",
+  "completedAtUtc": "2026-11-21T00:18:53.620Z",
+  "completeRunId": "2026-11-20T23:59:43.125Z",
+  "reviewRunId": "2026-11-21T08:01:15.507Z",
+  "reviewedAtUtc": "2026-11-21T08:10:17.368Z",
+  "model": "qwen2.5-coder:14b",
+  "promptVersion": "v6",
+  "diffBytes": 21916,
+  "contextFiles": 4,
+  "excluded": [],
+  "chunks": [
+    {
+      "files": [
+        "src/components/SpeedProof.astro"
+      ],
+      "part": null,
+      "bytes": 6827,
+      "contextBytes": 5448,
+      "promptTokens": 4108,
+      "completionTokens": 82,
+      "latencyMs": 16090,
+      "findings": 0,
+      "needs": 2,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/layouts/Base.astro",
+        "src/pages/contact.astro"
+      ],
+      "part": null,
+      "bytes": 13892,
+      "contextBytes": 0,
+      "promptTokens": 4167,
+      "completionTokens": 78,
+      "latencyMs": 16018,
+      "findings": 0,
+      "needs": 2,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "test/site.test.js"
+      ],
+      "part": null,
+      "bytes": 1197,
+      "contextBytes": 5360,
+      "promptTokens": 2699,
+      "completionTokens": 301,
+      "latencyMs": 22116,
+      "findings": 0,
+      "needs": 11,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    }
+  ],
+  "findings": [],
+  "triage": {
+    "auth": {
+      "touched": false,
+      "evidence": null
+    },
+    "secrets": {
+      "touched": false,
+      "evidence": null
+    },
+    "money": {
+      "touched": false,
+      "evidence": null
+    },
+    "destructive": {
+      "touched": false,
+      "evidence": null
+    },
+    "externalApi": {
+      "touched": false,
+      "evidence": null
+    },
+    "release": {
+      "touched": false,
+      "evidence": null
+    }
+  },
+  "summary": "No real defects found in the provided diff. · No real defects found in the provided diff. · The diff updates the test to account for changes in how the theme is stored, but it does not provide enough context to determine if there are any real defects. Additional information about the symbols used in the test is needed.",
+  "errors": [],
+  "usage": {
+    "promptTokens": 21555,
+    "completionTokens": 839
+  },
+  "latencyMs": 103130
+}

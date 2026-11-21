@@ -1,0 +1,182 @@
+{
+  "item": "SCS-002",
+  "repo": "SteadfastCode",
+  "mergeSha": "daca659acf2e941d625a218e10a5e61ac41ad21d",
+  "completedAtUtc": "2026-11-19T18:25:09.084Z",
+  "completeRunId": "2026-11-19T18:06:47.279Z",
+  "reviewRunId": "2026-11-21T08:01:15.507Z",
+  "reviewedAtUtc": "2026-11-21T08:05:38.548Z",
+  "model": "qwen2.5-coder:14b",
+  "promptVersion": "v6",
+  "diffBytes": 58915,
+  "contextFiles": 2,
+  "excluded": [],
+  "chunks": [
+    {
+      "files": [
+        "src/pages/admin/care.astro"
+      ],
+      "part": {
+        "index": 1,
+        "total": 3,
+        "oversized": false
+      },
+      "bytes": 14261,
+      "contextBytes": 0,
+      "promptTokens": 4910,
+      "completionTokens": 158,
+      "latencyMs": 40812,
+      "findings": 0,
+      "needs": 2,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/care.astro"
+      ],
+      "part": {
+        "index": 2,
+        "total": 3,
+        "oversized": false
+      },
+      "bytes": 14271,
+      "contextBytes": 0,
+      "promptTokens": 4845,
+      "completionTokens": 252,
+      "latencyMs": 25276,
+      "findings": 0,
+      "needs": 6,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/care.astro"
+      ],
+      "part": {
+        "index": 3,
+        "total": 3,
+        "oversized": false
+      },
+      "bytes": 2402,
+      "contextBytes": 5550,
+      "promptTokens": 2840,
+      "completionTokens": 175,
+      "latencyMs": 15663,
+      "findings": 0,
+      "needs": 4,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/usage.astro"
+      ],
+      "part": {
+        "index": 1,
+        "total": 3,
+        "oversized": false
+      },
+      "bytes": 14198,
+      "contextBytes": 0,
+      "promptTokens": 5119,
+      "completionTokens": 120,
+      "latencyMs": 18686,
+      "findings": 0,
+      "needs": 1,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/usage.astro"
+      ],
+      "part": {
+        "index": 2,
+        "total": 3,
+        "oversized": false
+      },
+      "bytes": 14272,
+      "contextBytes": 0,
+      "promptTokens": 4667,
+      "completionTokens": 375,
+      "latencyMs": 32302,
+      "findings": 0,
+      "needs": 11,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    },
+    {
+      "files": [
+        "src/pages/admin/usage.astro"
+      ],
+      "part": {
+        "index": 3,
+        "total": 3,
+        "oversized": false
+      },
+      "bytes": 364,
+      "contextBytes": 3325,
+      "promptTokens": 1783,
+      "completionTokens": 335,
+      "latencyMs": 21136,
+      "findings": 0,
+      "needs": 11,
+      "critiqued": 0,
+      "dropped": 0,
+      "triaged": true,
+      "retry": false,
+      "error": null
+    }
+  ],
+  "findings": [],
+  "triage": {
+    "auth": {
+      "touched": false,
+      "evidence": null
+    },
+    "secrets": {
+      "touched": false,
+      "evidence": null
+    },
+    "money": {
+      "touched": true,
+      "evidence": "src/pages/admin/care.astro:160"
+    },
+    "destructive": {
+      "touched": false,
+      "evidence": null
+    },
+    "externalApi": {
+      "touched": true,
+      "evidence": "src/pages/admin/care.astro:234"
+    },
+    "release": {
+      "touched": false,
+      "evidence": null
+    }
+  },
+  "summary": "The diff introduces a more readable and commented version of the inline script in `src/pages/admin/care.astro`. The changes include renaming functions, adding type definitions, and breaking down complex logic into smaller, more manageable functions. However, there are some symbols (`paintClient` and `setNote`) that are used but not defined within the provided diff. These need to be reviewed to ensure they exist elsewhere in the file or repository. · The diff introduces several new functions to improve readability and maintainability of the script in `src/pages/admin/care.astro`. However, some symbols used in the diff are not defined within the provided context, such as `wireClientControls`, `save`, `today`, `day`, `escapeHtml`, and `statusLabel`. These symbols need to be reviewed to ensure they exist elsewhere in the file or repository. · The diff introduces new functions and event listeners for handling various controls in the admin/care page. The behavior of these controls is not clear without understanding how `saveCare`, `today`, `shown`, and `config.checklist` are defined and used elsewhere in the code. · The diff shows a significant rewrite of the inline script in `src/pages/admin/usage.astro` to make it more readable and maintainable. The code is now organized into functions with clear names and comments explaining their purpose. However, the function `priceBuilds` is not fully implemented in the provided diff, so further review is needed to ensure its correctness. · The diff introduces a new script in `src/pages/admin/usage.astro` that rewrites the inline scripts into readable, commented code. The script includes functions for calculating and displaying various statistics about builds, such as cost, time, and share. It also includes event listeners for handling user interactions, such as saving the plan price and showing tooltips on chart bars. · The diff rewrites the inline scripts in src/pages/admin/usage.astro into readable, commented code. The behavior of the page should remain unchanged.",
+  "errors": [],
+  "usage": {
+    "promptTokens": 47542,
+    "completionTokens": 2291
+  },
+  "latencyMs": 260966
+}
