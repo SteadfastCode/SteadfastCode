@@ -1,0 +1,72 @@
+{
+  "item": "SCS-004",
+  "repo": "SteadfastCode",
+  "mergeSha": "73b8e472566c8bf637a1b556b8e206e2a9ed2965",
+  "localPromptVersion": "v6",
+  "localModel": "qwen2.5-coder:14b",
+  "grader": "claude-opus-5",
+  "effort": "high",
+  "gradePromptVersion": "g1",
+  "gradeRunId": "2026-11-21T08:36:42.454Z",
+  "gradedAtUtc": "2026-11-21T08:40:51.036Z",
+  "independent": [
+    {
+      "file": "src/pages/contact.astro",
+      "line": 73,
+      "severity": "low",
+      "summary": "The new comment on the `form.dataset.native` guard says it is \"Set below, when the ladder has run out\", but nothing in the repo ever sets `data-native` (grep over src/, functions/, server/, test/ finds only this read). The guard is dead code and the comment states something untrue about the ladder, so a future reader will assume a native-post fallback exists that does not."
+    }
+  ],
+  "grades": [],
+  "triageGrades": [
+    {
+      "key": "auth",
+      "correct": true,
+      "reason": "The diff only rewrites client-side inline scripts and one test regex; no authentication, session or access-control code is involved."
+    },
+    {
+      "key": "secrets",
+      "correct": true,
+      "reason": "No credentials, tokens or env bindings appear or change; the only stored value is the light/dark theme key."
+    },
+    {
+      "key": "money",
+      "correct": true,
+      "reason": "No price or `money()` usage is touched — the SpeedProof numbers are kilobytes and milliseconds, and the median still comes from `benchmarks.medianPageKb` (2311)."
+    },
+    {
+      "key": "destructive",
+      "correct": true,
+      "reason": "No migrations, deletions or data-destroying operations; `localStorage.removeItem('theme')` is pre-existing theme behavior, unchanged."
+    },
+    {
+      "key": "externalApi",
+      "correct": true,
+      "reason": "The only network call is the pre-existing same-origin `fetch('/api/contact')`, whose status ladder (ok/redirected → sent=1, non-404/405 → sent=0, 404/405 → mailto) is preserved exactly; no third-party API is involved."
+    },
+    {
+      "key": "release",
+      "correct": true,
+      "reason": "No CI, deploy config, migration or go-live file changes; `astro.config.mjs` and `public/_headers` are untouched."
+    }
+  ],
+  "missed": [
+    1
+  ],
+  "summary": "Reporting no defects was close to right — the rewrite is behavior-preserving (the cached branch, the 404/405 ladder and the 2311 KB median all come out identical, and the built pages still inline the now-bundled modules so the inline-script and no-external-bundle budgets hold) — but the review was shallow: it offered no evidence it checked equivalence or the built output, and it missed the newly added comment that misdescribes the dead `data-native` guard.",
+  "counts": {
+    "findings": 0,
+    "confirmed": 0,
+    "falsePositive": 0,
+    "duplicate": 0,
+    "unverifiable": 0,
+    "missed": 1,
+    "independent": 1,
+    "triageChecked": 6,
+    "triageCorrect": 6
+  },
+  "costUsd": 1.665272,
+  "numTurns": 23,
+  "durationMs": 247938,
+  "sessionId": "2caa7179-8f0d-4975-b566-b45555c3cd37"
+}

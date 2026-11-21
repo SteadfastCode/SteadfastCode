@@ -1,0 +1,63 @@
+{
+  "item": "SCS-003",
+  "repo": "SteadfastCode",
+  "mergeSha": "2b5df87c44030447a1a1416351ae711e38f4a6eb",
+  "localPromptVersion": "v6",
+  "localModel": "qwen2.5-coder:14b",
+  "grader": "claude-opus-5",
+  "effort": "high",
+  "gradePromptVersion": "g1",
+  "gradeRunId": "2026-11-21T08:36:42.454Z",
+  "gradedAtUtc": "2026-11-21T08:43:27.878Z",
+  "independent": [],
+  "grades": [],
+  "triageGrades": [
+    {
+      "key": "auth",
+      "correct": true,
+      "reason": "client.astro's rewritten script is exactly the link-token handling — the token regex, sessionStorage persistence and the `authorization: Bearer` header — so auth code is touched, even if the cited line number lands on a route string."
+    },
+    {
+      "key": "secrets",
+      "correct": true,
+      "reason": "No credentials, keys or env values are introduced or moved; the client link token comes from the URL fragment at runtime, not from stored secret material."
+    },
+    {
+      "key": "money",
+      "correct": true,
+      "reason": "admin.astro's `money()` formatter and the tier price/pages rendering were rewritten, and intake-form.ts types `price`, `editorPrice` and `discounts`, so price-displaying code is touched."
+    },
+    {
+      "key": "destructive",
+      "correct": true,
+      "reason": "Nothing in the change deletes, overwrites or migrates data; the only DELETE-ish surface is a type comment in intake-form.ts, not a call."
+    },
+    {
+      "key": "externalApi",
+      "correct": true,
+      "reason": "Every `fetch` call site plus the runtime `import(config.script)` loader was rewritten, so the network/API-call layer is touched — first-party endpoints, but touched."
+    },
+    {
+      "key": "release",
+      "correct": true,
+      "reason": "No workflow, migration, deploy config, headers file or version change; only three page scripts and one new src module."
+    }
+  ],
+  "missed": [],
+  "summary": "The local model reported no defects and I found none either, so its empty finding list was right, and all six triage answers correctly classify what this refactor touches.",
+  "counts": {
+    "findings": 0,
+    "confirmed": 0,
+    "falsePositive": 0,
+    "duplicate": 0,
+    "unverifiable": 0,
+    "missed": 0,
+    "independent": 0,
+    "triageChecked": 6,
+    "triageCorrect": 6
+  },
+  "costUsd": 1.1241595,
+  "numTurns": 9,
+  "durationMs": 156814,
+  "sessionId": "c9ed14aa-bf9b-4c3d-abcd-92dbc012688a"
+}

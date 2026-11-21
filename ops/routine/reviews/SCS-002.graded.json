@@ -1,0 +1,63 @@
+{
+  "item": "SCS-002",
+  "repo": "SteadfastCode",
+  "mergeSha": "daca659acf2e941d625a218e10a5e61ac41ad21d",
+  "localPromptVersion": "v6",
+  "localModel": "qwen2.5-coder:14b",
+  "grader": "claude-opus-5",
+  "effort": "high",
+  "gradePromptVersion": "g1",
+  "gradeRunId": "2026-11-21T08:36:42.454Z",
+  "gradedAtUtc": "2026-11-21T08:46:28.501Z",
+  "independent": [],
+  "grades": [],
+  "triageGrades": [
+    {
+      "key": "auth",
+      "correct": true,
+      "reason": "The rewrite is a pure client-side refactor of two admin pages; it adds or changes no auth logic and preserves the existing `credentials: 'same-origin'` on the usage fetch."
+    },
+    {
+      "key": "secrets",
+      "correct": true,
+      "reason": "The only secret-adjacent text is the pre-existing copy naming STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET as Pages secrets, carried over verbatim; no secret value is read, stored, or logged."
+    },
+    {
+      "key": "money",
+      "correct": true,
+      "reason": "Correct — the diff rewrites money()/formatUsd/formatPercent and the whole per-build cost calibration arithmetic, and care.astro:157-160 is indeed money()."
+    },
+    {
+      "key": "destructive",
+      "correct": true,
+      "reason": "Nothing destructive is added or altered: the `reset` control still only starts a new draft plan behind the same confirm(), and keeps the old signature and Stripe subscription."
+    },
+    {
+      "key": "externalApi",
+      "correct": true,
+      "reason": "Correct that external calls are touched (both callApi wrappers to /api/admin and the Stripe dashboard link were rewritten), though the cited line 234 is rowHtml rather than a call site."
+    },
+    {
+      "key": "release",
+      "correct": true,
+      "reason": "No migrations, workflows, bindings, env, or deploy config in the diff — only two page scripts."
+    }
+  ],
+  "missed": [],
+  "summary": "The local model reported no findings and I independently found none either — the rewrite preserves IDs, events, text, and fetch shapes, so reporting clean was the right call, though with zero findings and partly mis-cited triage evidence the review demonstrates little verification depth.",
+  "counts": {
+    "findings": 0,
+    "confirmed": 0,
+    "falsePositive": 0,
+    "duplicate": 0,
+    "unverifiable": 0,
+    "missed": 0,
+    "independent": 0,
+    "triageChecked": 6,
+    "triageCorrect": 6
+  },
+  "costUsd": 1.5089140000000003,
+  "numTurns": 15,
+  "durationMs": 180594,
+  "sessionId": "9871c41d-7968-4b1c-8042-ba676fb3d08c"
+}
