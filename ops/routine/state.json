@@ -2,7 +2,7 @@
   "version": 1,
   "items": {
     "SCS-004": {
-      "order": 1,
+      "order": null,
       "title": "Readable scripts: contact.astro, Base.astro, SpeedProof.astro",
       "status": "done",
       "attempts": 1,
