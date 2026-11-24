@@ -30,6 +30,74 @@ export function phoneMask(value) {
 }
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(iso).toLocaleDateString(); };
 
+// The admin app's in-app browser (2026-11-23): Chrome Custom Tabs over the app through Capacitor's
+// Browser plugin, so a site or a client link opens without leaving the app. Only in a build that has
+// the plugin; anywhere else the buttons aren't drawn and the plain links stay.
+const inApp = () => !!window.Capacitor?.isNativePlatform?.() && !!window.Capacitor.isPluginAvailable?.('Browser') && !!window.Capacitor.Plugins?.Browser;
+const inAppButton = (url, label = 'Open in the app') => (url && inApp() ? ` <button type="button" data-inapp="${esc(url)}">${esc(label)}</button>` : '');
+if (typeof document !== 'undefined') document.addEventListener('click', (e) => {
+  const b = e.target.closest?.('[data-inapp]');
+  if (!b || !inApp()) return;
+  e.preventDefault();
+  window.Capacitor.Plugins.Browser.open({ url: b.dataset.inapp }).catch((err) => alert(`Couldn’t open it: ${err.message || err}`));
+});
+
+// A box to sign in with a finger, a stylus or a mouse (Plumb's SignaturePad.svelte, in plain script):
+// white with dark ink whatever the theme, since it's a piece of paper. png() is the ink alone,
+// cropped with a margin at twice CSS size, as a PNG data URL (what server/agreement.js accepts).
+function signaturePad(canvas) {
+  const INK = '#0e1a30', WIDTH = 2.4;
+  let strokes = [], current = null;
+  const api = { onchange: null, empty: () => strokes.length === 0 };
+  function paint(ctx, st, dx = 0, dy = 0) {
+    ctx.strokeStyle = ctx.fillStyle = INK; ctx.lineWidth = WIDTH; ctx.lineCap = ctx.lineJoin = 'round';
+    if (st.length === 1) { ctx.beginPath(); ctx.arc(st[0].x - dx, st[0].y - dy, WIDTH / 2, 0, Math.PI * 2); ctx.fill(); return; }
+    // Through the midpoints, so a quick stroke is a curve rather than a string of straight bits.
+    ctx.beginPath(); ctx.moveTo(st[0].x - dx, st[0].y - dy);
+    for (let i = 1; i < st.length - 1; i++) ctx.quadraticCurveTo(st[i].x - dx, st[i].y - dy, (st[i].x + st[i + 1].x) / 2 - dx, (st[i].y + st[i + 1].y) / 2 - dy);
+    const last = st[st.length - 1]; ctx.lineTo(last.x - dx, last.y - dy); ctx.stroke();
+  }
+  const ctx = () => canvas.getContext('2d');
+  const redraw = () => { const c = ctx(); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, canvas.width, canvas.height); c.restore(); for (const st of strokes) paint(c, st); };
+  // The backing store follows the box's real size and the screen's density; strokes are kept in CSS
+  // pixels, so the drawing survives a rotation.
+  function fit() {
+    const r = window.devicePixelRatio || 1, b = canvas.getBoundingClientRect();
+    if (!b.width) return;
+    canvas.width = Math.round(b.width * r); canvas.height = Math.round(b.height * r);
+    ctx().setTransform(r, 0, 0, r, 0, 0); redraw();
+  }
+  const at = (e) => { const b = canvas.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault(); canvas.setPointerCapture(e.pointerId);
+    current = [at(e)]; strokes.push(current); paint(ctx(), current);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!current) return;
+    e.preventDefault();
+    for (const ev of e.getCoalescedEvents?.() ?? [e]) current.push(at(ev));
+    redraw();
+  });
+  const up = () => { if (!current) return; current = null; api.onchange?.(); };
+  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+  new ResizeObserver(fit).observe(canvas);
+  api.clear = () => { strokes = []; current = null; redraw(); };
+  api.png = () => {
+    const pts = strokes.flat();
+    if (!pts.length) return '';
+    const PAD = 6, S = 2;
+    const minX = Math.min(...pts.map((p) => p.x)) - PAD, minY = Math.min(...pts.map((p) => p.y)) - PAD;
+    const w = Math.max(...pts.map((p) => p.x)) + PAD - minX, h = Math.max(...pts.map((p) => p.y)) + PAD - minY;
+    const out = document.createElement('canvas');
+    out.width = Math.ceil(w * S); out.height = Math.ceil(h * S);
+    const c = out.getContext('2d'); c.scale(S, S);
+    for (const st of strokes) paint(c, st, minX, minY);
+    return out.toDataURL('image/png');
+  };
+  return api;
+}
+
 /**
  * @param {object} o
  * @param {HTMLElement} o.root      where the form goes
@@ -262,7 +330,7 @@ export async function mountProject(o) {
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
       ${admin ? '<section class="card" id="launchcard"></section>' : ''}
-      ${show.link ? '<section class="card" id="linkcard"></section>' : ''}
+      ${show.link ? '<section class="card" id="signcard" hidden></section><section class="card" id="linkcard"></section>' : ''}
       ${show.requests && (admin || (P.requests || []).length) ? '<section class="card" id="requests"></section>' : ''}
       ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
@@ -421,6 +489,13 @@ export async function mountProject(o) {
 
   // ---- Documents: everything they've signed, word for word, any time (2026-11-04) ----
   let docsLoaded = false;
+  // A signed copy as text, with Daniel's countersignature and the signature he drew once he's signed.
+  function signedCopyHtml(d) {
+    const counter = d.countersigned_at ? `\nCountersigned for Steadfast Code by ${esc(d.countersigner_name)} on ${esc(new Date(d.countersigned_at).toLocaleString())}.` : '';
+    const drawn = d.countersign_drawing?.startsWith('data:image/png;base64,') ? `<p class="countersig"><img src="${esc(d.countersign_drawing)}" alt="Signature of ${esc(d.countersigner_name)}" style="max-width:260px;max-height:90px;background:#fff;border-radius:6px;padding:4px"></p>` : '';
+    return `<pre class="signed">${esc(d.text)}\n\nSigned electronically by ${esc(d.name || d.signer_name)} on ${esc(new Date(d.signedAt || d.signed_at).toLocaleString())}.${counter}\nFingerprint (SHA-256): ${esc(d.sha256)}</pre>${drawn}`;
+  }
+
   async function paintDocs() {
     const box = root.querySelector('#docs');
     if (!box || docsLoaded) return;
@@ -428,7 +503,7 @@ export async function mountProject(o) {
     const copy = async (path, title) => {
       try {
         const d = await api(path);
-        return `<details><summary><b>${esc(title)}</b> <span class="muted">signed by ${esc(d.name || d.signer_name)}, ${esc(new Date(d.signedAt || d.signed_at).toLocaleDateString())}</span></summary><pre class="signed">${esc(d.text)}\n\nSigned electronically by ${esc(d.name || d.signer_name)} on ${esc(new Date(d.signedAt || d.signed_at).toLocaleString())}.\nFingerprint (SHA-256): ${esc(d.sha256)}</pre><p><button type="button" class="printdoc">Print or save as PDF</button></p></details>`;
+        return `<details><summary><b>${esc(title)}</b> <span class="muted">signed by ${esc(d.name || d.signer_name)}${d.countersigned_at ? ' and Steadfast Code' : ''}, ${esc(new Date(d.signedAt || d.signed_at).toLocaleDateString())}</span></summary>${signedCopyHtml(d)}<p><button type="button" class="printdoc">Print or save as PDF</button></p></details>`;
       } catch { return ''; }
     };
     const parts = [await copy(routes.agreement + '?signed=1', 'Website contract'), P.care?.signed ? await copy(routes.care + '?signed=1', `${P.care.planName} care plan`) : ''].filter(Boolean);
@@ -436,7 +511,7 @@ export async function mountProject(o) {
     box.querySelectorAll('.printdoc').forEach((b) => b.addEventListener('click', () => {
       const w = open('', '_blank');
       if (!w) return;
-      w.document.write(`<!doctype html><title>${esc(P.answers.businessName || 'Document')}</title><pre style="white-space:pre-wrap;font:14px/1.5 system-ui">${b.closest('details').querySelector('pre').innerHTML}</pre>`);
+      w.document.write(`<!doctype html><title>${esc(P.answers.businessName || 'Document')}</title><pre style="white-space:pre-wrap;font:14px/1.5 system-ui">${b.closest('details').querySelector('pre').innerHTML}</pre>${b.closest('details').querySelector('.countersig')?.outerHTML || ''}`);
       w.document.close(); w.focus(); w.print();
     }));
   }
@@ -654,8 +729,8 @@ export async function mountProject(o) {
     if (statusEl) statusEl.innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}${priceNote(c.pricing)}` : ' · no package yet'}</div>
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
-      ${P.previewUrl ? `<p><a class="btn" href="${esc(liveUrl() || P.previewUrl)}" target="_blank" rel="noopener">${liveUrl() ? 'Open your site' : 'Open the preview'}</a>${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
-      ${a.mockUrl && !P.previewUrl ? `<p><a class="btn" href="${esc(a.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a> <span class="muted">${admin ? 'The first build starts from it.' : 'Your new site starts from this mock-up. Say what to change under Look and feel.'}</span></p>` : ''}
+      ${P.previewUrl ? `<p><a class="btn" href="${esc(liveUrl() || P.previewUrl)}" target="_blank" rel="noopener">${liveUrl() ? 'Open your site' : 'Open the preview'}</a>${admin ? inAppButton(liveUrl() || P.previewUrl) : ''}${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
+      ${a.mockUrl && !P.previewUrl ? `<p><a class="btn" href="${esc(a.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a>${admin ? inAppButton(a.mockUrl) : ''} <span class="muted">${admin ? 'The first build starts from it.' : 'Your new site starts from this mock-up. Say what to change under Look and feel.'}</span></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
       ${admin ? `<p><button type="button" id="opencontract" aria-controls="cpane" aria-expanded="${cpaneOpen()}">${cpaneOpen() ? 'Hide the contract' : 'Show the contract'}</button></p>` : ''}
@@ -679,7 +754,7 @@ export async function mountProject(o) {
       e.preventDefault();
       const box = root.querySelector('#signedcopy');
       if (box.innerHTML) { box.innerHTML = ''; return; }
-      try { const a = await api(routes.agreement + '?signed=1'); box.innerHTML = `<pre class="signed">${esc(a.text)}\n\nSigned electronically by ${esc(a.signer_name || a.name)} on ${esc(new Date(a.signed_at || a.signedAt).toLocaleString())}.\nFingerprint (SHA-256): ${esc(a.sha256)}</pre>`; } catch (err) { box.textContent = err.message; }
+      try { box.innerHTML = signedCopyHtml(await api(routes.agreement + '?signed=1')); } catch (err) { box.textContent = err.message; }
     };
     const sc = root.querySelector('#scope');
     if (sc) { sc.hidden = !c.scope.length; root.querySelector('#scopelist').innerHTML = c.scope.map((s) => `<li>${esc(s)}</li>`).join(''); }
@@ -693,6 +768,7 @@ export async function mountProject(o) {
       if (w) { w.hidden = false; w.textContent = `${x.name || (x.who === 'daniel' ? 'Daniel' : 'Your client')} is editing`; }
     }
     if (admin) paintLaunch();
+    if (admin) paintSign();
     if (admin) paintLink();
     paintRequests();
     paintAssets();
@@ -801,7 +877,7 @@ export async function mountProject(o) {
   function agreementLine() {
     const ag = P.agreement;
     if (!ag) return '';
-    if (ag.signed?.valid) return `<p class="muted">Contract signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleString())}${ag.signed.portfolioOk === 1 ? ' · OK to show on the Work page' : ag.signed.portfolioOk === 0 ? ' · not on the Work page' : ''}. <a href="#" data-signed>View the signed copy</a></p><div id="signedcopy"></div>`;
+    if (ag.signed?.valid) return `<p class="muted">Contract signed by ${esc(ag.signed.name)}, ${esc(new Date(ag.signed.signedAt).toLocaleString())}${ag.signed.countersign ? ` · countersigned by ${esc(ag.signed.countersign.name)}` : admin ? ' · <b>needs your signature</b>' : ''}${ag.signed.portfolioOk === 1 ? ' · OK to show on the Work page' : ag.signed.portfolioOk === 0 ? ' · not on the Work page' : ''}. <a href="#" data-signed>View the signed copy</a></p><div id="signedcopy"></div>`;
     if (!admin) return '';
     if (ag.reason === 'no-package') return '<p class="muted">Contract: picks up the package once it’s set.</p>';
     const toggle = `<label class="check"><input type="checkbox" id="signingopen"${ag.signingOpen ? ' checked' : ''}> Let them sign now</label><span class="help">${ag.signingOpen ? 'Turn off to let them read it ahead of the meeting without signing.' : 'Review only: they can read it, and sign once you turn this on.'}</span>`;
@@ -1042,6 +1118,54 @@ export async function mountProject(o) {
     if (html) progress.innerHTML = html;
   }
 
+  // ---- Daniel's signature (2026-11-23), after the client's, as Plumb's contractor countersigns a
+  // signed quote: his typed name (remembered on this device) and a signature drawn with a finger.
+  function paintSign() {
+    const el = root.querySelector('#signcard');
+    if (!el) return;
+    const s = P.agreement?.signed?.valid ? P.agreement.signed : null;
+    // Only redraw when the signature changes: the 2 s refresh would wipe a drawing in progress.
+    const key = JSON.stringify([s?.id, s?.countersign]);
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.hidden = !s;
+    if (!s) { el.innerHTML = ''; return; }
+    if (s.countersign) {
+      el.innerHTML = `<h2>Your signature</h2><p class="muted">The contract is signed by both of you: ${esc(s.name)} on ${esc(new Date(s.signedAt).toLocaleString())}, and ${esc(s.countersign.name)} on ${esc(new Date(s.countersign.signedAt).toLocaleString())}.</p>`;
+      return;
+    }
+    let saved = '';
+    try { saved = localStorage.getItem('sc.countersignName') || ''; } catch {}
+    const to = String(P.answers.email ?? '').trim();
+    el.innerHTML = `<h2>Your signature</h2>
+      <p class="muted">${esc(s.name)} signed the contract on ${esc(new Date(s.signedAt).toLocaleString())}. Add yours and the fully signed copy goes out.</p>
+      <label for="csname">Your full name</label>
+      <input type="text" id="csname" autocomplete="name" value="${esc(saved)}">
+      <p class="help" id="cspadlabel">Sign here with a finger or the mouse</p>
+      <canvas id="cspad" aria-labelledby="cspadlabel" style="display:block;width:100%;height:160px;background:#fff;border-radius:10px;touch-action:none;cursor:crosshair"></canvas>
+      <p><button type="button" id="csclear">Clear</button></p>
+      ${to ? `<label class="check"><input type="checkbox" id="csemail" checked> Email the fully signed copy to ${esc(to)}</label>` : '<p class="muted">No client email on the project, so the signed copy goes only to you.</p>'}
+      <p><button type="button" class="primary" id="cssign" disabled>Sign the contract</button> <span class="muted" id="cssaid" role="status"></span></p>`;
+    const pad = signaturePad(el.querySelector('#cspad'));
+    const nameEl = el.querySelector('#csname'), btn = el.querySelector('#cssign');
+    const ready = () => { const n = nameEl.value.trim(); btn.disabled = !(n.length >= 3 && /\s/.test(n) && !pad.empty()); };
+    nameEl.oninput = ready;
+    pad.onchange = ready;
+    el.querySelector('#csclear').onclick = () => { pad.clear(); ready(); };
+    btn.onclick = async () => {
+      const name = nameEl.value.trim();
+      btn.disabled = true;
+      el.querySelector('#cssaid').textContent = 'Signing…';
+      try {
+        const r = await api(routes.agreement + '/countersign', { method: 'POST', body: JSON.stringify({ name, drawing: pad.png(), emailClient: el.querySelector('#csemail')?.checked ?? false }) });
+        try { localStorage.setItem('sc.countersignName', name); } catch {}
+        alert(r.mailedTo?.length ? `Signed. The fully signed copy went to ${r.mailedTo.join(' and ')}.` : 'Signed. Email isn’t set up, so nothing was sent; the signed copy is on the project.');
+        await refresh();
+      } catch (e) { el.querySelector('#cssaid').textContent = ''; alert(e.message); ready(); }
+    };
+    ready();
+  }
+
   function paintLink() {
     const el = root.querySelector('#linkcard');
     const l = P.clientLink;
@@ -1053,7 +1177,7 @@ export async function mountProject(o) {
     const url = l?.url || (l && madeUrl) || null;
     el.innerHTML = `<h2>Client link</h2>
       ${l ? `<p class="muted">On · made ${esc(ago(l.createdAt))} · ${l.lastUsedAt ? `last opened ${esc(ago(l.lastUsedAt))}` : 'not opened yet'} · works until ${esc(new Date(l.expiresAt).toLocaleDateString())}</p>` : '<p class="muted">No link yet. A link lets them see and fill in this same page, upload photos, and watch the build.</p>'}
-      ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
+      ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button>${inAppButton(url)} ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
       ${url && !l?.url ? '<p class="help">Copy it now: without the LINK_KEY secret it won’t be shown again after you leave this page.</p>' : ''}
       <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>
       <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>

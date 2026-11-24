@@ -1,14 +1,14 @@
 // GET /api/client/agreement: the agreement to sign (or the signed one, with ?signed=1).
 // POST /api/client/agreement { name, agreed, sha256, portfolio? }: sign it.
 import { json } from './_middleware.js';
-import { agreementState, checkSignature, emailSignedCopy } from '../../../server/agreement.js';
+import { agreementState, checkSignature, emailSignedCopy, latestSignature } from '../../../server/agreement.js';
 import { logEvent } from '../../../server/view.js';
 import { notifyDaniel, projectUrl } from '../../../server/notify.js';
 
 export async function onRequestGet({ request, env, data }) {
   if (new URL(request.url).searchParams.get('signed')) {
-    const a = await env.INTAKE.prepare('SELECT text, sha256, signer_name, signed_at FROM agreements WHERE project_id = ? ORDER BY signed_at DESC LIMIT 1').bind(data.project.id).first();
-    return a ? json({ text: a.text, sha256: a.sha256, name: a.signer_name, signedAt: a.signed_at }) : json({ error: 'Nothing signed yet.' }, 404);
+    const a = await latestSignature(env, data.project.id, 'text, sha256, signer_name, signed_at', { drawing: true });
+    return a ? json({ text: a.text, sha256: a.sha256, name: a.signer_name, signedAt: a.signed_at, countersigner_name: a.countersigner_name ?? null, countersigned_at: a.countersigned_at ?? null, countersign_drawing: a.countersign_drawing ?? null }) : json({ error: 'Nothing signed yet.' }, 404);
   }
   return json(await agreementState(env, data.project));
 }

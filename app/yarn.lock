@@ -14,6 +14,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@capacitor/browser@npm:^8.0.5":
+  version: 8.0.5
+  resolution: "@capacitor/browser@npm:8.0.5"
+  peerDependencies:
+    "@capacitor/core": ">=8.0.0"
+  checksum: 10c0/c485b0a1d1be2f792dd062874d394d4526f811569a21678fb51c5094ef1a711559e930c49a79975f4f61e919f08081cd0f193a954c6cb1321fc475ef149a76dd
+  languageName: node
+  linkType: hard
+
 "@capacitor/cli@npm:^8.4.1":
   version: 8.6.0
   resolution: "@capacitor/cli@npm:8.6.0"
@@ -759,6 +768,7 @@ __metadata:
   resolution: "steadfast-admin-app@workspace:."
   dependencies:
     "@capacitor/android": "npm:^8.4.1"
+    "@capacitor/browser": "npm:^8.0.5"
     "@capacitor/cli": "npm:^8.4.1"
     "@capacitor/core": "npm:^8.4.1"
     "@capacitor/filesystem": "npm:^8.0.0"

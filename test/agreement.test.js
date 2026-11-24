@@ -210,3 +210,51 @@ test('a discount or a set price changes the contract, the halves and the signatu
   const store = agreementFor({ ...base, tier: 'store', pricing: { price: 7000 } });
   assert.match(store.text, /The price is \$7,000 \(a price we agreed on; Online store is normally/);
 });
+
+// Daniel's countersignature (functions/api/admin/projects/[id]/agreement/countersign.js), after the
+// client's, as Plumb's contractor countersigns: a full name and a real drawn PNG, once only, recorded
+// on the client's row, then the fully signed copy mailed with his signature attached.
+test('Daniel countersigns a signed contract once, with a name and a drawn signature', async () => {
+  const { onRequestPost } = await import('../functions/api/admin/projects/[id]/agreement/countersign.js');
+  const { checkDrawing } = await import('../server/agreement.js');
+  const png = 'data:image/png;base64,' + Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40)]).toString('base64');
+  assert.equal(checkDrawing(png).drawing, png);
+  assert.ok(checkDrawing('data:image/png;base64,' + Buffer.from('<svg>not a png at all, just text</svg>').toString('base64')).error);
+  assert.ok(checkDrawing('').error, 'a drawing is required');
+  const answers = { tier: 'business', email: 'joshua@example.com', businessName: 'N & J' };
+  let row = { id: 's1', version: 'v', terms_key: termsKey(answers), sha256: 'x', text: 'THE CONTRACT', signer_name: 'Joshua Smith', signed_at: '2026-11-10T12:00:00Z', ip: '1.2.3.4', portfolio_ok: 1, emailed_to: null, countersigner_name: null, countersigned_at: null };
+  const updates = [];
+  const env = {
+    RESEND_API_KEY: 'k',
+    INTAKE: { prepare: (sql) => { const q = (args) => ({
+      all: async () => ({ results: [] }),
+      first: async () => (/FROM projects/.test(sql) ? { id: 'p1', status: 'intake', answers: JSON.stringify(answers) } : /FROM agreements/.test(sql) ? row : null),
+      run: async () => {
+        if (/UPDATE agreements/.test(sql)) { updates.push(args); if (row.countersigned_at) return { meta: { changes: 0 } }; row = { ...row, countersigner_name: args[0], countersigned_at: args[1] }; return { meta: { changes: 1 } }; }
+        return { meta: { changes: 1 } };
+      },
+    }); return { ...q([]), bind: (...a) => q(a) }; } },
+  };
+  const sent = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { sent.push(JSON.parse(init.body)); return new Response('{}', { status: 200 }); };
+  const call = (body) => onRequestPost({ request: new Request('https://steadfastcode.tech/x', { method: 'POST', body: JSON.stringify(body) }), env, params: { id: 'p1' }, data: { email: 'daniel@steadfastcode.tech' } });
+  try {
+    assert.equal((await call({ name: 'Daniel', drawing: png })).status, 400, 'a full name');
+    assert.equal((await call({ name: 'Daniel Ecker' })).status, 400, 'a drawn signature');
+    const r = await call({ name: 'Daniel Ecker', drawing: png });
+    assert.equal(r.status, 200);
+    assert.equal(updates.length, 1);
+    assert.equal(updates[0][2], png, 'the drawing is kept as received');
+    assert.deepEqual(sent[0].to, ['joshua@example.com', 'support@steadfastcode.tech']);
+    assert.match(sent[0].subject, /fully signed/);
+    assert.match(sent[0].text, /^THE CONTRACT[\s\S]*Signed electronically by Joshua Smith[\s\S]*Countersigned for Steadfast Code by Daniel Ecker/);
+    assert.equal(sent[0].attachments[0].content, png.slice('data:image/png;base64,'.length));
+    assert.equal((await r.json()).signed.countersign.name, 'Daniel Ecker');
+    assert.equal((await call({ name: 'Daniel Ecker', drawing: png })).status, 409, 'only once');
+    row = { ...row, countersigned_at: null, countersigner_name: null };
+    sent.length = 0;
+    await call({ name: 'Daniel Ecker', drawing: png, emailClient: false });
+    assert.deepEqual(sent[0].to, ['support@steadfastcode.tech'], 'unticked: only Daniel gets the copy');
+  } finally { globalThis.fetch = real; }
+});
