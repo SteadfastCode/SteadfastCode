@@ -1400,17 +1400,22 @@ export async function mountProject(o) {
       return;
     }
 
-    // Cards the reader has put in order (or is dragging): that order, each into the shortest column in
-    // turn, so it reads left to right and down. No tallest-first packing and no sponge.
+    // Cards the reader has arranged (or is dragging): each in its own column, in page order down the
+    // column. At a different number of columns than they were arranged at, they fill in that order,
+    // each into the shortest column, and keep those columns from then on. No tallest-first packing.
     if (arrangedCards()) {
+      const exact = arrangedColumns === columnCount;
       for (const card of cards) {
-        const column = columnEnds.indexOf(Math.min(...columnEnds));
+        let column = exact ? Number(card.dataset.col) : NaN;
+        if (!(column >= 0 && column < columnCount)) column = columnEnds.indexOf(Math.min(...columnEnds));
+        card.dataset.col = column;
         const rows = rowsFor(card);
         place(card, column, columnEnds[column], rows);
         masonryPlace.set(card, { column, row: columnEnds[column] });
         columnEnds[column] += rows;
       }
       masonryColumns = columnCount;
+      arrangedColumns = columnCount;
       showMoves(before, []);
       return;
     }
@@ -1537,19 +1542,61 @@ export async function mountProject(o) {
   let draggedCard = null;
   const cardKey = (el) => el.dataset.card || el.id;
   const orderKey = () => `cardOrder:${admin ? 'admin' : 'client:' + tab}`;
-  const savedCardOrder = () => { try { const v = JSON.parse(localStorage.getItem(orderKey()) || 'null'); return Array.isArray(v) ? v : null; } catch { return null; } };
+  // Kept per side and tab: { order: [card keys], columns: how many columns the page had, col: { key:
+  // column } }. A card's column only counts at that same number of columns; at another width the
+  // cards fill in their order, each into the shortest column. (A plain list is the first version.)
+  const savedArrangement = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(orderKey()) || 'null');
+      if (Array.isArray(v)) return { order: v, columns: 0, col: {} };
+      return v && Array.isArray(v.order) ? { columns: 0, col: {}, ...v } : null;
+    } catch { return null; }
+  };
   const movableCards = () => (root.querySelector(':scope > .card.agreement') ? [] : [...root.children].filter((el) => el.classList.contains('card') && cardKey(el)));
-  const arrangedCards = () => !!draggedCard || !!savedCardOrder();
-  const saveCardOrder = () => { store(orderKey(), JSON.stringify(movableCards().map(cardKey))); ensureGrips(); };
+  const arrangedCards = () => !!draggedCard || !!savedArrangement();
+  // The columns the cards' data-col were set for; the whole-page layout keeps them only at that many.
+  let arrangedColumns = 0;
+  const masonryOn = () => root.classList.contains('masonry');
+  // Where a card sits in the page, from its layout: a card still gliding (an animation) doesn't count.
+  const docTop = (el) => { let y = 0; for (let n = el; n; n = n.offsetParent) y += n.offsetTop; return y; };
+
+  function saveArrangement() {
+    const cards = movableCards();
+    const was = savedArrangement();
+    store(orderKey(), JSON.stringify(masonryOn()
+      ? { order: cards.map(cardKey), columns: masonryColumns, col: Object.fromEntries(cards.map((c) => [cardKey(c), Number(c.dataset.col) || 0])) }
+      : { order: cards.map(cardKey), columns: was?.columns || 0, col: was?.col || {} }));
+    ensureGrips();
+  }
+
+  /** Puts cards in a new order in the places cards held, so the title and anything else stays put. */
+  function reorderCards(cards, sorted) {
+    const marks = cards.map((card) => { const mark = document.createComment(''); card.before(mark); return mark; });
+    marks.forEach((mark, i) => mark.replaceWith(sorted[i]));
+  }
 
   /** The saved order, over the cards it knows; a card it doesn't know (new since) keeps its place. */
   function applyCardOrder() {
-    const order = savedCardOrder();
-    if (!order) return;
-    const known = movableCards().filter((card) => order.includes(cardKey(card)));
-    const marks = known.map((card) => { const mark = document.createComment(''); card.before(mark); return mark; });
-    const sorted = [...known].sort((one, other) => order.indexOf(cardKey(one)) - order.indexOf(cardKey(other)));
-    marks.forEach((mark, i) => mark.replaceWith(sorted[i]));
+    const saved = savedArrangement();
+    if (!saved) return;
+    const known = movableCards().filter((card) => saved.order.includes(cardKey(card)));
+    reorderCards(known, [...known].sort((one, other) => saved.order.indexOf(cardKey(one)) - saved.order.indexOf(cardKey(other))));
+    for (const card of movableCards()) {
+      if (saved.col[cardKey(card)] != null) card.dataset.col = saved.col[cardKey(card)]; else delete card.dataset.col;
+    }
+    arrangedColumns = saved.columns;
+  }
+
+  /**
+   * Before a card moves on the whole page: every card keeps the column it's in, and the page order
+   * follows the columns top to bottom. Then a drag moves one card and nothing else.
+   */
+  function freezeArrangement() {
+    if (!masonryOn()) return;
+    const cards = movableCards();
+    for (const card of cards) { const at = masonryPlace.get(card); if (at) card.dataset.col = at.column; }
+    reorderCards(cards, [...cards].sort((one, other) => (masonryPlace.get(one)?.row ?? 0) - (masonryPlace.get(other)?.row ?? 0)));
+    arrangedColumns = masonryColumns;
   }
 
   /** A grip on every card that hasn't got one (a card redrawn by its painter loses it), and the reset button. */
@@ -1575,10 +1622,10 @@ export async function mountProject(o) {
       reset.type = 'button';
       reset.id = 'cardreset';
       reset.textContent = 'Reset card order';
-      reset.onclick = () => { store(orderKey(), null); masonryColumns = 0; render(); };
+      reset.onclick = () => { store(orderKey(), null); masonryColumns = 0; arrangedColumns = 0; render(); };
       tools.prepend(reset);
     }
-    reset.hidden = !savedCardOrder() || !movableCards().length;
+    reset.hidden = !savedArrangement() || !movableCards().length;
   }
   {
     // Daniel's page mounts each project on the same element: the newest mount's listeners take over.
@@ -1590,16 +1637,30 @@ export async function mountProject(o) {
     signal.addEventListener('abort', () => watch.disconnect());
     // A grip inside a <summary> mustn't open or close the card.
     root.addEventListener('click', (e) => { if (e.target.closest('.cardgrip')) e.preventDefault(); }, { signal });
+    // Up and down move a card a place in its column; on the whole page, left and right move it to the
+    // next column over, at about the same height.
     root.addEventListener('keydown', (e) => {
       const grip = e.target.closest?.('.cardgrip');
       if (!grip || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
       e.preventDefault();
-      const cards = movableCards(), card = grip.closest('.card'), i = cards.indexOf(card);
-      const earlier = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
-      const other = cards[earlier ? i - 1 : i + 1];
-      if (!other) return;
-      if (earlier) other.before(card); else other.after(card);
-      saveCardOrder();
+      const card = grip.closest('.card');
+      freezeArrangement();
+      const across = masonryOn() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight');
+      if (across) {
+        const column = (Number(card.dataset.col) || 0) + (e.key === 'ArrowLeft' ? -1 : 1);
+        if (column < 0 || column >= masonryColumns) return;
+        const there = movableCards().filter((c) => c !== card && Number(c.dataset.col) === column);
+        const below = there.find((c) => docTop(c) + c.offsetHeight / 2 > docTop(card));
+        card.dataset.col = column;
+        if (below) below.before(card); else if (there.length) there[there.length - 1].after(card);
+      } else {
+        const pool = movableCards().filter((c) => !masonryOn() || c === card || c.dataset.col === card.dataset.col);
+        const i = pool.indexOf(card);
+        const other = pool[e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? i - 1 : i + 1];
+        if (!other) return;
+        if (pool.indexOf(other) < i) other.before(card); else other.after(card);
+      }
+      saveArrangement();
       queueMasonry();
       grip.focus();
     }, { signal });
@@ -1611,10 +1672,12 @@ export async function mountProject(o) {
       const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
       // The card lifts out and follows the pointer; a dashed slot its size holds its place in the
       // page and moves as it's dragged, so it's clear where it will land.
+      freezeArrangement();
       const start = card.getBoundingClientRect();
       const grab = { x: e.clientX - start.left, y: e.clientY - start.top };
       const slot = document.createElement('div');
       slot.className = 'card cardslot';
+      if (card.dataset.col != null) slot.dataset.col = card.dataset.col;
       slot.style.height = `${start.height}px`;
       card.before(slot);
       draggedCard = card;
@@ -1636,18 +1699,32 @@ export async function mountProject(o) {
           if (dy) c.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 180, easing: 'ease-out' });
         }
       };
-      // Where the slot should be for a pointer here: before or after the card it's over.
+      // Where the slot should be for a pointer here. On the whole page: the column under the pointer,
+      // and in it, above the first card whose middle is below the pointer. In one column, the same
+      // down the page. Measured from the layout (docTop), so cards still gliding can't move it.
+      const columnAt = (x) => {
+        const box = root.getBoundingClientRect(), style = getComputedStyle(root);
+        const left = box.left + parseFloat(style.paddingLeft), gap = parseFloat(style.columnGap) || 0;
+        const width = (box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - gap * (masonryColumns - 1)) / masonryColumns;
+        return Math.min(masonryColumns - 1, Math.max(0, Math.floor((x - left + gap / 2) / (width + gap))));
+      };
       const place = () => {
-        const over = movableCards().find((other) => {
-          if (other === card) return false;
-          const r = other.getBoundingClientRect();
-          return at.x >= r.left && at.x <= r.right && at.y >= r.top && at.y <= r.bottom;
+        const grid = masonryOn();
+        const column = grid ? columnAt(at.x) : null;
+        const inColumn = (el) => !grid || Number(el.dataset.col) === column;
+        const others = movableCards().filter((c) => c !== card && inColumn(c));
+        const y = at.y + scrollY;
+        const ref = others.find((c) => docTop(c) + c.offsetHeight / 2 > y) || null;
+        // Already there: in this column, with ref (or nothing) the next card of the column after it.
+        let next = slot.nextElementSibling;
+        while (next && !(next !== card && next.classList.contains('card') && cardKey(next) && inColumn(next))) next = next.nextElementSibling;
+        if ((!grid || Number(slot.dataset.col) === column) && next === ref) return;
+        glide(() => {
+          if (ref) ref.before(slot);
+          else if (others.length) others[others.length - 1].after(slot);
+          else root.append(slot);
+          if (grid) slot.dataset.col = column;
         });
-        if (!over) return;
-        const r = over.getBoundingClientRect();
-        const after = at.y > r.top + r.height / 2;
-        if (after ? over.nextElementSibling === slot : over.previousElementSibling === slot) return;
-        glide(() => (after ? over.after(slot) : over.before(slot)));
         queueMasonry();
       };
       // Every frame while dragging: scroll near the top or bottom edge, and check the slot, since the
@@ -1671,12 +1748,13 @@ export async function mountProject(o) {
         document.removeEventListener('pointerup', up);
         document.removeEventListener('pointercancel', up);
         const from = card.getBoundingClientRect();
+        if (slot.dataset.col != null) card.dataset.col = slot.dataset.col;
         slot.replaceWith(card);
         for (const k of ['position', 'left', 'top', 'width', 'margin', 'zIndex', 'pointerEvents']) card.style[k] = '';
         card.classList.remove('dragging');
         document.body.classList.remove('dragging-card');
         draggedCard = null;
-        saveCardOrder();
+        saveArrangement();
         layoutMasonry();
         // It settles into its place from where it was let go.
         const to = card.getBoundingClientRect();
