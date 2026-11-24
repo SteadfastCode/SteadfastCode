@@ -1349,7 +1349,8 @@ export async function mountProject(o) {
       return;
     }
 
-    const shown = children.filter((child) => !child.hidden && getComputedStyle(child).display !== 'none');
+    // A card being dragged is lifted out of the page (its dashed slot stands in for it).
+    const shown = children.filter((child) => child !== draggedCard && !child.hidden && getComputedStyle(child).display !== 'none');
     // How many grid rows an element needs; its margins are part of its place, so they count.
     const rowsFor = (element) => {
       const style = getComputedStyle(element);
@@ -1410,7 +1411,6 @@ export async function mountProject(o) {
         columnEnds[column] += rows;
       }
       masonryColumns = columnCount;
-      before.delete(draggedCard);
       showMoves(before, []);
       return;
     }
@@ -1608,33 +1608,79 @@ export async function mountProject(o) {
       if (!grip || (e.pointerType === 'mouse' && e.button !== 0)) return;
       e.preventDefault();
       const card = grip.closest('.card');
+      const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // The card lifts out and follows the pointer; a dashed slot its size holds its place in the
+      // page and moves as it's dragged, so it's clear where it will land.
+      const start = card.getBoundingClientRect();
+      const grab = { x: e.clientX - start.left, y: e.clientY - start.top };
+      const slot = document.createElement('div');
+      slot.className = 'card cardslot';
+      slot.style.height = `${start.height}px`;
+      card.before(slot);
       draggedCard = card;
+      Object.assign(card.style, { position: 'fixed', left: `${start.left}px`, top: `${start.top}px`, width: `${start.width}px`, margin: '0', zIndex: '50', pointerEvents: 'none', gridColumn: '', gridRow: '' });
       card.classList.add('dragging');
       document.body.classList.add('dragging-card');
-      // On the document, not captured by the grip: moving the card in the page would drop a capture.
-      const move = (ev) => {
-        if (ev.clientY < 60) scrollBy(0, -18); else if (ev.clientY > innerHeight - 60) scrollBy(0, 18);
+      queueMasonry();
+      let at = { x: e.clientX, y: e.clientY };
+
+      // One column: the cards below shift at once when the slot moves, so they glide there instead.
+      // (The whole-page layout glides its own, in showMoves.)
+      const glide = (change) => {
+        if (calm || root.classList.contains('masonry')) { change(); return; }
+        const cards = movableCards().filter((c) => c !== card);
+        const was = new Map(cards.map((c) => [c, c.getBoundingClientRect().top]));
+        change();
+        for (const c of cards) {
+          const dy = was.get(c) - c.getBoundingClientRect().top;
+          if (dy) c.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 180, easing: 'ease-out' });
+        }
+      };
+      // Where the slot should be for a pointer here: before or after the card it's over.
+      const place = () => {
         const over = movableCards().find((other) => {
           if (other === card) return false;
           const r = other.getBoundingClientRect();
-          return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+          return at.x >= r.left && at.x <= r.right && at.y >= r.top && at.y <= r.bottom;
         });
         if (!over) return;
         const r = over.getBoundingClientRect();
-        const after = ev.clientY > r.top + r.height / 2;
-        if (after ? over.nextElementSibling === card : over.previousElementSibling === card) return;
-        if (after) over.after(card); else over.before(card);
+        const after = at.y > r.top + r.height / 2;
+        if (after ? over.nextElementSibling === slot : over.previousElementSibling === slot) return;
+        glide(() => (after ? over.after(slot) : over.before(slot)));
         queueMasonry();
       };
+      // Every frame while dragging: scroll near the top or bottom edge, and check the slot, since the
+      // page can move under a pointer that holds still.
+      let frame = requestAnimationFrame(function tick() {
+        const edge = 70;
+        if (at.y < edge) scrollBy(0, -Math.ceil((edge - at.y) / 4));
+        else if (at.y > innerHeight - edge) scrollBy(0, Math.ceil((at.y - innerHeight + edge) / 4));
+        place();
+        frame = requestAnimationFrame(tick);
+      });
+      // On the document, not captured by the grip: a card moved in the page would drop a capture.
+      const move = (ev) => {
+        at = { x: ev.clientX, y: ev.clientY };
+        card.style.left = `${at.x - grab.x}px`;
+        card.style.top = `${at.y - grab.y}px`;
+      };
       const up = () => {
+        cancelAnimationFrame(frame);
         document.removeEventListener('pointermove', move);
         document.removeEventListener('pointerup', up);
         document.removeEventListener('pointercancel', up);
+        const from = card.getBoundingClientRect();
+        slot.replaceWith(card);
+        for (const k of ['position', 'left', 'top', 'width', 'margin', 'zIndex', 'pointerEvents']) card.style[k] = '';
         card.classList.remove('dragging');
         document.body.classList.remove('dragging-card');
         draggedCard = null;
         saveCardOrder();
-        queueMasonry();
+        layoutMasonry();
+        // It settles into its place from where it was let go.
+        const to = card.getBoundingClientRect();
+        if (!calm) card.animate([{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)` }, { transform: 'none' }], { duration: 200, easing: 'ease-out' });
       };
       document.addEventListener('pointermove', move);
       document.addEventListener('pointerup', up);

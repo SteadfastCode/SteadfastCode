@@ -163,7 +163,9 @@
   .card.has-grip > :first-child:not(.cardgrip) { padding-right: 34px; }
   .cardgrip { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: grab; touch-action: none; }
   .cardgrip:not(:disabled):hover { background: var(--hover); border-color: transparent; color: var(--ink); }
-  .card.dragging { outline: 2px solid var(--accent); outline-offset: -1px; box-shadow: 0 12px 30px -12px rgb(0 0 0 / .5); }
+  .card.dragging { outline: 2px solid var(--accent); outline-offset: -1px; box-shadow: 0 18px 40px -12px rgb(0 0 0 / .55); transform: rotate(.6deg); }
+  .cardslot { background: transparent; border: 2px dashed var(--accent); opacity: .6; padding: 0; }
+  @media (prefers-reduced-motion: reduce) { .card.dragging { transform: none; } }
   body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-select: none; }
 
   /* "Make a change" (2026-11-20): the button above the message box, and the block it opens. */
