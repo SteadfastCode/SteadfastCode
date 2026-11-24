@@ -179,7 +179,8 @@ export async function mountProject(o) {
     if (gated()) return { status: 1, scope: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
     return ({ site: { status: 1, scope: 1, requests: 1, assets: 1, request: launched() && !closed(), activity: 1 }, planning: { assets: 1, files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
-  const fieldShown = (mode) => (f) => applies(f) && (mode === 'all' || (f.live && f.id !== 'notes'));
+  // A field placed on the Client links card (the mock-up and lab links) is drawn there, not in its section.
+  const fieldShown = (mode) => (f) => applies(f) && f.place !== 'links' && (mode === 'all' || (f.live && f.id !== 'notes'));
 
   // ---- fields ----
   function fieldHtml(f) {
@@ -330,7 +331,12 @@ export async function mountProject(o) {
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
       ${admin ? '<section class="card" id="launchcard"></section>' : ''}
-      ${show.link ? '<section class="card" id="signcard" hidden></section><section class="card" id="linkcard"></section>' : ''}
+      ${show.link ? `<section class="card" id="signcard" hidden></section>
+        <section class="card" id="linkscard"><h2>Client links</h2>
+          <div id="linkcard"></div>
+          <div id="sitelinks">${C.sections.flatMap((s) => s.fields).filter((f) => f.place === 'links' && applies(f)).map(fieldHtml).join('')}</div>
+          <div id="intakeswitch"></div>
+        </section>` : ''}
       ${show.requests && (admin || (P.requests || []).length) ? '<section class="card" id="requests"></section>' : ''}
       ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
@@ -1176,18 +1182,20 @@ export async function mountProject(o) {
     if (el.dataset.key === key) return;
     el.dataset.key = key;
     const url = l?.url || (l && madeUrl) || null;
-    el.innerHTML = `<h2>Client link</h2>
+    // Every link the client is given lives on this one card (Daniel, 2026-11-24): their portal link
+    // here, then the mock-up and lab links (ordinary fields, drawn once by render), then the intake.
+    el.innerHTML = `<h3>Their portal</h3>
       ${l ? `<p class="muted">On · made ${esc(ago(l.createdAt))} · ${l.lastUsedAt ? `last opened ${esc(ago(l.lastUsedAt))}` : 'not opened yet'} · works until ${esc(new Date(l.expiresAt).toLocaleDateString())}</p>` : '<p class="muted">No link yet. A link lets them see and fill in this same page, upload photos, and watch the build.</p>'}
       ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button> <button type="button" id="viewas">${inApp() ? 'View as them in the app' : 'View as them'}</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
       ${url && !l?.url ? '<p class="help">Copy it now: without the LINK_KEY secret it won’t be shown again after you leave this page.</p>' : ''}
       <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>
-      <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>
-      <h3>Intake</h3>
+      <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>`;
+    root.querySelector('#intakeswitch').innerHTML = `<h3>Intake</h3>
       <p class="muted">${P.intakeClosed
         ? `Closed ${esc(ago(P.intakeClosedAt))}. They see their details read-only, and changes come to you as messages.`
         : 'Open. They can edit their answers on their page. Close it after the first meeting, and changes come to you as messages instead.'}</p>
       <p><button type="button" id="intaketoggle">${P.intakeClosed ? 'Reopen the intake' : 'Close the intake'}</button></p>`;
-    el.querySelector('#intaketoggle').onclick = async () => {
+    root.querySelector('#intaketoggle').onclick = async () => {
       try {
         apply(await api(routes.project, { method: 'PATCH', body: JSON.stringify({ intakeClosed: !P.intakeClosed }) }));
       } catch (e) { alert(e.message); }

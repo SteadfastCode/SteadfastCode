@@ -28,6 +28,10 @@
 //   kind of site ("Services or products" is "Product lines or collections" on a store). A section
 //   takes `wording: { [siteType]: { title?, you? } }` the same way.
 //
+//   `place`: 'links' puts the field on the Client links card on /admin, with the client's portal
+//   link, in place of its own section (2026-11-24: the mock-up and lab links; Daniel, "they should
+//   all be in one place").
+//
 // Shared with the client (2026-11-01): their page at /client shows this same form, live, and they
 // can edit every field except the ones marked `owner: 'daniel'` — the package, the add-on, the
 // kind of site, the question list, the mock-up link and the out-of-scope list, which set the price
@@ -74,11 +78,11 @@ export const intakeSections = [
       { id: 'contract', label: 'Contract', type: 'contract', owner: 'daniel', clientHidden: true, ask: 'always', menu: true },
       // A mock-up built for the lead (2026-11-09) comes along when the project starts from it; both sides
       // see "Open the mock-up" on the status card, and the look-and-feel questions start from it.
-      { id: 'mockUrl', label: 'Mock-up link', type: 'url', help: 'Filled in from the lead when there is one. Both sides get an Open the mock-up button, and Look and feel asks what to change from it.', owner: 'daniel', clientHidden: true, ask: 'always' },
+      { id: 'mockUrl', label: 'Mock-up link', type: 'url', help: 'Filled in from the lead when there is one. Both sides get an Open the mock-up button, and Look and feel asks what to change from it.', owner: 'daniel', clientHidden: true, ask: 'always', place: 'links' },
       // A lab (2026-11-24, first for Deliverance): a page where pieces of the site are tried out
       // before they go on the mock-up or the preview. Both sides get an Open the lab button beside
       // the mock-up or preview one; the lab itself links back to the full site.
-      { id: 'labUrl', label: 'Lab link', type: 'url', help: 'A page of pieces being tried out for this client, if there is one. Both sides get an Open the lab button. Leave it empty until the lab is ready for the client to see.', owner: 'daniel', clientHidden: true, ask: 'always' },
+      { id: 'labUrl', label: 'Lab link', type: 'url', help: 'A page of pieces being tried out for this client, if there is one. Both sides get an Open the lab button. Leave it empty until the lab is ready for the client to see.', owner: 'daniel', clientHidden: true, ask: 'always', place: 'links' },
     ],
   },
   {

@@ -214,7 +214,8 @@
   .asset-add label { display: block; font-weight: 600; margin-bottom: 6px; }
   .asset-add input { margin-bottom: 8px; }
   /* The intake switch sits under the client link, on Daniel's page. */
-  #linkcard h3 { font-size: 1rem; margin: 18px 0 6px; }
+  #linkscard h3 { font-size: 1rem; margin: 18px 0 6px; }
+  #linkscard h2 + div > h3:first-child { margin-top: 0; }
   .agreement p { margin: 0 0 8px; }
   #signbox .check { margin-top: 14px; }
   pre.signed { white-space: pre-wrap; font: inherit; font-size: .9rem; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: 420px; overflow: auto; }
