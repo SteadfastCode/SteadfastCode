@@ -124,3 +124,37 @@ test('a closed intake leaves the client nothing to edit, and their PATCH is refu
   assert.match((await response.json()).error, /send Daniel a message/);
   assert.equal(wrote, false);
 });
+
+// Daniel viewing as the client (2026-11-23): with a pass from the admin the visit isn't the client's
+// (the link isn't marked used, the request knows it's him) and nothing can be changed; a forged or
+// run-out pass, or one for another link, is refused.
+test('a view-as-the-client pass: not counted as their visit, read only, bound to the link', async () => {
+  const { signViewPass, verifyViewPass } = await import('../server/client.js');
+  const env0 = { LINK_KEY: btoa(String.fromCharCode(...new Uint8Array(32).fill(7))) };
+  const pass = await signViewPass(env0, 'L1');
+  assert.ok(await verifyViewPass(env0, 'L1', pass));
+  assert.equal(await verifyViewPass(env0, 'L2', pass), false, 'another link');
+  assert.equal(await verifyViewPass(env0, 'L1', pass.replace(/.$/, (c) => (c === '0' ? '1' : '0'))), false, 'tampered');
+  assert.equal(await verifyViewPass(env0, 'L1', await signViewPass(env0, 'L1', Date.now() - 13 * 3600_000)), false, 'run out');
+  assert.equal(await signViewPass({}, 'L1'), null, 'no LINK_KEY, no pass');
+
+  const token = newToken();
+  const hash = await hashToken(token);
+  const writes = [];
+  const INTAKE = { prepare: (sql) => ({ bind: (...a) => ({
+    first: async () => (/client_links/.test(sql) ? (a[0] === hash ? { id: 'L1', project_id: 'p1', expires_at: '2999-01-01', last_used_at: null, revoked_at: null } : null) : /FROM projects/.test(sql) ? { id: 'p1', status: 'intake' } : null),
+    run: async () => { writes.push(sql); return {}; },
+  }) }) };
+  const env = { ...env0, INTAKE };
+  const call = (method, headers = {}, url = 'https://steadfastcode.tech/api/client/project') => clientMiddleware({ request: new Request(url, { method, headers: { authorization: `Bearer ${token}`, origin: 'https://steadfastcode.tech', ...headers } }), env, data: {}, next: async () => new Response('ok') });
+  const ctx = (method, headers) => { const c = { request: new Request('https://steadfastcode.tech/api/client/project', { method, headers: { authorization: `Bearer ${token}`, origin: 'https://steadfastcode.tech', ...headers } }), env, data: {}, next: async () => new Response('ok') }; return clientMiddleware(c).then((r) => ({ r, c })); };
+  const daniel = await ctx('GET', { 'x-admin-view': pass });
+  assert.equal(daniel.r.status, 200);
+  assert.equal(daniel.c.data.adminView, true);
+  assert.equal(writes.length, 0, 'the link isn’t marked used');
+  assert.equal((await call('POST', { 'x-admin-view': pass })).status, 403, 'read only');
+  assert.equal((await call('GET', { 'x-admin-view': 'nope' })).status, 401, 'a bad pass is refused, not ignored');
+  const client = await ctx('GET', {});
+  assert.equal(client.c.data.adminView, false);
+  assert.equal(writes.length, 1, 'the client’s own visit marks the link used');
+});

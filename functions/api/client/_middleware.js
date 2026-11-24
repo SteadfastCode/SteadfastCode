@@ -1,7 +1,7 @@
 // Every /api/client route: a live private link (not expired, not revoked) for one project. The
 // token comes as a bearer header; image GETs may carry it as ?t= because an <img> can't send headers.
 // Writes only from this site's own pages. Not behind Cloudflare Access: the link is the login.
-import { hashToken, LINK_DAYS } from '../../../server/client.js';
+import { hashToken, LINK_DAYS, verifyViewPass } from '../../../server/client.js';
 
 export const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -25,13 +25,19 @@ export async function onRequest(context) {
     await env.INTAKE.prepare('UPDATE client_links SET expires_at = ? WHERE id = ?').bind(link.expires_at, link.id).run();
   }
   if (request.method !== 'GET' && request.method !== 'HEAD' && request.headers.get('origin') !== url.origin) return json({ error: 'Changes only from your project page.' }, 403);
+  // Daniel viewing as the client (server/client.js signViewPass): a header, or ?as= beside ?t= on an image.
+  const pass = request.headers.get('x-admin-view') || (bearer ? null : url.searchParams.get('as'));
+  const adminView = !!pass && (await verifyViewPass(env, link.id, pass));
+  if (pass && !adminView) return json({ error: 'This view-as-the-client pass has run out. Open it again from the admin.' }, 401);
+  if (adminView && request.method !== 'GET' && request.method !== 'HEAD') return json({ error: 'You’re viewing as the client, so nothing here can be changed. Make changes from the admin.' }, 403);
   const project = await env.INTAKE.prepare('SELECT * FROM projects WHERE id = ?').bind(link.project_id).first();
   if (!project || project.status === 'closed') return json({ error: 'This project isn’t open anymore.' }, 404);
-  // Mark the link used at most once a minute, so a page polling for build progress isn't a write every 3 s.
-  if (!link.last_used_at || Date.parse(now) - Date.parse(link.last_used_at) > 60_000) {
+  // Mark the link used at most once a minute (never for Daniel's own look), so a page polling for build progress isn't a write every 3 s.
+  if (!adminView && (!link.last_used_at || Date.parse(now) - Date.parse(link.last_used_at) > 60_000)) {
     await env.INTAKE.prepare('UPDATE client_links SET last_used_at = ? WHERE id = ?').bind(now, link.id).run();
   }
   context.data.link = link;
+  context.data.adminView = adminView;
   context.data.project = project;
   // Planning is open before the contract is signed (Daniel, 2026-11-02). Building never comes from
   // here: the box updates the preview from the client's edits once a first version exists, and the

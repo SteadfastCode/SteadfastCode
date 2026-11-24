@@ -84,21 +84,52 @@ const config = {
     return fromHash;
   }
 
+  /**
+   * Daniel's pass to view as the client (2026-11-23), from the admin's "View as them": ?as= on the
+   * link the first time, then kept for this tab and taken out of the address so a copied link never
+   * carries it. With it the server doesn't count the visit as the client's and refuses changes.
+   */
+  const VIEWING = 'adminView';
+  function viewPassForThisVisit(): string | null {
+    const params = new URLSearchParams(location.search);
+    const fromUrl = params.get('as');
+    try {
+      if (fromUrl) {
+        sessionStorage.setItem(VIEWING, fromUrl);
+        params.delete('as');
+        const rest = params.toString();
+        history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+        return fromUrl;
+      }
+      return sessionStorage.getItem(VIEWING);
+    } catch {
+      return fromUrl;
+    }
+  }
+
   // ---- their project ----
 
   /** The same form Daniel works from, with their link as the bearer token on every call. */
-  function showProject(form: ProjectForm, token: string) {
+  function showProject(form: ProjectForm, token: string, viewPass: string | null) {
     const progress = document.getElementById('progress')!;
     form.wireProgress(progress);
+    if (viewPass) {
+      const note = document.createElement('p');
+      note.className = 'viewing-as';
+      note.setAttribute('role', 'status');
+      note.textContent = 'You’re viewing this as your client sees it. It doesn’t count as their visit, and nothing here can be changed.';
+      note.style.cssText = 'margin:0;padding:10px 16px;text-align:center;background:#b45309;color:#fff;font-weight:600;position:sticky;top:0;z-index:20';
+      document.body.prepend(note);
+    }
     // An <img> can't send the header, so a picture's address carries the token; changes don't.
-    const asQuery = '?t=' + encodeURIComponent(token);
+    const asQuery = '?t=' + encodeURIComponent(token) + (viewPass ? '&as=' + encodeURIComponent(viewPass) : '');
     form.mountProject({
       root: app,
       bar: document.getElementById('bar')!,
       progress,
       config,
       mode: 'client',
-      headers: { authorization: 'Bearer ' + token },
+      headers: { authorization: 'Bearer ' + token, ...(viewPass ? { 'x-admin-view': viewPass } : {}) },
       routes: {
         project: '/api/client/project',
         presence: '/api/client/presence',
@@ -164,7 +195,7 @@ const config = {
     // this page is the form, and arriving without one is the rarer way to be here.
     const form = await loadProjectForm(config);
     const token = tokenForThisVisit();
-    if (isToken(token)) showProject(form, token);
+    if (isToken(token)) showProject(form, token, viewPassForThisVisit());
     else showLinkRequest();
   }
 

@@ -1177,7 +1177,7 @@ export async function mountProject(o) {
     const url = l?.url || (l && madeUrl) || null;
     el.innerHTML = `<h2>Client link</h2>
       ${l ? `<p class="muted">On · made ${esc(ago(l.createdAt))} · ${l.lastUsedAt ? `last opened ${esc(ago(l.lastUsedAt))}` : 'not opened yet'} · works until ${esc(new Date(l.expiresAt).toLocaleDateString())}</p>` : '<p class="muted">No link yet. A link lets them see and fill in this same page, upload photos, and watch the build.</p>'}
-      ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button>${inAppButton(url)} ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
+      ${url ? `<input type="text" readonly value="${esc(url)}" id="linkurl" aria-label="Client link"><p><button type="button" id="copylink">Copy</button> <button type="button" id="viewas">${inApp() ? 'View as them in the app' : 'View as them'}</button> ${navigator.share ? '<button type="button" id="sharelink">Share…</button>' : ''}</p>` : l ? `<p class="muted">${P.linkKeySet ? 'This link was made before links could be shown again.' : 'Links can only be shown right after they’re made until the LINK_KEY secret is set on the site.'} Make a new one to copy it (the old one stops working).</p>` : ''}
       ${url && !l?.url ? '<p class="help">Copy it now: without the LINK_KEY secret it won’t be shown again after you leave this page.</p>' : ''}
       <p><button type="button" id="makelink">${l ? 'Make a new link' : 'Make a link'}</button> ${l ? '<button type="button" id="killlink">Turn it off</button>' : ''}</p>
       <p>${to ? `<button type="button" id="emaillink">Email it to ${esc(to)}</button>` : '<span class="muted">Add their email under their details to send the link from here.</span>'} <span class="muted" id="emailsaid" role="status"></span></p>
@@ -1208,6 +1208,20 @@ export async function mountProject(o) {
       }
       catch (e) { alert(e.message); }
       finally { mail.disabled = false; }
+    };
+    // Their page as they see it, without it counting as their visit: a pass from the admin rides along
+    // as ?as= (functions/api/admin/projects/[id]/link/view.js). The tab opens first, so a popup blocker
+    // sees it come from the tap.
+    const viewas = el.querySelector('#viewas');
+    if (viewas) viewas.onclick = async () => {
+      const w = inApp() ? null : window.open('', '_blank');
+      try {
+        const u = new URL(url);
+        const { pass } = await api(routes.link + '/view', { method: 'POST', body: JSON.stringify({ token: u.hash.slice(1) }) });
+        u.searchParams.set('as', pass);
+        if (inApp()) await window.Capacitor.Plugins.Browser.open({ url: u.href });
+        else if (w) w.location.href = u.href; else location.href = u.href;
+      } catch (e) { w?.close(); alert(e.message); }
     };
     const copy = el.querySelector('#copylink');
     if (copy) copy.onclick = async () => {

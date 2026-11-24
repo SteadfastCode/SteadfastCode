@@ -5,7 +5,7 @@ same pattern as Tethered (`~/repos/tethered/web/app/NATIVE.md`). The web pages a
 **web changes reach the app with no new build**. A new APK is only needed when this folder changes
 (plugins, the config, the Android project).
 
-What the shell adds: push notifications (Firebase Cloud Messaging), an in-app browser (`@capacitor/browser`, Chrome Custom Tabs: the project page's **Open in the app** buttons for the site, the mock-up and the client link, drawn only in a build that has it) and an app icon (the logo from
+What the shell adds: push notifications (Firebase Cloud Messaging), an in-app browser (`@capacitor/browser`, Chrome Custom Tabs: the project page's **Open in the app** buttons for the site and the mock-up, and **View as them in the app** for the client link (with a pass, so it isn't counted as the client's visit), drawn only in a build that has it) and an app icon (the logo from
 `public/logo.svg` on the site's dark background, rendered into `android/app/src/main/res`). The pages detect
 the app (`public/admin/app.js`), register the phone for push, and open a tapped notification's page.
 Sign-in is the same Cloudflare Access one-time code as the browser (never Google sign-in).

@@ -103,3 +103,32 @@ export async function openToken(env, sealed) {
     return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct));
   } catch { return null; }
 }
+
+// ---- Daniel viewing as the client (2026-11-23) ----
+// A client link opened by Daniel (the admin app's in-app browser, or a tab from /admin) carries a pass
+// minted behind Cloudflare Access: `${exp}.${hmac}` over the link's id, under a key derived from
+// LINK_KEY. With it /api/client treats the visit as his: the link isn't marked used, his messages
+// aren't marked read, nothing shows as the client being here, and nothing can be changed.
+export const VIEW_HOURS = 12;
+
+async function viewKey(env) {
+  if (!env.LINK_KEY) return null;
+  const material = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('admin-view:' + env.LINK_KEY));
+  return crypto.subtle.importKey('raw', material, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+const hexOf = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+export async function signViewPass(env, linkId, now = Date.now()) {
+  const key = await viewKey(env);
+  if (!key) return null;
+  const exp = Math.floor(now / 1000) + VIEW_HOURS * 3600;
+  return `${exp}.${hexOf(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${linkId}.${exp}`)))}`;
+}
+
+export async function verifyViewPass(env, linkId, pass, now = Date.now()) {
+  const [exp, sig] = String(pass ?? '').split('.');
+  if (!/^\d{1,12}$/.test(exp || '') || !/^[0-9a-f]{64}$/.test(sig || '') || Number(exp) < now / 1000) return false;
+  const key = await viewKey(env);
+  if (!key) return false;
+  return crypto.subtle.verify('HMAC', key, Uint8Array.from(sig.match(/../g), (h) => parseInt(h, 16)), new TextEncoder().encode(`${linkId}.${exp}`));
+}
