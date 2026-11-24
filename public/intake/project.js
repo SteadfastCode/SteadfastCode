@@ -349,7 +349,8 @@ export async function mountProject(o) {
           <div id="linkcard"></div>
           <div id="sitelinks">${C.sections.flatMap((s) => s.fields).filter((f) => f.place === 'links' && applies(f)).map(fieldHtml).join('')}</div>
           <div id="intakeswitch"></div>
-        </section>` : ''}
+        </section>
+        <section class="card" id="labcard" hidden></section>` : ''}
       ${show.requests && (admin || (P.requests || []).length) ? '<section class="card" id="requests"></section>' : ''}
       ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
@@ -793,6 +794,7 @@ export async function mountProject(o) {
     if (admin) paintLaunch();
     if (admin) paintSign();
     if (admin) paintLink();
+    if (admin) paintLab();
     paintRequests();
     paintAssets();
     paintFiles();
@@ -1192,6 +1194,56 @@ export async function mountProject(o) {
       } catch (e) { el.querySelector('#cssaid').textContent = ''; alert(e.message); ready(); }
     };
     ready();
+  }
+
+  // ---- the lab page (2026-11-24), Daniel's side: every test the client's lab publishes, with
+  // whether the landing page lists it and whether it's ready or still rough. A change saves at once
+  // and shows on the lab the next time it's opened (server/lab.js); no rebuild.
+  let labKey = null, labData = null, labBusy = false;
+  async function loadLab() {
+    labBusy = true;
+    try { labData = await api(routes.lab); } catch (e) { labData = { labUrl: P.answers.labUrl, error: e.message, tests: [] }; }
+    labBusy = false;
+    labKey = null;
+    paintLab();
+  }
+  function paintLab() {
+    const el = root.querySelector('#labcard');
+    if (!el || !routes.lab) return;
+    const url = P.answers.labUrl || '';
+    el.hidden = !url;
+    if (!url) { labData = null; labKey = null; return; }
+    if (!labData || labData.labUrl !== url) { if (!labBusy) loadLab(); if (!labData) { el.innerHTML = '<h2>Lab page</h2><p class="muted">Reading the lab…</p>'; return; } }
+    const key = JSON.stringify(labData);
+    if (labKey === key && el.innerHTML) return;
+    labKey = key;
+    const base = url.replace(/\/+$/, '');
+    const day = (d) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '');
+    const rows = labData.tests.map((t) => `<li class="labtest" data-folder="${esc(t.folder)}">
+        <label class="check"><input type="checkbox" data-lab-shown${t.shown ? ' checked' : ''}> <b>${esc(t.name)}</b></label>
+        <span class="labmeta"><select data-lab-status aria-label="How finished ${esc(t.name)} is">${[['rough', 'Rough, still changing'], ['ready', 'Ready for their eyes']].map(([v, l]) => `<option value="${v}"${t.status === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+        <span class="muted">${t.updated ? `updated ${esc(day(t.updated))}` : ''}${t.changed ? ' · <button type="button" class="linkish" data-lab-reset>back to the build’s</button>' : ''}</span>
+        <a href="${esc(base)}/${esc(t.folder)}/" target="_blank" rel="noopener">Open</a>${inAppButton(`${base}/${t.folder}/`)}</span>
+      </li>`).join('');
+    el.innerHTML = `<h2>Lab page</h2>
+      <p class="muted">What the lab’s landing page lists for the client, and how finished each piece is. Changes show the next time the page is opened. A test that’s unticked still opens at its own address.</p>
+      ${labData.missing ? '<p class="error">Saving changes needs migration 0025 on the database first.</p>' : ''}
+      ${labData.error ? `<p class="error">${esc(labData.error)}</p>` : ''}
+      ${rows ? `<ul class="labtests">${rows}</ul>` : labData.error ? '' : '<p class="muted">The lab lists no tests.</p>'}
+      <p><a class="btn" href="${esc(base)}/" target="_blank" rel="noopener">Open the lab</a>${inAppButton(base + '/')} <button type="button" data-lab-reload>Check the lab again</button> <span class="muted" id="labsaid" role="status"></span></p>`;
+    const send = async (folder, change) => {
+      el.querySelector('#labsaid').textContent = 'Saving…';
+      try { labData = await api(routes.lab, { method: 'POST', body: JSON.stringify({ folder, ...change }) }); labKey = null; paintLab(); el.querySelector('#labsaid').textContent = 'Saved.'; }
+      catch (e) { el.querySelector('#labsaid').textContent = ''; alert(e.message); labKey = null; paintLab(); }
+    };
+    el.querySelectorAll('.labtest').forEach((li) => {
+      const folder = li.dataset.folder;
+      li.querySelector('[data-lab-shown]').onchange = (e) => send(folder, { shown: e.target.checked });
+      li.querySelector('[data-lab-status]').onchange = (e) => send(folder, { status: e.target.value });
+      const reset = li.querySelector('[data-lab-reset]');
+      if (reset) reset.onclick = () => send(folder, { reset: true });
+    });
+    el.querySelector('[data-lab-reload]').onclick = () => loadLab();
   }
 
   function paintLink() {
