@@ -98,6 +98,11 @@ test('contract edits keep only well-formed keys and ids, and empty edits clear t
 test('a mock-up link is kept as a link, and comes along from the lead', () => {
   assert.equal(mergeAnswers({}, { mockUrl: 'stdfst-deliverance.pages.dev' }).answers.mockUrl, 'https://stdfst-deliverance.pages.dev');
   assert.deepEqual(mergeAnswers({}, { mockUrl: 'not a link' }).dropped, ['mockUrl']);
+  // The lab link is Daniel's too, cleaned the same way, and never one of the client's questions.
+  assert.equal(mergeAnswers({}, { labUrl: 'lab.stdfst-deliverance.pages.dev' }).answers.labUrl, 'https://lab.stdfst-deliverance.pages.dev');
+  assert.deepEqual(mergeAnswers({}, { labUrl: 'javascript:alert(1)' }).dropped, ['labUrl']);
+  assert.equal(fields.labUrl.owner, 'daniel');
+  assert.equal(fields.labUrl.clientHidden, true);
   assert.equal(mergeAnswers({ mockUrl: 'https://x.pages.dev' }, { mockUrl: '' }).answers.mockUrl, undefined);
   const a = answersFromLead({ name: 'Andrew', email: 'a@example.com', business: 'Lowen Games', plan: 'store', mock_url: 'https://stdfst-deliverance.pages.dev', message: 'hi' });
   assert.equal(a.mockUrl, 'https://stdfst-deliverance.pages.dev');

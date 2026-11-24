@@ -731,6 +731,7 @@ export async function mountProject(o) {
       ${P.buildNote && !building() ? `<p class="${P.failed ? 'error' : 'muted'}" style="white-space:pre-line">${esc(admin || !P.failed ? P.buildNote : 'The last build didn’t finish. Daniel can see what happened and will start it again.')}</p>` : ''}
       ${P.previewUrl ? `<p><a class="btn" href="${esc(liveUrl() || P.previewUrl)}" target="_blank" rel="noopener">${liveUrl() ? 'Open your site' : 'Open the preview'}</a>${admin ? inAppButton(liveUrl() || P.previewUrl) : ''}${admin && P.status === 'preview' ? ' <button type="button" id="fullrebuild">Full rebuild</button>' : ''}</p>` : ''}
       ${a.mockUrl && !P.previewUrl ? `<p><a class="btn" href="${esc(a.mockUrl)}" target="_blank" rel="noopener">Open the mock-up</a>${admin ? inAppButton(a.mockUrl) : ''} <span class="muted">${admin ? 'The first build starts from it.' : 'Your new site starts from this mock-up. Say what to change under Look and feel.'}</span></p>` : ''}
+      ${a.labUrl ? `<p><a class="btn" href="${esc(a.labUrl)}" target="_blank" rel="noopener">Open the lab</a>${admin ? inAppButton(a.labUrl) : ''} <span class="muted">${admin ? 'Pieces being tried out; the client sees this button too.' : 'Pieces of your new site being tried out before they go on the full site. Each one says how finished it is.'}</span></p>` : ''}
       ${c.missing.length ? `<p class="muted">Needed to start a first version: ${c.missing.map((m) => esc(label(C.sections.flatMap((x) => x.fields).find((f) => f.id === m.id) ?? m))).join(', ')}.</p>` : ''}
       ${agreementLine()}
       ${admin ? `<p><button type="button" id="opencontract" aria-controls="cpane" aria-expanded="${cpaneOpen()}">${cpaneOpen() ? 'Hide the contract' : 'Show the contract'}</button></p>` : ''}
@@ -2367,11 +2368,21 @@ export async function mountProject(o) {
     }
   }
 
+  // The client's browser tab leads with their own name (Daniel, 2026-11-24), so it stands out among
+  // their tabs: "Lowen Games - Steadfast Code Client Portal". It is set whenever the project is read,
+  // not when a tab is painted, so it is right on the contract screen too.
+  function nameTheTab() {
+    if (admin) return;
+    const name = P?.answers?.businessName;
+    document.title = name ? `${name} - Steadfast Code Client Portal` : 'Steadfast Code Client Portal';
+  }
+
   // ---- the other side's changes ----
   function apply(r) {
     const before = P ? shape() : null;
     // Unsaved local edits win over what the server says until they're saved.
     P = { ...r, answers: { ...r.answers, ...pending } };
+    nameTheTab();
     if (before !== shape()) return render();
     // On the agreement screen there's nothing else to update, and redrawing would wipe a half-typed name.
     if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) { ensureDrawer(); paintMessages(); return; }
@@ -2430,6 +2441,7 @@ export async function mountProject(o) {
   root.innerHTML = '<p class="muted">Loading…</p>';
   try { P = await api(routes.project); } catch (e) { root.innerHTML = `<p class="error">${esc(e.message)}</p>${o.backHref ? `<p><a href="${o.backHref}">Back</a></p>` : ''}`; return { stop() {} }; }
   if (admin) bar.hidden = false;
+  nameTheTab();
   render();
   pollTimer = setInterval(() => { if (!stopped && document.visibilityState === 'visible' && !Object.keys(pending).length) refresh(); }, POLL_MS);
   // Back to this window: messages that only peeked while it sat in the background are read now.
