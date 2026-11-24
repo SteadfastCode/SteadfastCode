@@ -148,8 +148,9 @@ export async function mountProject(o) {
   const secTitle = (s) => { const w = words(s); return admin ? w.title || s.title : w.you || w.title || s.you || s.title; };
   const building = () => ['build-requested', 'building'].includes(P.status);
   const gated = () => !admin && P.agreement?.needed;
-  // The client's page is tabs (2026-11-04). Before signing: the contract, and planning for a head
-  // start. After: Your site (preview or live site, progress, activity), Planning (the intake; after
+  // The client's page is tabs (2026-11-04). Before signing: Your info & contract (the package, their
+  // business and the contract to sign), and planning for a head start. After: Your info & site (the
+  // preview or live site, progress, the package and their business, activity), Planning (the rest of the intake; after
   // launch, Your details: only the facts that change, and a Request a change box on Your site), the
   // Care plan once Daniel offers one (before or after launch), and Documents (everything signed).
   // The tab is remembered for this browser tab, so a reload stays where it was.
@@ -159,13 +160,16 @@ export async function mountProject(o) {
   const closed = () => !admin && !!P?.intakeClosed;
   const WIDE = matchMedia('(min-width: 900px)');
   const wide = () => !admin && WIDE.matches;
+  const NARROW = matchMedia('(max-width: 600px)');
   const clientTabs = () => {
     if (admin) return [];
     // Messages with Daniel from the first day (2026-11-04), with the unread count on the tab.
     // On a wide screen Messages is a drawer on the right instead (2026-11-04), open from any tab.
     const msgs = wide() ? [] : [['messages', P.unreadMessages ? `Messages (${P.unreadMessages})` : 'Messages']];
-    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', 'Contract'], ['planning', 'Planning'], ...msgs] : [];
-    return [['site', 'Your site'], ['planning', launched() || closed() ? 'Details' : 'Planning'], ...msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
+    // A phone's tab bar has room for two short words a tab: "Your" goes there.
+    const yours = (name) => (NARROW.matches ? name.replace(/ /g, '\u00a0') : 'Your ' + name.toLowerCase());
+    if (gated()) return P.agreement.reason !== 'no-package' ? [['contract', yours('Info & contract')], ['planning', 'Planning'], ...msgs] : [];
+    return [['site', yours('Info & site')], ['planning', launched() || closed() ? 'Details' : 'Planning'], ...msgs, ...(P.care ? [['care', 'Care plan']] : []), ['docs', 'Documents']];
   };
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
@@ -176,9 +180,13 @@ export async function mountProject(o) {
     // Daniel's messages live in /admin/inbox (2026-11-04); his project page links there.
     if (admin) return { status: 1, scope: 1, link: 1, requests: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
     if (tab === 'messages') return { messages: 1 };
-    if (gated()) return { status: 1, scope: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
-    return ({ site: { status: 1, scope: 1, requests: 1, assets: 1, request: launched() && !closed(), activity: 1 }, planning: { assets: 1, files: 1, fields: launched() && !closed() ? 'live' : 'all', intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
+    // The package and their business (`info`, Daniel 2026-11-23) share the first tab with the contract
+    // or the site, and come off Planning: on their own they made a thin tab.
+    if (gated()) return tab === 'contract' ? { info: 'all', agreement: 1 } : { status: 1, scope: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
+    const fields = launched() && !closed() ? 'live' : 'all';
+    return ({ site: { status: 1, scope: 1, requests: 1, assets: 1, request: launched() && !closed(), info: fields, activity: 1 }, planning: { assets: 1, files: 1, fields, intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
+  const INFO = ['package', 'business'];
   // A field placed on the Client links card (the mock-up and lab links) is drawn there, not in its section.
   const fieldShown = (mode) => (f) => applies(f) && f.place !== 'links' && (mode === 'all' || (f.live && f.id !== 'notes'));
 
@@ -306,7 +314,7 @@ export async function mountProject(o) {
     paintTabs();
     ensureDrawer();
     paintQuestions();
-    if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) return renderAgreement();
+    if (gated() && !tabbed()) return renderAgreement();
     const show = parts();
     msgLoaded = false;
     // A redraw makes fresh, empty cards: everything that skips repainting when nothing changed starts over.
@@ -318,14 +326,19 @@ export async function mountProject(o) {
     const focus = document.activeElement?.closest?.('[data-f]') === document.activeElement ? document.activeElement.dataset.f : null;
     const sel = focus ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const y = scrollY;
+    const sectionCard = (x, mode) => { const fs = x.fields.filter(fieldShown(mode)); return fs.length ? `<section class="card" data-card="s-${esc(x.id)}"><h2>${esc(secTitle(x))}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; };
+    const info = show.info ? INFO.map((id) => C.sections.find((x) => x.id === id)).filter((x) => x && applies(x)).map((x) => sectionCard(x, show.info)).join('') : '';
+    if (show.agreement) { progress.hidden = true; bar.hidden = true; }
     root.innerHTML = `
       ${o.backHref ? `<p><a class="back" href="${o.backHref}"><span aria-hidden="true">‹</span> All projects</a></p>` : ''}
       <h1 id="title"></h1>
       ${show.intro ? `<p class="muted">${closed() ? 'These are the details your site is built from. To change anything, big or small, send Daniel a message and he’ll take care of it.' : launched() ? 'Keep these up to date: what you change here goes onto your site on its own, usually within a few minutes.' : 'This is the same page Daniel is working from. Anything you type here saves on its own, and he sees it as you go.'}</p>` : ''}
+      ${show.agreement ? `<div class="infocards">${info}</div>${agreementCards()}` : ''}
       ${show.status ? '<section class="card" id="status"></section>' : ''}
       ${admin ? `<details class="card qmenu" id="qmenu"${qOpen ? ' open' : ''}><summary><h2>Questions</h2><span class="muted" id="qcount"></span></summary><div id="qbody"></div></details>` : ''}
-      ${!admin && tab === 'site' && P.change && !gated() ? '<section class="card"><h2>Change something</h2><p class="muted">New hours, new photos, different wording, a new page: start here, and you’ll see where each one stands.</p><p><button type="button" class="primary" data-make-change>Make a change</button></p></section>' : ''}
-      ${show.request && notesField && !P.change ? `<section class="card"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
+      ${!admin && tab === 'site' && P.change && !gated() ? '<section class="card" data-card="change"><h2>Change something</h2><p class="muted">New hours, new photos, different wording, a new page: start here, and you’ll see where each one stands.</p><p><button type="button" class="primary" data-make-change>Make a change</button></p></section>' : ''}
+      ${show.request && notesField && !P.change ? `<section class="card" data-card="request"><h2>Request a change</h2><p class="muted">New pages, new features, a different layout: anything bigger than your details goes to Daniel, who gets back to you about it.</p>${fieldHtml(notesField)}</section>` : ''}
+      ${show.agreement ? '' : info}
       ${show.messages && !wide() ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${MSG_INTRO}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol>${composerHtml(true)}</section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
@@ -340,7 +353,7 @@ export async function mountProject(o) {
       ${show.requests && (admin || (P.requests || []).length) ? '<section class="card" id="requests"></section>' : ''}
       ${show.assets && (admin || (P.assets || []).length) ? '<section class="card" id="assets"></section>' : ''}
       ${show.files ? '<section class="card" id="files"></section>' : ''}
-      ${show.fields ? C.sections.filter(applies).map((s) => { const fs = s.fields.filter(fieldShown(show.fields)); return fs.length ? `<section class="card"><h2>${esc(secTitle(s))}</h2>${fs.map(fieldHtml).join('')}</section>` : ''; }).join('') : ''}
+      ${show.fields ? C.sections.filter((x) => applies(x) && (admin || !INFO.includes(x.id))).map((x) => sectionCard(x, show.fields)).join('') : ''}
       ${show.activity ? '<section class="card" id="activity"></section>' : ''}`;
     root.querySelectorAll('[data-tier]').forEach((b) => b.addEventListener('click', () => queue('tier', b.dataset.tier, true)));
     wirePricing();
@@ -371,6 +384,9 @@ export async function mountProject(o) {
       const el = root.querySelector(`[data-f="${focus}"]`);
       if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(...sel); } catch { /* not a text field */ } }
     }
+    if (show.agreement) wireAgreement();
+    applyCardOrder();
+    ensureGrips();
     scrollTo(0, y);
     lastUploads = ''; lastEvents = '';
     paint();
@@ -814,16 +830,17 @@ export async function mountProject(o) {
     nav.querySelectorAll('[data-t]').forEach((b) => { const on = b.dataset.t === tab; b.setAttribute('aria-current', on ? 'page' : 'false'); b.classList.toggle('on', on); });
   }
 
+  // Before there's a package there's nothing to read or fill in yet: one line, no tabs.
   function renderAgreement() {
-    const ag = P.agreement;
     progress.hidden = true;
     bar.hidden = true;
-    if (ag.reason === 'no-package' || !ag.current) {
-      root.innerHTML = `<h1>Your website</h1><section class="card"><p>Daniel is setting up your project. This page updates on its own as soon as it's ready for you.</p></section>`;
-      return;
-    }
-    root.innerHTML = `
-      <h1>Before we start</h1>
+    root.innerHTML = `<h1>Your website</h1><section class="card"><p>Daniel is setting up your project. This page updates on its own as soon as it's ready for you.</p></section>`;
+  }
+
+  // The contract on the Your info & contract tab: a note, the contract, and the box to sign it.
+  function agreementCards() {
+    const ag = P.agreement;
+    return `
       <section class="card" id="contractnote">
         ${ag.reason === 'changed' ? '<p class="error">Your package changed since you signed, so here is the updated contract.</p>' : ''}
         <p class="muted">This is the contract for your website: what's included, the price, and how changes and launch work. You can read it here and start planning in the Planning tab any time; building starts once it's signed.</p>
@@ -838,6 +855,10 @@ export async function mountProject(o) {
         <label class="check"><input type="checkbox" id="signportfolio"> It's OK to show my finished site on Steadfast Code's Work page.</label><span class="help">Optional, and separate from the contract.</span>
         <p><button type="button" class="primary" id="signbtn" disabled>Sign and continue</button> <span id="signnote" class="muted"></span></p>
       </section>`;
+  }
+
+  function wireAgreement() {
+    const ag = P.agreement;
     root.querySelectorAll('[data-tab]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); setTab(a.dataset.tab); }));
     // In the whole-page layout the note and the signature box both stay in view beside the
     // contract. The box sits under the note, so the stylesheet needs to know how tall the note is.
@@ -1149,7 +1170,7 @@ export async function mountProject(o) {
       <label for="csname">Your full name</label>
       <input type="text" id="csname" autocomplete="name" value="${esc(saved)}">
       <p class="help" id="cspadlabel">Sign here with a finger or the mouse</p>
-      <canvas id="cspad" aria-labelledby="cspadlabel" style="display:block;width:100%;height:160px;background:#fff;border-radius:10px;touch-action:none;cursor:crosshair"></canvas>
+      <canvas id="cspad" aria-labelledby="cspadlabel" style="display:block;width:100%;height:160px;background:#fff;border:1px solid var(--line);border-radius:10px;touch-action:none;cursor:crosshair"></canvas>
       <p><button type="button" id="csclear">Clear</button></p>
       ${to ? `<label class="check"><input type="checkbox" id="csemail" checked> Email the fully signed copy to ${esc(to)}</label>` : '<p class="muted">No client email on the project, so the signed copy goes only to you.</p>'}
       <p><button type="button" class="primary" id="cssign" disabled>Sign the contract</button> <span class="muted" id="cssaid" role="status"></span></p>`;
@@ -1314,6 +1335,7 @@ export async function mountProject(o) {
   // It runs again whenever a card changes size, the cards are redrawn, the window is resized or
   // the layout is switched. The contract tab has its own two-part layout and is left alone.
   const MASONRY_ROW = 2;
+  const MASONRY_MIN = 420; // form.css: grid-template-columns: repeat(auto-fill, minmax(420px, 1fr))
   let masonryQueued = false;
 
   function layoutMasonry() {
@@ -1350,7 +1372,13 @@ export async function mountProject(o) {
       nextRow += rows;
     }
 
-    const columnCount = getComputedStyle(root).gridTemplateColumns.split(' ').length;
+    // From the width, as form.css's auto-fill does (columns at least MASONRY_MIN wide), not from the
+    // grid as drawn: cards already placed in columns 4 and 5 keep those alive as narrow extra tracks,
+    // so opening the Contract pane (half the width) never dropped the count and squeezed every card.
+    const box = getComputedStyle(root);
+    const inner = root.clientWidth - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight);
+    const gap = parseFloat(box.columnGap) || 0;
+    const columnCount = Math.max(1, Math.floor((inner + gap) / (MASONRY_MIN + gap)));
     const columnEnds = Array.from({ length: columnCount }, () => nextRow);
     const cards = shown.filter(isCard);
     const before = new Map(cards.map((card) => [card, card.getBoundingClientRect()]));
@@ -1358,7 +1386,7 @@ export async function mountProject(o) {
     // While something is being dragged (a text box by its corner), nothing changes column: each
     // card keeps its place and its column just restacks, so the card under the pointer grows and
     // the ones below it slide down. The even fill waits for the pointer to let go.
-    const holding = pointerHeld && columnCount === masonryColumns && cards.every((card) => masonryPlace.has(card));
+    const holding = pointerHeld && !draggedCard && columnCount === masonryColumns && cards.every((card) => masonryPlace.has(card));
     if (holding) {
       const inOrder = [...cards].sort((one, other) => masonryPlace.get(one).row - masonryPlace.get(other).row);
       for (const card of inOrder) {
@@ -1368,6 +1396,22 @@ export async function mountProject(o) {
         masonryPlace.set(card, { column, row: columnEnds[column] });
         columnEnds[column] += rows;
       }
+      return;
+    }
+
+    // Cards the reader has put in order (or is dragging): that order, each into the shortest column in
+    // turn, so it reads left to right and down. No tallest-first packing and no sponge.
+    if (arrangedCards()) {
+      for (const card of cards) {
+        const column = columnEnds.indexOf(Math.min(...columnEnds));
+        const rows = rowsFor(card);
+        place(card, column, columnEnds[column], rows);
+        masonryPlace.set(card, { column, row: columnEnds[column] });
+        columnEnds[column] += rows;
+      }
+      masonryColumns = columnCount;
+      before.delete(draggedCard);
+      showMoves(before, []);
       return;
     }
 
@@ -1481,6 +1525,121 @@ export async function mountProject(o) {
     new MutationObserver(queueMasonry).observe(document.body, { attributes: true, attributeFilter: ['class'] });
     addEventListener('resize', queueMasonry);
     watchCards();
+  }
+
+  // ---- cards in the reader's own order (Daniel, 2026-11-24) ----
+  // Every card has a grip at the top right of its header: drag it (finger or mouse) and the other
+  // cards make room as it goes; let go and the order is kept in this browser, for Daniel's page and
+  // for each of the client's tabs. With the grip focused, the arrow keys move the card a place.
+  // Once arranged, the whole-page layout keeps that order (layoutMasonry). "Reset card order" in the
+  // page tools hands it back. The contract tab keeps its own layout and has no grips.
+  const GRIP = '<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/><circle cx="8" cy="14" r="1.5"/></g></svg>';
+  let draggedCard = null;
+  const cardKey = (el) => el.dataset.card || el.id;
+  const orderKey = () => `cardOrder:${admin ? 'admin' : 'client:' + tab}`;
+  const savedCardOrder = () => { try { const v = JSON.parse(localStorage.getItem(orderKey()) || 'null'); return Array.isArray(v) ? v : null; } catch { return null; } };
+  const movableCards = () => (root.querySelector(':scope > .card.agreement') ? [] : [...root.children].filter((el) => el.classList.contains('card') && cardKey(el)));
+  const arrangedCards = () => !!draggedCard || !!savedCardOrder();
+  const saveCardOrder = () => { store(orderKey(), JSON.stringify(movableCards().map(cardKey))); ensureGrips(); };
+
+  /** The saved order, over the cards it knows; a card it doesn't know (new since) keeps its place. */
+  function applyCardOrder() {
+    const order = savedCardOrder();
+    if (!order) return;
+    const known = movableCards().filter((card) => order.includes(cardKey(card)));
+    const marks = known.map((card) => { const mark = document.createComment(''); card.before(mark); return mark; });
+    const sorted = [...known].sort((one, other) => order.indexOf(cardKey(one)) - order.indexOf(cardKey(other)));
+    marks.forEach((mark, i) => mark.replaceWith(sorted[i]));
+  }
+
+  /** A grip on every card that hasn't got one (a card redrawn by its painter loses it), and the reset button. */
+  function ensureGrips() {
+    for (const card of movableCards()) {
+      // A closed <details> shows only its summary, so its grip goes in there.
+      const host = card.tagName === 'DETAILS' ? card.querySelector(':scope > summary') : card;
+      if (!host || host.querySelector(':scope > .cardgrip')) continue;
+      const grip = document.createElement('button');
+      grip.type = 'button';
+      grip.className = 'cardgrip';
+      grip.setAttribute('aria-label', 'Move this card (drag, or arrow keys)');
+      grip.title = 'Drag to move this card';
+      grip.innerHTML = GRIP;
+      host.append(grip);
+      card.classList.add('has-grip');
+    }
+    const tools = admin ? document.querySelector('.head-tools') : document.getElementById('pagetools');
+    if (!tools) return;
+    let reset = tools.querySelector('#cardreset');
+    if (!reset) {
+      reset = document.createElement('button');
+      reset.type = 'button';
+      reset.id = 'cardreset';
+      reset.textContent = 'Reset card order';
+      reset.onclick = () => { store(orderKey(), null); masonryColumns = 0; render(); };
+      tools.prepend(reset);
+    }
+    reset.hidden = !savedCardOrder() || !movableCards().length;
+  }
+  {
+    // Daniel's page mounts each project on the same element: the newest mount's listeners take over.
+    root.__grips?.abort();
+    const wired = (root.__grips = new AbortController());
+    const signal = wired.signal;
+    const watch = new MutationObserver(() => { if (!draggedCard) ensureGrips(); });
+    watch.observe(root, { childList: true, subtree: true });
+    signal.addEventListener('abort', () => watch.disconnect());
+    // A grip inside a <summary> mustn't open or close the card.
+    root.addEventListener('click', (e) => { if (e.target.closest('.cardgrip')) e.preventDefault(); }, { signal });
+    root.addEventListener('keydown', (e) => {
+      const grip = e.target.closest?.('.cardgrip');
+      if (!grip || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      e.preventDefault();
+      const cards = movableCards(), card = grip.closest('.card'), i = cards.indexOf(card);
+      const earlier = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
+      const other = cards[earlier ? i - 1 : i + 1];
+      if (!other) return;
+      if (earlier) other.before(card); else other.after(card);
+      saveCardOrder();
+      queueMasonry();
+      grip.focus();
+    }, { signal });
+    root.addEventListener('pointerdown', (e) => {
+      const grip = e.target.closest('.cardgrip');
+      if (!grip || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      e.preventDefault();
+      const card = grip.closest('.card');
+      draggedCard = card;
+      card.classList.add('dragging');
+      document.body.classList.add('dragging-card');
+      // On the document, not captured by the grip: moving the card in the page would drop a capture.
+      const move = (ev) => {
+        if (ev.clientY < 60) scrollBy(0, -18); else if (ev.clientY > innerHeight - 60) scrollBy(0, 18);
+        const over = movableCards().find((other) => {
+          if (other === card) return false;
+          const r = other.getBoundingClientRect();
+          return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+        });
+        if (!over) return;
+        const r = over.getBoundingClientRect();
+        const after = ev.clientY > r.top + r.height / 2;
+        if (after ? over.nextElementSibling === card : over.previousElementSibling === card) return;
+        if (after) over.after(card); else over.before(card);
+        queueMasonry();
+      };
+      const up = () => {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+        card.classList.remove('dragging');
+        document.body.classList.remove('dragging-card');
+        draggedCard = null;
+        saveCardOrder();
+        queueMasonry();
+      };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', up);
+    }, { signal });
   }
 
   // ---- the client's page tools (2026-11-20) ----
@@ -2392,8 +2551,8 @@ export async function mountProject(o) {
     P = { ...r, answers: { ...r.answers, ...pending } };
     nameTheTab();
     if (before !== shape()) return render();
-    // On the agreement screen there's nothing else to update, and redrawing would wipe a half-typed name.
-    if (gated() && (!tabbed() || !['planning', 'messages'].includes(tab))) { ensureDrawer(); paintMessages(); return; }
+    // On the setting-up screen there's nothing else to update.
+    if (gated() && !tabbed()) { ensureDrawer(); paintMessages(); return; }
     for (const el of root.querySelectorAll('[data-f]')) {
       const f = el.dataset.f;
       if (el.contains(document.activeElement) || f in pending || Date.now() - (localEditAt[f] || 0) < 4000) continue;

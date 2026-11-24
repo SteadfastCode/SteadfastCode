@@ -150,12 +150,22 @@
     body.layout-grid main:has(> .card.agreement) { columns: auto; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 14px; align-items: start; }
     body.layout-grid main:has(> .card.agreement) > :not(.card) { grid-column: 1 / -1; }
     body.layout-grid main:has(> .card.agreement) > .card { grid-column: 2; }
-    body.layout-grid main:has(> .card.agreement) > .card.agreement { grid-column: 1; grid-row: 2 / span 6; }
+    body.layout-grid main:has(> .card.agreement) > .card.agreement { grid-column: 1; grid-row: 3 / span 6; }
+    /* Your info (the package and their business) across the top, side by side, above the contract. */
+    body.layout-grid main:has(> .card.agreement) > .infocards { grid-row: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; align-items: start; }
     /* Both stay in view while the contract scrolls: the note at the top, the box right under it
        (the page script measures the note, since a sticky box can't know what's above it). */
     body.layout-grid main:has(> .card.agreement) > #contractnote { position: sticky; top: 12px; }
     body.layout-grid main:has(> .card.agreement) > #signbox, body.layout-grid main:has(> .card.agreement) > #reviewonly { position: sticky; top: calc(26px + var(--contract-note-height, 0px)); }
   }
+  /* Moving cards (2026-11-24): a grip at the top right of every card, on both sides (project.js). */
+  .card.has-grip { position: relative; }
+  .card.has-grip > :first-child:not(.cardgrip) { padding-right: 34px; }
+  .cardgrip { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: grab; touch-action: none; }
+  .cardgrip:not(:disabled):hover { background: var(--hover); border-color: transparent; color: var(--ink); }
+  .card.dragging { outline: 2px solid var(--accent); outline-offset: -1px; box-shadow: 0 12px 30px -12px rgb(0 0 0 / .5); }
+  body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-select: none; }
+
   /* "Make a change" (2026-11-20): the button above the message box, and the block it opens. */
   .change-row { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .change-row button { font-size: .9rem; padding: 6px 12px; }
