@@ -353,7 +353,7 @@ export const work = [
     details: [
       'A “How can we help?” box at the top, one tap from each kind of visitor to their own section',
       'Every “Ask about…” button opens the contact form with the topic already picked',
-      'A question about the Darby rental goes to its property manager as well as to the owners, without the manager’s address ever appearing on the page',
+      'Each rental has its own card, and the Darby rental’s names its property manager with a number you can tap to call',
       'Their own logo and photos, light and dark mode, and a privacy page that says only what the site actually does',
     ],
     image: '/work/nj-fusions.webp',
