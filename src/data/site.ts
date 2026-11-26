@@ -193,6 +193,23 @@ export const domainNote = 'If you’d rather I handle the domain, I can keep it 
 // without one, Cloudflare's free Web Analytics or a tool the client picks. Shown under the care plans.
 export const analyticsNote = 'Every care plan counts visits with Steadfast Analytics, the visit counter I run: no cookies, nothing kept that identifies your visitors, and it counts calls, texts, emails and form sends, not just page views. Without a plan your site counts nothing unless you want it to. Cloudflare’s free Web Analytics can be switched on for you (it loads a small script from Cloudflare), or I can add another tool you choose, update your privacy page to match, and add a cookie banner if it needs one.';
 
+// Why the sites load nothing from other companies by default (Daniel, 2026-11-26). Shown on /websites
+// under "Every site". Every reason has to stay literally true of how the sites are built.
+export const outsideScripts = {
+  heading: 'Why I leave out outside scripts',
+  intro: 'An outside script is code your site loads from another company’s server: analytics, ad pixels, chat widgets, social media buttons. Most sites carry several without the owner ever deciding to. I leave them out unless you want one, for these reasons:',
+  reasons: [
+    { title: 'Speed', text: 'Every outside script is more code from another server that your visitor’s phone has to download and run, and it’s one of the most common reasons a page feels slow. Your customers notice that before they read a word.' },
+    { title: 'Privacy', text: 'Each one tells another company that someone visited your site, and often what they did there. Without them, nobody but your site sees your visitors.' },
+    { title: 'No cookie banner', text: 'Most cookie banners are there because of outside scripts like analytics and ad pixels. Without them there’s nothing to ask permission for, and nothing standing between your visitor and your page.' },
+    { title: 'Security', text: 'An outside script can do anything on your page, and it can change any day without you or me knowing. If the company behind it is hacked, so is every site that loads it.' },
+    { title: 'Reliability', text: 'When an outside service is slow or down, a page that depends on it can hang or break along with it. Your site depends only on itself.' },
+    { title: 'It lasts', text: 'Outside services shut down, change their terms and start charging. A site that doesn’t lean on them keeps working for years without anyone touching it.' },
+    { title: 'Ad blockers', text: 'Many visitors block outside scripts, and a feature that relies on one can quietly stop working for them.' },
+  ],
+  after: 'When a feature you want does need one, like a video, I’ll tell you first and keep it as light as I can: a video loads nothing from YouTube until someone presses play. And if you want Google Analytics or another tool anyway, it’s your site. I’ll add it, update your privacy page to match, and add the cookie banner it needs.',
+} as const;
+
 export const everyBuild = [
   'Unlimited changes for 30 days from the day you first see your site: wording, photos, colors, layout, whatever it takes to make it yours, within your package. After that, changes come with a care plan or a quote.',
   'If something I built doesn’t work the way I said it would, I fix it free.',

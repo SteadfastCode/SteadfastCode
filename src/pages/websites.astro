@@ -8,6 +8,7 @@ import {
   carePlans,
   domainNote,
   analyticsNote,
+  outsideScripts,
   everyBuild,
   faq,
   launchNote,
@@ -97,6 +98,21 @@ const description = `Custom websites, built with AI coding tools, tested on real
           ))
         }
       </ul>
+      <div class="outside-scripts" id="outside-scripts">
+        <h3>{outsideScripts.heading}</h3>
+        <p>{outsideScripts.intro}</p>
+        <div class="grid">
+          {
+            outsideScripts.reasons.map((r, i) => (
+              <div class="card" data-reveal style={`--i:${i}`}>
+                <h4>{r.title}</h4>
+                <p>{r.text}</p>
+              </div>
+            ))
+          }
+        </div>
+        <p>{outsideScripts.after}</p>
+      </div>
     </div>
   </section>
 
