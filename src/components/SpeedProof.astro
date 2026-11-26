@@ -29,6 +29,7 @@ const medianMb = (median / 1024).toFixed(1);
   <div class="bar us"><span>This page</span><span class="track" role="progressbar" aria-label="This page's size as a share of the median website" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.ceil((benchmarks.budgetKb / median) * 100)} data-bar-us><span class="fill" style={`--w:${Math.ceil((benchmarks.budgetKb / median) * 100)}%`}></span></span><span class="v"><span data-share>&lt;{Math.ceil((benchmarks.budgetKb / median) * 100)}%</span> of the median · <span data-kb-small>&lt;{benchmarks.budgetKb} KB</span></span></div>
 </div>
 <p class="proof-note">That gap is most of what I am selling. A page that is loaded the moment a visitor's thumb is lifted is a delightful experience. A page, or a whole site, that makes them wait can frustrate potential customers. Google ranks on it, too.</p>
+<p class="proof-note">This page also loads nothing from other companies: no analytics service, no fonts from Google, no tracking pixels. <a href="/websites#outside-scripts">Why I leave those out</a>.</p>
 <script>
   // Bundled, not inline, so the production build minifies it. Nothing here has to run before paint:
   // the figures in the markup are already true, and these replace them with the visitor's own.

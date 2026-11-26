@@ -425,3 +425,13 @@
   .review ul { margin: 6px 0 10px; padding-left: 18px; }
   /* A badge, not the boxed note that .review alone is: keep the badge's own size and shape. */
   .badge.review { color: var(--warn); border-color: var(--warn); padding: 2px 8px; margin-top: 0; border-radius: 999px; }
+  /* Visit counts (2026-11-26): the totals as a row of small figures, then short ranked lists. */
+  .visit-range select { width: auto; margin-left: 6px; }
+  /* Three to a row where there's room, two on a phone. */
+  .visit-totals { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(7.5rem, calc((100% - 16px) / 3)), 1fr)); gap: 8px; margin: 12px 0; }
+  .visit-totals div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .visit-totals dt { color: var(--muted); font-size: .85rem; }
+  .visit-totals dd { margin: 0; font-size: 1.4rem; font-weight: 700; }
+  .visit-list { list-style: none; padding: 0; margin: 4px 0 12px; }
+  .visit-list li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .visit-list li span { overflow-wrap: anywhere; }

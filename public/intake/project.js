@@ -174,17 +174,17 @@ export async function mountProject(o) {
   let tab = (() => { try { return sessionStorage.getItem('clientTab') || ''; } catch { return ''; } })();
   const fixTab = () => { const ts = clientTabs(); if (ts.length && !ts.some(([id]) => id === tab)) tab = ts[0][0]; };
   const tabbed = () => clientTabs().length > 0;
-  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}:${(P.assets || []).length ? 'assets' : ''}:${(P.requests || []).length ? 'requests' : ''}|`) + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
+  const shape = () => (gated() ? 'agreement:' + (P.agreement.reason || '') + ':' + (P.agreement.current?.sha256 || '') + ':' + P.agreement.signingOpen + '|' : '') + (admin ? '' : `tabs:${tab}:${launched()}:${closed()}:${!!P.care}:${(P.assets || []).length ? 'assets' : ''}:${(P.requests || []).length ? 'requests' : ''}|`) + `visits:${P.visits?.mode || ''}|` + C.sections.filter(applies).map((s) => s.id + ':' + s.fields.filter(applies).map((f) => f.id).join(',')).join('|');
   // What each tab shows. Daniel's page has everything; so does the client's planning tab before signing.
   const parts = () => {
     // Daniel's messages live in /admin/inbox (2026-11-04); his project page links there.
-    if (admin) return { status: 1, scope: 1, link: 1, requests: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 0 };
+    if (admin) return { status: 1, scope: 1, link: 1, requests: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 0, visits: 1 };
     if (tab === 'messages') return { messages: 1 };
     // The package and their business (`info`, Daniel 2026-11-23) share the first tab with the contract
     // or the site, and come off Planning: on their own they made a thin tab.
     if (gated()) return tab === 'contract' ? { info: 'all', agreement: 1 } : { status: 1, scope: 1, assets: 1, files: 1, fields: 'all', activity: 1, intro: 1 };
     const fields = launched() && !closed() ? 'live' : 'all';
-    return ({ site: { status: 1, scope: 1, requests: 1, assets: 1, request: launched() && !closed(), info: fields, activity: 1 }, planning: { assets: 1, files: 1, fields, intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
+    return ({ site: { status: 1, scope: 1, requests: 1, assets: 1, request: launched() && !closed(), info: fields, activity: 1, visits: 1 }, planning: { assets: 1, files: 1, fields, intro: 1 }, care: { care: 1 }, docs: { docs: 1 } })[tab] || {};
   };
   const INFO = ['package', 'business'];
   // A field placed on the Client links card (the mock-up and lab links) is drawn there, not in its section.
@@ -319,6 +319,7 @@ export async function mountProject(o) {
     msgLoaded = false;
     // A redraw makes fresh, empty cards: everything that skips repainting when nothing changed starts over.
     docsLoaded = false;
+    visitsLoaded = false;
     careKey = null;
     qKey = null;
     const notesField = C.sections.flatMap((x) => x.fields).find((f) => f.id === 'notes');
@@ -341,6 +342,7 @@ export async function mountProject(o) {
       ${show.agreement ? '' : info}
       ${show.messages && !wide() ? `<section class="card" id="messages"><h2>Messages</h2><p class="muted">${MSG_INTRO}</p><ol class="msgs" id="msglist"><li class="muted">Loading…</li></ol>${composerHtml(true)}</section>` : ''}
       ${show.care && P.care ? '<section class="card" id="care"></section>' : ''}
+      ${show.visits && P.visits ? '<section class="card" id="visits"></section>' : ''}
       ${show.docs ? '<section class="card" id="docs"><h2>Documents</h2><p class="muted">Loading…</p></section>' : ''}
       ${show.scope ? '<section class="card" id="scope" hidden><h2>Past the package</h2><ul class="scope" id="scopelist"></ul></section>' : ''}
       ${admin ? '<section class="card" id="launchcard"></section>' : ''}
@@ -537,6 +539,82 @@ export async function mountProject(o) {
       w.document.write(`<!doctype html><title>${esc(P.answers.businessName || 'Document')}</title><pre style="white-space:pre-wrap;font:14px/1.5 system-ui">${b.closest('details').querySelector('pre').innerHTML}</pre>${b.closest('details').querySelector('.countersig')?.outerHTML || ''}`);
       w.document.close(); w.focus(); w.print();
     }));
+  }
+
+  // ---- visit counts (2026-11-26, server/visits.js) ----
+  // Steadfast Analytics' numbers for this site, on the client's Info & site tab and on Daniel's page:
+  // while there's a care plan, and for 90 days after one ends, when only the download matters.
+  let visitsLoaded = false;
+  let visitsDays = (() => { try { return Number(sessionStorage.getItem('visitsDays')) || 30; } catch { return 30; } })();
+  const EVENT_NAMES = { phone: 'Calls', text: 'Texts', email: 'Emails', form: 'Form sends' };
+  const DEVICE_NAMES = { mobile: 'Phone', tablet: 'Tablet', desktop: 'Computer' };
+  const count = (n) => Number(n || 0).toLocaleString();
+
+  function visitsHtml(d) {
+    const yours = admin ? 'their' : 'your';
+    const intro = `<p class="muted">Counted by Steadfast Analytics, part of ${yours} care plan: no cookies, and nothing kept that identifies anyone. A visitor is one browser on one day.</p>`;
+    const ended = d.state.mode === 'ended'
+      ? `<p>${admin ? 'Their' : 'Your'} care plan has ended, so the site isn’t counting anymore. ${admin ? 'They' : 'You'} can download every count until ${esc(new Date(d.state.until + 'T12:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }))}; after that the counts are deleted.</p>`
+      : '';
+    const download = '<p><button type="button" id="visitsexport">Download every count (CSV)</button> <span class="muted" id="visitsnote" role="status"></span></p>';
+    if (!d.report) {
+      return `<h2>Visitors</h2>${intro}<p class="muted">${admin ? 'Not in Steadfast Analytics yet: the box connects the site once it’s launched with its plan.' : 'Counting starts once your site is live.'}</p>`;
+    }
+    const r = d.report;
+    const events = Object.fromEntries((r.events || []).map((e) => [e.name, e.count]));
+    const totals = [['Visitors', r.totals.visitors], ['Page views', r.totals.views], ...Object.entries(EVENT_NAMES).map(([id, name]) => [name, events[id]])];
+    const list = (rows, label) => rows.length ? `<ol class="visit-list">${rows.map(([name, n]) => `<li><span>${esc(name)}</span><b>${count(n)}</b></li>`).join('')}</ol>` : `<p class="muted">${label}</p>`;
+    const pages = (r.pages || []).slice(0, 5).map((x) => [x.path === '/' ? 'Home page' : x.path, x.visitors]);
+    const sources = (r.sources || []).slice(0, 5).map((x) => [x.referrer || 'Typed in, bookmarked or an app', x.visitors]);
+    const devices = (r.devices || []).map((x) => `${esc(DEVICE_NAMES[x.device] || 'Unknown')} ${count(x.visitors)}`).join(' · ');
+    const range = `<label class="visit-range">Showing <select id="visitsdays">${[7, 30, 90, 365].map((n) => `<option value="${n}"${n === visitsDays ? ' selected' : ''}>the last ${n === 365 ? 'year' : n + ' days'}</option>`).join('')}</select></label>`;
+    return `<h2>Visitors</h2>${intro}${ended}
+      ${d.state.mode === 'counting' ? range : ''}
+      <dl class="visit-totals">${totals.map(([name, n]) => `<div><dt>${esc(name)}</dt><dd>${count(n)}</dd></div>`).join('')}</dl>
+      <h3>Most visited pages</h3>${list(pages, 'No visits in this time.')}
+      <h3>Where visitors came from</h3>${list(sources, 'No visits in this time.')}
+      ${devices ? `<p class="muted">Devices: ${devices}</p>` : ''}
+      ${download}`;
+  }
+
+  async function paintVisits() {
+    const box = root.querySelector('#visits');
+    if (!box || visitsLoaded || !routes.visits) return;
+    visitsLoaded = true;
+    box.innerHTML = '<h2>Visitors</h2><p class="muted">Loading…</p>';
+    let d;
+    try { d = await api(`${routes.visits}?days=${visitsDays}`); } catch (e) { box.innerHTML = `<h2>Visitors</h2><p class="muted">${esc(e.message)}</p>`; return; }
+    box.innerHTML = visitsHtml(d);
+    const days = box.querySelector('#visitsdays');
+    if (days) days.onchange = () => {
+      visitsDays = Number(days.value);
+      try { sessionStorage.setItem('visitsDays', String(visitsDays)); } catch {}
+      visitsLoaded = false;
+      paintVisits();
+    };
+    const exportButton = box.querySelector('#visitsexport');
+    if (exportButton) exportButton.onclick = async () => {
+      // A plain link can't carry the client's key (it goes in a header), so fetch the file and hand it over.
+      const note = box.querySelector('#visitsnote');
+      exportButton.disabled = true;
+      try {
+        const r = await fetch(routes.visits + '/export', { credentials: 'same-origin', headers: { ...(o.headers || {}) } });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'The download didn’t work.');
+        const url = URL.createObjectURL(await r.blob());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (r.headers.get('content-disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'visits.csv';
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        if (note) note.textContent = '';
+      } catch (e) {
+        if (note) note.textContent = e.message;
+      } finally {
+        exportButton.disabled = false;
+      }
+    };
   }
 
   // ---- messages (2026-11-04) ----
@@ -748,6 +826,7 @@ export async function mountProject(o) {
     const a = P.answers, c = P.check, t = c.tier;
     root.querySelector('#title').textContent = a.businessName || (admin ? 'New project' : 'Your website');
     paintDocs();
+    paintVisits();
     const statusEl = root.querySelector('#status');
     if (statusEl) statusEl.innerHTML = `
       <div><b>${esc(statusLabel[P.status] || P.status)}</b>${t ? ` · ${esc(t.name)} · ${money(c.price, t.from)}${priceNote(c.pricing)}` : ' · no package yet'}</div>
@@ -1319,12 +1398,25 @@ export async function mountProject(o) {
   // in, marks the repo launched and deploys, usually within a couple of minutes, and says so in the
   // activity list. Taking it back does the reverse.
   let launchSaid = ''; // what the last press answered, shown under the buttons
+  let cfSaid = ''; // the same for the Cloudflare analytics switch
+
+  // Cloudflare's own Web Analytics (2026-11-26, server/visits.js): off on every site unless Daniel
+  // switches it on here, or the contract carries the line that does. It loads a script from
+  // Cloudflare, which is why it's a choice rather than the default.
+  function cfAnalyticsHtml() {
+    const cf = P.cfAnalytics || {};
+    const on = cf.on || cf.fromContract;
+    return `<h3>Cloudflare analytics</h3>
+      <label class="check"><input type="checkbox" id="cfanalytics"${on ? ' checked' : ''}${cf.fromContract ? ' disabled' : ''}> Switch on Cloudflare’s free Web Analytics for this site</label>
+      <p class="muted">${cf.fromContract ? 'On because the contract includes the Cloudflare analytics line; switch that line off in the contract to turn it off.' : 'For a client who wants visitor numbers without a care plan. It loads a small script from Cloudflare, so it stays off unless they ask. It takes effect once the site is launched on a domain in our Cloudflare account.'}</p>
+      ${cfSaid ? `<p class="muted" role="status">${esc(cfSaid)}</p>` : ''}`;
+  }
 
   function paintLaunch() {
     const el = root.querySelector('#launchcard');
     if (!el) return;
     const launched = !!P.launchedAt || P.status === 'live';
-    const key = JSON.stringify([launched, P.launchedAt, P.domain, P.previewUrl, P.status, launchSaid]);
+    const key = JSON.stringify([launched, P.launchedAt, P.domain, P.previewUrl, P.status, launchSaid, P.cfAnalytics, cfSaid]);
     if (el.dataset.key === key) return;
     el.dataset.key = key;
 
@@ -1333,7 +1425,7 @@ export async function mountProject(o) {
       el.innerHTML = `<h2>Launch</h2>
         <p class="muted">Launched${P.launchedAt ? ` ${esc(ago(P.launchedAt))}` : ''}, live at ${address}. The box lets search engines in and deploys within a couple of minutes of launching; Activity says when it’s done.</p>
         <p><button type="button" id="unlaunch">Take it back to preview</button></p>
-        <p class="muted" role="status">${esc(launchSaid)}</p>`;
+        <p class="muted" role="status">${esc(launchSaid)}</p>${cfAnalyticsHtml()}`;
     } else {
       const blockers = [
         P.previewUrl ? null : 'Build a first version.',
@@ -1344,7 +1436,7 @@ export async function mountProject(o) {
         <p class="muted">Launching marks the project live and takes the site out of preview mode: search engines are let in, and the client’s page switches to its after-launch view. The domain has to be pointing at the site already; that part is DNS and is done by hand.</p>
         ${blockers.length ? `<p class="muted">Before it can launch: ${blockers.map(esc).join(' ')}</p>` : ''}
         <p><button type="button" class="primary" id="launch"${blockers.length ? ' disabled' : ''}>Launch the site</button></p>
-        <p class="muted" role="status">${esc(launchSaid)}</p>`;
+        <p class="muted" role="status">${esc(launchSaid)}</p>${cfAnalyticsHtml()}`;
     }
 
     const send = async (body) => {
@@ -1363,6 +1455,17 @@ export async function mountProject(o) {
       // The domain didn't answer: Daniel may know it's on its way.
       if (!answer.ok && answer.body.canForce && confirm(`${answer.body.error}\n\nLaunch anyway?`)) answer = await send({ launch: true, force: true });
       finish(answer, 'Launched. The box is taking the site out of preview mode now.');
+    };
+    const cf = el.querySelector('#cfanalytics');
+    if (cf) cf.onchange = async () => {
+      cf.disabled = true;
+      try {
+        apply(await api(routes.cfAnalytics, { method: 'POST', body: JSON.stringify({ on: cf.checked }) }));
+        cfSaid = cf.checked ? 'On. The box switches it on for the domain within a minute or two; Activity says when.' : 'Off. The box switches it off within a minute or two.';
+      } catch (e) {
+        cfSaid = e.message;
+      }
+      paintLaunch();
     };
     const unlaunch = el.querySelector('#unlaunch');
     if (unlaunch) unlaunch.onclick = async () => {

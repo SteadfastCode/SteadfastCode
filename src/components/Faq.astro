@@ -1,7 +1,8 @@
 ---
 // The FAQ as the visitor sees it. The page that renders this also passes the same list to
 // `faqPage()` for the JSON-LD, so the markup never claims an answer the page does not show.
-interface Props { items: readonly { readonly q: string; readonly a: string }[]; heading?: string }
+// `more` is an optional link after an answer, to the part of the site that says more.
+interface Props { items: readonly { readonly q: string; readonly a: string; readonly more?: { readonly href: string; readonly text: string } }[]; heading?: string }
 const { items, heading = 'Questions people ask' } = Astro.props;
 ---
 <h2>{heading}</h2>
@@ -11,7 +12,7 @@ const { items, heading = 'Questions people ask' } = Astro.props;
   {items.map((item, i) => (
     <details data-reveal style={`--i:${Math.min(i, 6)}`} open={i === 0}>
       <summary><span class="q">{item.q}</span></summary>
-      <p class="a">{item.a}</p>
+      <p class="a">{item.a}{item.more && <> <a href={item.more.href}>{item.more.text}</a>.</>}</p>
     </details>
   ))}
 </div>

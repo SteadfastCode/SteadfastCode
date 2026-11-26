@@ -12,6 +12,7 @@ import { firstPreviewOf } from './care.js';
 import { agreementState } from './agreement.js';
 import { careState } from './care.js';
 import { unreadFor } from './messages.js';
+import { visitsState, careRow, contractWantsCfAnalytics } from './visits.js';
 
 export const PRESENCE_SECONDS = 12;
 
@@ -52,7 +53,7 @@ export async function projectView(env, p, { mode }) {
   const answers = JSON.parse(p.answers);
   const db = env.INTAKE;
   const since = new Date(Date.now() - PRESENCE_SECONDS * 1000).toISOString();
-  const [uploads, events, presence, lastBuild, link, agreement, care, unread] = await Promise.all([
+  const [uploads, events, presence, lastBuild, link, agreement, care, unread, careForVisits] = await Promise.all([
     // SELECT *: asset_id comes from a later migration (0022) and the list must read without it.
     db.prepare('SELECT * FROM uploads WHERE project_id = ? AND deleted_at IS NULL ORDER BY uploaded_at').bind(p.id).all(),
     db.prepare('SELECT at, who, what FROM project_events WHERE project_id = ? ORDER BY id DESC LIMIT 20').bind(p.id).all(),
@@ -63,6 +64,7 @@ export async function projectView(env, p, { mode }) {
     agreementState(env, p, { catalog: mode === 'admin' }),
     careState(env, p, mode),
     unreadFor(env, p.id, mode === 'admin' ? 'daniel' : 'client'),
+    careRow(env, p.id),
   ]);
   if (mode !== 'admin') events.results = events.results.map(forClient).filter(Boolean);
   return {
@@ -115,6 +117,10 @@ export async function projectView(env, p, { mode }) {
     // Daniel sees every flag; the client only learns that a bigger ask of theirs went to him.
     reviewNeeded: mode === 'admin' ? reviewList(p) : undefined,
     askedDaniel: mode === 'admin' ? undefined : reviewList(p).some((x) => flagKind(x) === 'ask'),
+    // Visit counts (2026-11-26, server/visits.js): while there's a care plan, and 90 days after one ends.
+    visits: visitsState(careForVisits),
+    // Cloudflare's own Web Analytics (2026-11-26): Daniel's switch, or the contract line that sets it.
+    cfAnalytics: mode === 'admin' ? { on: answers.cfAnalytics === true, fromContract: contractWantsCfAnalytics(answers) } : undefined,
   };
 }
 

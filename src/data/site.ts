@@ -452,6 +452,7 @@ export const faq = [
   {
     q: 'Does my site track visitors?',
     a: 'Not by default. I build sites that load nothing from other companies: no Google Analytics, no ad pixels, no trackers. That keeps the page fast, means there is no cookie banner to need, and leaves nothing that breaks when someone else’s service is down. Every care plan includes Steadfast Analytics, the visit counter I run, which uses no cookies, keeps nothing that identifies anyone, and counts what matters to a small business: calls, texts, emails and form sends. Without a plan, Cloudflare offers free visitor stats you can switch on, though theirs loads a script from Cloudflare. And if you want Google Analytics or anything else, it is your site: I will add it, update your privacy page to match, and add the cookie banner it needs.',
+    more: { href: '/websites#outside-scripts', text: 'Why I leave out outside scripts' },
   },
   {
     q: 'Can you guarantee a first-page Google ranking?',
