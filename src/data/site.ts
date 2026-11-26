@@ -378,7 +378,7 @@ export const work = [
       'Every “Ask about…” button opens the contact form with the topic already picked',
       'Each rental has its own card, and the Darby rental’s names its property manager with a number you can tap to call',
       'Their own logo and photos, in light and dark mode',
-      'A privacy page that’s short and easy to understand',
+      'A privacy page that’s short and easy to understand, and visits counted with our own analytics instead of Google’s',
     ],
     image: '/work/nj-fusions.webp',
     imageAlt: 'The N & J Fusions Properties home page: the logo, the headline and a “How can we help?” box with four choices.',
