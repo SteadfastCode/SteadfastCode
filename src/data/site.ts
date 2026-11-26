@@ -191,7 +191,7 @@ export const domainNote = 'If you’d rather I handle the domain, I can keep it 
 // What a site counts, and who for (Daniel, 2026-11-26): nothing by default. Steadfast Analytics
 // comes with the care plans (steadfast-ai's client-builds adds it to a launched site with a plan);
 // without one, Cloudflare's free Web Analytics or a tool the client picks. Shown under the care plans.
-export const analyticsNote = 'Every care plan counts visits with Steadfast Analytics, the visit counter I run: no cookies, nothing kept that identifies your visitors, and it counts calls, texts, emails and form sends, not just page views. Without a plan your site counts nothing unless you want it to. Cloudflare’s free Web Analytics can be switched on for you (it loads a small script from Cloudflare), or I can add another tool you choose and update your privacy page to match.';
+export const analyticsNote = 'Every care plan counts visits with Steadfast Analytics, the visit counter I run: no cookies, nothing kept that identifies your visitors, and it counts calls, texts, emails and form sends, not just page views. Without a plan your site counts nothing unless you want it to. Cloudflare’s free Web Analytics can be switched on for you (it loads a small script from Cloudflare), or I can add another tool you choose, update your privacy page to match, and add a cookie banner if it needs one.';
 
 export const everyBuild = [
   'Unlimited changes for 30 days from the day you first see your site: wording, photos, colors, layout, whatever it takes to make it yours, within your package. After that, changes come with a care plan or a quote.',
@@ -434,7 +434,7 @@ export const faq = [
   },
   {
     q: 'Does my site track visitors?',
-    a: 'Not by default. I build sites that load nothing from other companies: no Google Analytics, no ad pixels, no trackers. That keeps the page fast, means there is no cookie banner to need, and leaves nothing that breaks when someone else’s service is down. Every care plan includes Steadfast Analytics, the visit counter I run, which uses no cookies, keeps nothing that identifies anyone, and counts what matters to a small business: calls, texts, emails and form sends. Without a plan, Cloudflare offers free visitor stats you can switch on, though theirs loads a script from Cloudflare. And if you want Google Analytics or anything else, it is your site: I will add it and update your privacy page to match.',
+    a: 'Not by default. I build sites that load nothing from other companies: no Google Analytics, no ad pixels, no trackers. That keeps the page fast, means there is no cookie banner to need, and leaves nothing that breaks when someone else’s service is down. Every care plan includes Steadfast Analytics, the visit counter I run, which uses no cookies, keeps nothing that identifies anyone, and counts what matters to a small business: calls, texts, emails and form sends. Without a plan, Cloudflare offers free visitor stats you can switch on, though theirs loads a script from Cloudflare. And if you want Google Analytics or anything else, it is your site: I will add it, update your privacy page to match, and add the cookie banner it needs.',
   },
   {
     q: 'Can you guarantee a first-page Google ranking?',
