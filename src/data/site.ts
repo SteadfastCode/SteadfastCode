@@ -354,7 +354,7 @@ export const work = [
       'A “How can we help?” box at the top, one tap from each kind of visitor to their own section',
       'Every “Ask about…” button opens the contact form with the topic already picked',
       'A question about the Darby rental goes to its property manager as well as to the owners, without the manager’s address ever appearing on the page',
-      'Their own logo and photos, in light and dark mode',
+      'Their own logo and photos, light and dark mode, and a privacy page that says only what the site actually does',
     ],
     image: '/work/nj-fusions.webp',
     imageAlt: 'The N & J Fusions Properties home page: the logo, the headline and a “How can we help?” box with four choices.',
