@@ -188,12 +188,18 @@ export const launchNote = 'Fast launch times assume your content is ready: the w
 // for free on request. Shown under the care plans and in the agreement.
 export const domainNote = 'If you’d rather I handle the domain, I can keep it in my registrar account while you’re on a hosting or care plan, still registered in your name and paid with your card. If you leave the plan, or just ask, I transfer it to your own account for free.';
 
+// What a site counts, and who for (Daniel, 2026-11-26): nothing by default. Steadfast Analytics
+// comes with the care plans (steadfast-ai's client-builds adds it to a launched site with a plan);
+// without one, Cloudflare's free Web Analytics or a tool the client picks. Shown under the care plans.
+export const analyticsNote = 'Every care plan counts visits with Steadfast Analytics, the visit counter I run: no cookies, nothing kept that identifies your visitors, and it counts calls, texts, emails and form sends, not just page views. Without a plan your site counts nothing unless you want it to. Cloudflare’s free Web Analytics can be switched on for you (it loads a small script from Cloudflare), or I can add another tool you choose and update your privacy page to match.';
+
 export const everyBuild = [
   'Unlimited changes for 30 days from the day you first see your site: wording, photos, colors, layout, whatever it takes to make it yours, within your package. After that, changes come with a care plan or a quote.',
   'If something I built doesn’t work the way I said it would, I fix it free.',
   'Custom code, not a template or a page builder. AI coding tools write it, automated checks gate every build, and I direct the work and test the result on real phones. The code is yours, in a GitHub repository under your name if you want it.',
   'Built to score 100 on Google’s performance, accessibility and SEO checks, and tested on real phones before launch.',
   'No plugin sprawl, no monthly license fees for a theme, no surprise "your site needs updating" emails.',
+  'No outside scripts by default: your site loads nothing from other companies, so there are no trackers or ad pixels, no cookie banner to need, and nothing that slows it down or breaks when someone else’s service does. If a feature you want needs one, like a video player, I’ll tell you before it goes in.',
   'You own your domain, your content and your site, and you can take it anywhere, any time.',
   'One person from the first call to launch, and the same person afterward.',
 ] as const;
@@ -425,6 +431,10 @@ export const faq = [
   {
     q: 'What does the site run on?',
     a: `Plain HTML, CSS and a little JavaScript, produced by a modern static site framework (Astro) from code written with AI tools, checked automatically on every version and tested by me on real phones, served from Cloudflare’s edge network. No WordPress, no database, no plugins to update, nothing to get hacked. If you want to change text and photos yourself, there is a simple editor for that: included in Growth, and a ${money(addOns[0].price)} add-on for Starter and Business. If you specifically need WordPress or Shopify, I will tell you honestly whether it is the right call and build it well if it is.`,
+  },
+  {
+    q: 'Does my site track visitors?',
+    a: 'Not by default. I build sites that load nothing from other companies: no Google Analytics, no ad pixels, no trackers. That keeps the page fast, means there is no cookie banner to need, and leaves nothing that breaks when someone else’s service is down. Every care plan includes Steadfast Analytics, the visit counter I run, which uses no cookies, keeps nothing that identifies anyone, and counts what matters to a small business: calls, texts, emails and form sends. Without a plan, Cloudflare offers free visitor stats you can switch on, though theirs loads a script from Cloudflare. And if you want Google Analytics or anything else, it is your site: I will add it and update your privacy page to match.',
   },
   {
     q: 'Can you guarantee a first-page Google ranking?',
