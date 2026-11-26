@@ -340,6 +340,26 @@ export const software = {
 // shown. `metrics` are measured, not estimated, and say when and how.
 export const work = [
   {
+    name: 'N & J Fusions Properties',
+    kind: 'Real estate investment and rentals, South Central Pennsylvania',
+    url: 'https://njfusionsproperties.net',
+    // Launched 2026-11-20 (client-n-and-j-fusions-properties 0ef9eaa: search engines let in).
+    live: true,
+    status: 'Launched - November 20, 2026',
+    summary:
+      'A one-page Starter site for Joshua and Nicole Cesavice’s veteran-owned real estate business. ' +
+      'It has four very different visitors to serve: investors looking for funding, home owners facing foreclosure, families moving a parent into senior housing, and people asking about a rental. ' +
+      'So the top of the page asks “How can we help?” and takes each one straight to their part of the page.',
+    details: [
+      'A “How can we help?” box at the top, one tap from each kind of visitor to their own section',
+      'Every “Ask about…” button opens the contact form with the topic already picked',
+      'A question about the Darby rental goes to its property manager as well as to the owners, without the manager’s address ever appearing on the page',
+      'Their own logo and photos, in light and dark mode',
+    ],
+    image: '/work/nj-fusions.webp',
+    imageAlt: 'The N & J Fusions Properties home page: the logo, the headline and a “How can we help?” box with four choices.',
+  },
+  {
     name: 'Mr Dandyman',
     kind: 'Handyman and general contractor, Lititz PA',
     url: 'https://mrdandyman.biz',
